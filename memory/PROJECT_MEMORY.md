@@ -54,13 +54,13 @@ Agent behavior:
 ## Current State
 
 Current phase:
-- deployment-and-final-audit
+- platform-configuration (pending — plans created, no implementation started)
 
 Current prompt:
-- 13-deployment-and-final-audit
+- 13-platform-configuration
 
 Status:
-- awaiting_continue (Prompts 00–12 complete; Prompt 13 — deployment and final audit — starts when the user says "continue")
+- plans_created_awaiting_approval (Prompts 00–12 complete; old Prompt 13 — deployment and final audit — REMOVED from required scope by user request and replaced with new required Prompts 13–16; plans created; implementation starts when the user approves/continues)
 
 ## Completed Work
 
@@ -164,8 +164,11 @@ Status:
 
 ## Pending Work
 
-Required phases pending:
-- 13-deployment-and-final-audit
+Required phases pending (replaced the removed 13-deployment-and-final-audit per DEC-015):
+- 13-platform-configuration — dynamic project types, stacks, libraries; multi-type projects; creation form with stack/library selection; global Settings UI (DEC-016)
+- 14-multi-project-workspace — explicit linked projects (project_dependencies, PDEP); cross-project workflow calls via dropdown + manual ID (workflow_call node); diagram/docs rendering
+- 15-custom-node-palette — DB-backed node categories/types (NCAT/NTYP) with custom fields; Settings editors; modeler reads palette from DB; generic custom-node rendering
+- 16-skills-and-final-audit — per-project Skills section (capability + tech, SKL); per-project docs integration (skills/platform config/dependencies); final audit of the 13–16 scope; fix stale Prompt-13 references in docs/guide.md + docs/tutorial-ecommerce.md
 
 ## Blockers
 
@@ -199,7 +202,7 @@ All future decisions must be recorded in:
 
 ## Next Action
 
-Execute Prompt 13 (deployment-and-final-audit) when the user says "continue". Prepares deployment (docker-compose, backend/frontend Dockerfiles, SQLite volume, env config, local + internal production modes), documents hybrid workspace behavior (central DB as source of truth, local Markdown workspace export, local agent workspace usage), writes the final audit against all 10 constraints, and reports completion with optional backlog.
+Execute Prompt 13 (platform-configuration) when the user says "continue" or otherwise approves. The new required scope is Prompts 13–16 (see STATE.json). The plans exist in prompts/13-platform-configuration.md, prompts/14-multi-project-workspace.md, prompts/15-custom-node-palette.md, prompts/16-skills-and-final-audit.md. No implementation has started (user chose "create plans only").
 
 ## Completion Policy
 
@@ -229,5 +232,6 @@ The agent must never start optional work without approval.
 - Database schema (backend/db/schema.sql) is complete and validated; migrations are additive-only.
 - Backend (backend/) is scaffolded and smoke-tested (141 checks PASS): Fastify 5 + Zod 3 + bun:sqlite (DEC-006), monorepo workspace layout (DEC-007), modeler module (Prompt 07), diagrams module (Prompt 08), docs-generator module (Prompt 09), roadmap module + agent-tasks module (Prompt 10).
 - Freebuff preview commands: install `bun install`, dev `bun run dev` (port 5173), build `bun run build`. Root dev runs backend + frontend concurrently; preview is a real web app.
-- Preview is RUNNING and verified (2026-08-16, user deferred Prompt 13): https://5173-7cda6598-6ac8-43d9-b39b-563aae04b353.daytonaproxy01.net — root 200, /api/healthz 200, /api/projects 200. Two fixes were required to make it work: (1) backend dev script pins `PORT=3000` because Freebuff injects PORT=5173 which collided with Vite (EADDRINUSE); (2) the Vite /api proxy now rewrites/strips the /api prefix because backend routes are unprefixed (was 404 on every API call). server.hmr: false preserved.
-- Frontend is a full FSD app; visual modeler (Prompt 07) at /projects/:id/modeler, diagrams (Prompt 08) at /projects/:id/diagrams, docs export (Prompt 09) at /projects/:id/docs, roadmap (Prompt 10) at /projects/:id/roadmap with generate + task-pack packaging, and governance (Prompt 11) at /projects/:id/governance with status/approvals/validation/traceability tabs. Testing and validation (Prompt 12) are next.
+- Preview is RUNNING and verified (2026-08-16, user deferred old Prompt 13): https://5173-7cda6598-6ac8-43d9-b39b-563aae04b353.daytonaproxy01.net — root 200, /api/healthz 200, /api/projects 200. Two fixes were required to make it work: (1) backend dev script pins `PORT=3000` because Freebuff injects PORT=5173 which collided with Vite (EADDRINUSE); (2) the Vite /api proxy now rewrites/strips the /api prefix because backend routes are unprefixed (was 404 on every API call). server.hmr: false preserved.
+- Frontend is a full FSD app; visual modeler (Prompt 07) at /projects/:id/modeler, diagrams (Prompt 08) at /projects/:id/diagrams, docs export (Prompt 09) at /projects/:id/docs, roadmap (Prompt 10) at /projects/:id/roadmap with generate + task-pack packaging, and governance (Prompt 11) at /projects/:id/governance with status/approvals/validation/traceability tabs. Testing and validation (Prompt 12) complete: 75/75 tests PASS, backend smoke 185/185.
+- SCOPE CHANGE (2026-08-16, DEC-015/DEC-016): old Prompt 13 (deployment-and-final-audit) was REMOVED from required scope by user request and replaced with new required Prompts 13–16 (platform configuration, multi-project workspace, custom node palette, skills + final audit). Plans created in prompts/ (files 13–16); prompts/README.md updated; no implementation started yet (user chose "create plans only"). Deployment deliverables moved to the optional backlog. Known stale references to fix during Prompt 16: docs/guide.md "14-prompt execution model" and docs/tutorial-ecommerce.md "deployment (pending)".

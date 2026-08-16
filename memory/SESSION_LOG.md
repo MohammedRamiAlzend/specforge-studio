@@ -473,3 +473,30 @@ Next action:
 - Unchanged: Prompt 13 (Deployment and Final Audit) remains the next required phase, deferred by explicit user request — resume when the user says "continue".
 
 Awaiting approvals: none.
+
+### Session 2026-08-16 — Remove plan 13; create new plans 13–16 (complex multi-project scope)
+
+User request:
+- "i want to remove plan 13 and add new plans for it" + detailed complex-project requirements. Recorded in memory/USER_REQUESTS.md; clarifying answers recorded in DEC-016 (multi-type projects, global Settings, editable+pre-seeded stacks/libs, cross-project refs via dropdown AND manual ID, explicit linked projects, capability + tech skills, custom node fields, create plans only).
+
+Work completed:
+- Deleted prompts/13-deployment-and-final-audit.md (removed from required scope, DEC-015).
+- Created four new required prompts:
+  - prompts/13-platform-configuration.md — DB tables project_types/project_type_assignments/stacks/libraries/project_type_config/project_libraries (migration 006, PTYPE/STK/LIB prefixes), multi-type projects, creation form with per-type stack + library selection, global Settings UI, back-compat for existing single-type projects, seeds, FEAT-008.
+  - prompts/14-multi-project-workspace.md — project_dependencies (migration 007, PDEP), linked-projects UI (outgoing/incoming), workflow_call node with dropdown + manual-ID cross-project references, CROSS_PROJECT_REF_MISSING validation, deterministic subgraph rendering in Mermaid, docs (00-meta/dependencies.md + workflows.md calls), FEAT-009.
+  - prompts/15-custom-node-palette.md — node_categories + node_types (migration 008, NCAT/NTYP), Settings editors, modeler reads palette from DB, custom fields rendered by inspector, loop seed example, generic diagram rendering fallback, FEAT-010.
+  - prompts/16-skills-and-final-audit.md — skills table (migration 009, SKL, capability + tech), SkillsPage + route/nav, per-project docs integration (skills/platform config/dependencies), final audit of 13–16 scope, fix stale Prompt-13 references in docs/guide.md + docs/tutorial-ecommerce.md, FEAT-011, completion report per AGENTS.md.
+- Updated prompts/README.md prompt sequence (00–16) with a note explaining the Prompt 13 replacement.
+- Updated memory: DECISIONS (DEC-015, DEC-016), STATE.json (required_scope/pending_phases/status=plans_created_awaiting_approval), PROJECT_MEMORY (current state/pending/next action/operational context), NEXT_ACTION (rewritten), USER_REQUESTS (answers appended), SESSION_LOG (this entry).
+
+Work partially completed: none (create plans only — no implementation).
+
+Blockers: none.
+
+Memory files updated:
+- memory/USER_REQUESTS.md, memory/DECISIONS.md, memory/STATE.json, memory/PROJECT_MEMORY.md, memory/NEXT_ACTION.md, memory/SESSION_LOG.md
+
+Next action:
+- Execute Prompt 13 (Dynamic Platform Configuration) when the user approves/continues. Prompts 13–16 are the new required scope; no implementation has started.
+
+Awaiting approvals: approval to begin executing the new required scope (Prompts 13–16).
