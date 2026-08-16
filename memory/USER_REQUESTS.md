@@ -25,6 +25,12 @@ Each request must include:
 - mandatory or optional: mandatory
 - affected phase or artifact: all phases
 
+### 2026-08-16 — Live example preview for e-commerce project creation
+- request: "make live example preview for how creation whould be for eccomerce project" — the preview should show a fully built e-commerce project so the creation flow is demonstrable live.
+- implication: Extracted the demo seed into backend/scripts/seed-data.ts (parameterized by projectId/graphId) and added `bun run --cwd backend seed-live` (seed-live.ts). The live DB (backend/data/specforge.db) now contains the Acme Commerce demo as PRJ-0002 (graph GRPH-0002, roadmap RMP-0003, 13 task packs, DIAG-0001 workflow + DIAG-0002 ERD, governance demo APR-0002) alongside the user's own PRJ-0001 "BabRizq" project — user data preserved, never overwritten. Verified through the preview proxy: /api/projects, /api/roadmaps?project=PRJ-0002, /api/diagrams?project=PRJ-0002, /api/governance/validation?project=PRJ-0002 all return real data.
+- mandatory or optional: mandatory (user-requested)
+- affected phase or artifact: backend/scripts/seed-data.ts, backend/scripts/seed-live.ts, backend/package.json (seed-live script), live preview DB
+
 ### 2026-08-16 — Step-by-step guide with example for making an e-commerce project
 - request: "generate step by step guid with example for making eccomerce project" — a tutorial that walks through building an e-commerce project with SpecForge Studio, with a concrete example at every step.
 - implication: New deliverable docs/tutorial-ecommerce.md (GUIDE-002) — 14 steps (0–13) using the committed Acme Commerce example (PRJ-0001) with real generated outputs (workflow Mermaid, ERD, TASK-0001 pack, APR-0002 flow).

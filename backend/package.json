@@ -9,6 +9,7 @@
     "smoke": "bun scripts/smoke.ts",
     "test": "bun test tests/",
     "seed-example": "bun scripts/generate-example.ts",
+    "seed-live": "bun scripts/seed-live.ts",
     "build": "tsc --noEmit",
     "typecheck": "tsc --noEmit"
   },
