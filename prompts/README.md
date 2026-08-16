@@ -32,6 +32,7 @@ This folder contains the scheduled prompt sequence for building SpecForge Studio
 14. Multi-project workspace and cross-project workflow calls
 15. Customizable node palette and categories
 16. Skills section, per-project docs integration, and final audit
+17. UI polish and motion (smooth navigation, micro-interactions, reduced-motion)
 
 Note: the original Prompt 13 (Deployment and Final Audit) was removed from the
 required scope by user request (2026-08-16) and replaced by Prompts 13–16
@@ -39,3 +40,8 @@ covering dynamic platform configuration, multi-project workspaces, a
 customizable node palette, and the Skills section with a final audit of the new
 scope. Deployment packaging is no longer required scope; it remains a candidate
 for the optional backlog.
+
+Prompt 17 (2026-08-16) was added after the Prompt 16 completion report by user
+request ("add animation prompt for navigation etc., anything to make the
+website smoother") — a UI polish scope executed without new runtime
+dependencies.

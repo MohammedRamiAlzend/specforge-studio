@@ -54,13 +54,13 @@ Agent behavior:
 ## Current State
 
 Current phase:
-- skills-and-final-audit (COMPLETE — all required prompts 00–16 done and verified)
+- ui-polish-and-motion (COMPLETE — Prompts 00–16 required scope + user-requested Prompt 17 polish done and verified)
 
 Current prompt:
-- 16-skills-and-final-audit (completed 2026-08-16)
+- 17-ui-polish-and-motion (completed 2026-08-16)
 
 Status:
-- completed (all required scope complete; no remaining tasks, blockers, or pending approvals)
+- completed (all required scope 00–16 + user-requested polish 17 complete; no remaining tasks, blockers, or pending approvals)
 
 ## Completed Work
 
@@ -212,11 +212,22 @@ Status:
   - Deliverables: docs/features/skills.md (FEAT-011), docs/final-audit.md (AUDIT-001).
   - Recorded DEC-020 in memory/DECISIONS.md.
   - ALL REQUIRED SCOPE COMPLETE (Prompts 00–16). Completion report delivered per AGENTS.md.
+- Prompt 17 (UI polish and motion) — completed 2026-08-16:
+  - Motion utilities in frontend/src/app/index.css: keyframes sf-page-enter (fade + 8px rise, 250ms) / sf-rise (320ms stagger entrance) / sf-scale-in (180ms); `@media (prefers-reduced-motion: reduce)` disables them and restores `scroll-behavior: auto`; `html { scroll-behavior: smooth }`.
+  - AppShell (frontend/src/widgets/layout/AppShell.tsx): routed Outlet wrapped in a div keyed by `location.pathname` with sf-page-enter (key stable within a page so canvas/modeler state is preserved); nav links transition-all duration-200 with active `scale-[1.03]` and idle `hover:translate-x-0.5`.
+  - Shared UI: Button transition-all duration-150 + active:scale-[0.98] press feedback (disabled stays non-scaled), Card base transition-all duration-200, EmptyState/ErrorState render with sf-rise.
+  - Dashboard project grid + ProjectDetails SECTIONS tiles: staggered sf-rise entrance (animationDelay = index * 40ms) with group-hover lift (-translate-y-0.5), shadow-md, and hover:border-slate-300.
+  - Tests: frontend/tests/ui-polish.test.tsx (4 tests: Button press classes, Card transition class, Empty/Error sf-rise) via react-dom/server — all PASS.
+  - Docs: docs/features/ui-polish.md (FEAT-012); prompts/17-ui-polish-and-motion.md created; prompts/README.md sequence + note updated.
+  - No new runtime dependency added (Tailwind utilities + plain CSS keyframes only); no backend/schema/docs-generator changes.
+  - Verified: 163 tests pass / 0 fail (620 expects, 22 files), root bun run typecheck clean, bun run build succeeds.
+  - Deliverable: docs/features/ui-polish.md (FEAT-012).
+  - Recorded DEC-021 in memory/DECISIONS.md.
 
 ## Pending Work
 
 Required phases pending:
-- none — all required scope (Prompts 00–16) is complete.
+- none — all required scope (Prompts 00–16) plus the user-requested Prompt 17 polish are complete.
 
 No optional task is in progress. Optional candidates live in memory/OPTIONAL_BACKLOG.md and require explicit approval.
 
@@ -258,7 +269,7 @@ All future decisions must be recorded in:
 
 ## Next Action
 
-All required scope (Prompts 00–16) is complete and verified. Per AGENTS.md Completion Protocol, the agent must deliver the completion report, propose optional tasks, and wait for explicit approval before starting optional work. The user's request to commit all changes to master is the next mandatory step after the completion report.
+All completed scope (Prompts 00–16 required + user-requested Prompt 17 polish) is done and verified. Per AGENTS.md Completion Protocol, finalize by reporting completion, committing changes (user earlier requested commit to master), and waiting for explicit approval before starting any optional backlog work.
 
 ## Completion Policy
 
@@ -295,3 +306,4 @@ The agent must never start optional work without approval.
 - MULTI-PROJECT WORKSPACE COMPLETE (2026-08-16, DEC-018): Prompt 14 delivered project_dependencies (PDEP, migration 007) with CRUD/dependents/reference-targets/workflow-calls APIs, workflow_call modeler node with cross-project metadata (validated 400 on malformed refs, CROSS_PROJECT_REF_MISSING on missing targets), nested-subgraph Mermaid rendering (byte-identical generate/preview), dependencies.md workspace file (ART-0033), TR-21 governance rule, InspectorPanel cross-project picker + manual GRPH id, LinkedProjectsCard + CrossProjectCalls widgets, links tests (backend 11, frontend 8). Verified: backend 84/84 tests, frontend 34/34 tests, root typecheck, smoke 226/226, seed-example 33 files. FEAT-009.
 - CUSTOM NODE PALETTE COMPLETE (2026-08-16, DEC-019): Prompt 15 delivered node_categories/node_types DB tables (migration 008, NCAT/NTYP), palette module (seedNodePalette 14 types incl. loop demo NTYP-0014 with iterations/mode fields + CRUD routes with built-in/in-use guards), modeler DB-driven (buildPaletteMap/enabledNodeTypes, static catalog removed, UNKNOWN/DISABLED/KIND validation, /modeler/node-types 14→15 with fields), generic workflowShape diagram rendering, entities/palette + NodePalette rebuilt by DB categories, InspectorPanel CustomFieldsSection + changeType reseeds, NodePaletteSettingsPanel in Settings > Node palette tab, NCAT/NTYP + FEAT-010 docs, seed integration, palette suites (backend 15, frontend 7). Verified: backend 99/99 tests, frontend 41/41 tests, root typecheck clean, bun run build succeeds, smoke 256/256, seed-example 33 files. Remaining required scope: only Prompt 16 (skills + final audit).
 - SKILLS + FINAL AUDIT COMPLETE (2026-08-16, DEC-020): Prompt 16 delivered skills table (migration 009, SKL ids), skills module CRUD with kind-consistent validation (capability→level, tech→tag), 07-guides/skills.md appended at END of WORKSPACE_FILES (example export now 34 files, ART-0034), 4 seeded demo skills, SkillsPage + entities/skill + route/nav/section, SKL id-convention row, FEAT-011 + docs/final-audit.md (AUDIT-001), stale references fixed in guide.md + tutorial-ecommerce.md, skills suites (backend 14, frontend 5). Verified: backend 113/113 tests, frontend 46/46 tests (159 pass / 0 fail), root typecheck clean, bun run build succeeds, smoke 275/275, seed-example 34 files. ALL REQUIRED SCOPE (Prompts 00–16) COMPLETE.
+- UI POLISH AND MOTION COMPLETE (2026-08-16, DEC-021): Prompt 17 (user-requested) delivered sf-page-enter/sf-rise/sf-scale-in CSS keyframes + prefers-reduced-motion block in index.css, AppShell page-transition wrapper keyed by location.pathname + nav micro-interactions, Button/Card/States polish, staggered Dashboard + ProjectDetails grid entrance with hover lift, frontend/tests/ui-polish.test.tsx (4 tests), FEAT-012, prompts/17-ui-polish-and-motion.md. No new runtime dependency. Verified: 163 tests pass / 0 fail (620 expects, 22 files), root typecheck clean, build succeeds. All completed scope done.

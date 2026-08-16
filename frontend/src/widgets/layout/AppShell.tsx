@@ -4,8 +4,10 @@ import { useAppStore } from "../../app/store";
 import { useProjects } from "../../entities/project/api";
 
 function navLinkClass(isActive: boolean): string {
-  return `flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm transition-colors ${
-    isActive ? "bg-slate-800 text-white" : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200"
+  return `flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm transition-all duration-200 ${
+    isActive
+      ? "scale-[1.03] bg-slate-800 text-white"
+      : "text-slate-400 hover:translate-x-0.5 hover:bg-slate-800/60 hover:text-slate-200"
   }`;
 }
 
@@ -96,7 +98,9 @@ export function AppShell() {
 
       <main className="min-w-0 flex-1 overflow-y-auto">
         <div className={isCanvasRoute ? "h-full overflow-hidden" : "mx-auto max-w-6xl px-6 py-8"}>
-          <Outlet />
+          <div key={location.pathname} className={isCanvasRoute ? "sf-page-enter h-full" : "sf-page-enter"}>
+            <Outlet />
+          </div>
         </div>
       </main>
     </div>

@@ -12,7 +12,7 @@ export function EmptyState({
   onAction?: () => void;
 }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-300 bg-white/60 px-6 py-14 text-center">
+    <div className="sf-rise flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-300 bg-white/60 px-6 py-14 text-center">
       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-lg">
         ◇
       </div>
@@ -29,7 +29,7 @@ export function EmptyState({
 
 export function ErrorState({ message, onRetry }: { message: string; onRetry?: () => void }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-lg border border-rose-200 bg-rose-50 px-6 py-10 text-center">
+    <div className="sf-rise flex flex-col items-center justify-center rounded-lg border border-rose-200 bg-rose-50 px-6 py-10 text-center">
       <h3 className="text-sm font-semibold text-rose-800">Something went wrong</h3>
       <p className="mt-1 text-xs text-rose-600">{message}</p>
       {onRetry ? (

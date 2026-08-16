@@ -61,3 +61,9 @@ Each request must include:
 - implication: Once the completion protocol is satisfied (all required scope done, memory updated, completion report delivered), stage and commit all project changes to master with a clear message. No push/PR unless subsequently requested.
 - mandatory or optional: mandatory (user-requested)
 - affected phase or artifact: git repository (master branch), all completed deliverables
+
+### 2026-08-16 — Add an animation/polish prompt for smoother navigation
+- request: "add animation prompt at prompts\ for navigation etc.. any thing make website smother" — add a new prompt covering navigation/UI animations and anything making the website smoother; then "implement the plan".
+- implication: New Prompt 17 (UI Polish & Motion) created at prompts/17-ui-polish-and-motion.md and implemented: page transitions (sf-page-enter keyed by route), nav micro-interactions, button press feedback, card hover lift, staggered entrances, and prefers-reduced-motion support — implemented WITHOUT a new runtime dependency (Tailwind + plain CSS keyframes). Prompt 16 completion report was already delivered; this is new post-completion scope.
+- mandatory or optional: mandatory (user-requested)
+- affected phase or artifact: prompts/17-ui-polish-and-motion.md, frontend/src/app/index.css, AppShell.tsx, shared/ui/Button.tsx + Card.tsx + States.tsx, DashboardPage.tsx, ProjectDetailsPage.tsx, frontend/tests/ui-polish.test.tsx, docs/features/ui-polish.md (FEAT-012)

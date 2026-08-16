@@ -78,10 +78,10 @@ export function ProjectDetailsPage() {
       </Card>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {SECTIONS.map((section) => (
-          <Link key={section.to} to={section.to} className="group">
-            <Card className="h-full p-5 transition-shadow group-hover:shadow-md">
-              <h3 className="text-sm font-semibold text-slate-900 group-hover:text-forge-700">
+        {SECTIONS.map((section, i) => (
+          <Link key={section.to} to={section.to} className="sf-rise group" style={{ animationDelay: `${i * 40}ms` }}>
+            <Card className="h-full p-5 transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-md group-hover:border-slate-300">
+              <h3 className="text-sm font-semibold text-slate-900 transition-colors group-hover:text-forge-700">
                 {section.title} →
               </h3>
               <p className="mt-1 text-xs text-slate-500">{section.blurb}</p>

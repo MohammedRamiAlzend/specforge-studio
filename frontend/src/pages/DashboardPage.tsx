@@ -52,9 +52,9 @@ export function DashboardPage() {
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {projects.map((project) => (
-            <Link key={project.id} to={`/projects/${project.id}`} className="group">
-              <Card className="h-full transition-shadow group-hover:shadow-md">
+          {projects.map((project, i) => (
+            <Link key={project.id} to={`/projects/${project.id}`} className="sf-rise group" style={{ animationDelay: `${i * 40}ms` }}>
+              <Card className="h-full transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-md group-hover:border-slate-300">
                 <CardHeader
                   title={project.name}
                   description={project.types && project.types.length > 0 ? undefined : `${project.type.toUpperCase()} project`}

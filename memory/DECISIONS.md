@@ -182,6 +182,14 @@ Each decision must include:
 - status: approved
 - impact: All required scope (Prompts 00–16) complete and verified: 159 backend+frontend tests (615 expects), 275-check smoke, typecheck/build clean, 34-file regenerable example. Only the optional backlog (deployment packaging, diagram templates, roadmap aggregation, skills-to-task matching) remains, pending user approval. Completion report delivered per AGENTS.md protocol.
 
+### DEC-021 — UI polish and motion implementation (Prompt 17)
+- decision ID: DEC-021
+- date: 2026-08-16
+- decision: Implement Prompt 17 (UI Polish & Motion) as dependency-free frontend polish, honoring prefers-reduced-motion and the zero-new-deps approach. Motion utilities in frontend/src/app/index.css: keyframes sf-page-enter (fade + 8px rise, 250ms) / sf-rise (320ms stagger entrance) / sf-scale-in (180ms), a `@media (prefers-reduced-motion: reduce)` block disabling them, and `html { scroll-behavior: smooth }`. AppShell wraps the routed Outlet in a div keyed by `location.pathname` with sf-page-enter (key stable within a page → canvas/modeler state preserved), and nav links switch to transition-all duration-200 with active `scale-[1.03]` and idle `hover:translate-x-0.5`. Button gets `transition-all duration-150 active:scale-[0.98]` (disabled stays non-scaled); Card gains base transition-all duration-200; EmptyState/ErrorState render with sf-rise. Dashboard project grid and ProjectDetails SECTIONS tiles enter with staggered sf-rise (animationDelay = index * 40ms) and lift on hover (group-hover:-translate-y-0.5, shadow-md, border-slate-300). New frontend/tests/ui-polish.test.tsx (4 tests) asserts the motion classes appear in react-dom/server static markup. docs/features/ui-polish.md (FEAT-012); prompts/17-ui-polish-and-motion.md + prompts/README.md updated. No backend/schema/docs-generator changes.
+- reason: User requested an animation/navigation-polish prompt ("add animation prompt for navigation etc., anything to make the website smoother") after the Prompt 16 completion report; this is the implemented plan.
+- status: approved
+- impact: Navigation now cross-fades/slides, with tasteful micro-interactions and reduced-motion support. Verified: 163 tests pass / 0 fail (620 expects, 22 files), root typecheck clean, bun run build succeeds. Pending: completion report, commit, and optional-backlog approval.
+
 ## Rejected Options
 
 No rejected options recorded yet.

@@ -622,3 +622,28 @@ Memory files updated:
 
 Next action:
 - ALL REQUIRED SCOPE (Prompts 00–16) COMPLETE. Deliver the completion report per AGENTS.md, then execute the user's request to commit all changes to master, then wait for explicit approval before any optional backlog work.
+
+## Session — Prompt 17 (UI Polish & Motion) — 2026-08-16
+
+Work completed:
+- Created prompts/17-ui-polish-and-motion.md (plan: dependency-free motion — page transitions, nav micro-interactions, hover/press feedback, staggered entrances, prefers-reduced-motion; no new runtime library) + updated prompts/README.md (sequence 17 + note).
+- frontend/src/app/index.css: added @keyframes sf-page-enter (fade + 8px rise, 250ms) / sf-rise (320ms ease-out-expo) / sf-scale-in (180ms), utility classes, `@media (prefers-reduced-motion: reduce)` disabling them + `scroll-behavior: auto`, and `html { scroll-behavior: smooth }`.
+- frontend/src/widgets/layout/AppShell.tsx: routed Outlet wrapped in a div keyed by `location.pathname` with sf-page-enter (key stable within a page → canvas/modeler state preserved; h-full only on canvas routes); navLinkClass switched to transition-all duration-200 with active `scale-[1.03]` and idle `hover:translate-x-0.5`.
+- frontend/src/shared/ui/Button.tsx: transition-all duration-150 + active:scale-[0.98] press feedback (disabled:active:scale-100); Card.tsx: base transition-all duration-200; States.tsx: EmptyState + ErrorState containers get sf-rise.
+- frontend/src/pages/DashboardPage.tsx: project cards get staggered sf-rise (animationDelay index*40ms inline) + group-hover lift/shadow/border; ProjectDetailsPage.tsx SECTIONS tiles similarly.
+- frontend/tests/ui-polish.test.tsx (4 tests: Button transition + active-scale classes, Card transition class, Empty/Error sf-rise) via react-dom/server — all PASS.
+- docs/features/ui-polish.md (FEAT-012).
+
+Work partially completed: none.
+
+Blockers: none.
+
+Verified:
+- root bun run typecheck clean; bun run build succeeds (Vite, chunk warning only).
+- frontend tests 163/163 PASS (22 files, 620 expect calls incl. backend unchanged).
+
+Memory files updated:
+- memory/DECISIONS.md (DEC-021), memory/STATE.json (current_prompt_id 17, completed_phases + 17-ui-polish-and-motion), memory/PROJECT_MEMORY.md, memory/NEXT_ACTION.md, memory/USER_REQUESTS.md (new request), memory/SESSION_LOG.md (this entry)
+
+Next action:
+- Finalize: completion report per AGENTS.md, then commit changes (user earlier requested commit to master), then wait for user's next request / optional-backlog approval.
