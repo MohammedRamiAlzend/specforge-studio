@@ -450,3 +450,26 @@ Next action:
 - Unchanged: Prompt 13 (Deployment and Final Audit) remains the next required phase, deferred by explicit user request — resume when the user says "continue".
 
 Awaiting approvals: none.
+
+### Session 2026-08-16 — Live e-commerce example in the preview
+
+User request:
+- "make live example preview for how creation whould be for eccomerce project" — a live, fully built e-commerce project in the preview. Recorded in memory/USER_REQUESTS.md.
+
+Work completed:
+- Extracted the demo seed from generate-example.ts into backend/scripts/seed-data.ts (shared seedDemoProject(db, { projectId?, graphId? }) + isDemoProjectSeeded; all SQL parameterized for project/graph ids; node/edge child ids derived from graphId). generate-example.ts now reuses it (seed-example still writes the 32-file workspace — verified).
+- Added backend/scripts/seed-live.ts + `seed-live` script: opens the live DB (data/specforge.db), seeds the Acme Commerce demo, then stores workflow + ERD diagrams through the real routes (app.inject).
+- Discovery: the live DB already contained the user's own project PRJ-0001 "BabRizq" (created via the preview UI; 1 graph GRPH-0001, 2 roadmaps). Preserved it — the demo is seeded as PRJ-0002 with graph GRPH-0002, so nothing of the user's data is touched; all other example IDs (REQ-0001, DB-0001, TASK-0001, APR-0001/2...) are free and stay stable to match the committed docs example.
+- Verified after preview restart via proxy: /api/projects returns PRJ-0002 (Acme Commerce Platform) + PRJ-0001 (BabRizq); /api/roadmaps?project=PRJ-0002 → RMP-0003 (input_counts metadata); /api/diagrams?project=PRJ-0002 → DIAG-0002 ERD + DIAG-0001 workflow; /api/governance/validation?project=PRJ-0002 → live TR-rule results. Typecheck clean; seed-example still regenerates identically.
+
+Work partially completed: none.
+
+Blockers: none.
+
+Memory files updated:
+- memory/USER_REQUESTS.md, memory/SESSION_LOG.md
+
+Next action:
+- Unchanged: Prompt 13 (Deployment and Final Audit) remains the next required phase, deferred by explicit user request — resume when the user says "continue".
+
+Awaiting approvals: none.
