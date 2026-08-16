@@ -677,3 +677,24 @@ Memory files updated:
 
 Next action:
 - Finalize: deliver the completion report per AGENTS.md, then commit changes to main (user earlier requested commit to master; local branch is main), then wait for a new request / optional-backlog approval.
+
+## Session — Prompt 19 (Download generated docs as ZIP) plan — 2026-08-17
+
+User request:
+- "add prompt to prompts/ for adding download as zip button for generated docs" — add a new prompt covering a "Download as ZIP" button for generated docs (create-plans-only).
+
+Work completed:
+- Studied the docs pipeline: backend/src/modules/docs-generator/routes.ts (GET /docs/exports, GET /docs/exports/:id returns rows + full file contents, POST /docs/generate, DELETE), workspace.ts (WORKSPACE_FILES, 33 files), frontend/src/pages/DocsExportPage.tsx (per-export Card rows, file viewer), frontend/src/entities/docs/api.ts (useDocsExports/useDocsExport/useGenerateDocs/useDeleteDocsExport, api() JSON client).
+- Created prompts/19-docs-zip-download.md: objective, context, constraints (zero-dep ZIP writer preferred; on-demand archive; DB stays source of truth; deterministic entry order), deliverables (zip util, download endpoint, frontend hook + button, tests), 4 requirements, ID strategy (no new rows; optional downloaded event via logEvent), Definition of Done (valid ZIP matching detail endpoint, headers, per-export button with loading/error, backend tests for validity/entries/headers/404, typecheck + tests + build pass, memory updated).
+- Updated prompts/README.md: sequence 19 added + Prompt 19 note.
+- Updated memory: DECISIONS.md (DEC-023 plan approved), USER_REQUESTS.md (Prompt 19 request), STATE.json (current_prompt_id 19, phase docs-zip-download, status plan_created_awaiting_approval, next_action = implement Prompt 19 after approval, awaiting_approval entry, user_requests_summary), SESSION_LOG.md (this entry).
+
+Work partially completed: none (create plans only — implementation not started).
+
+Blockers: none.
+
+Memory files updated:
+- memory/DECISIONS.md (DEC-023), memory/USER_REQUESTS.md, memory/STATE.json, memory/SESSION_LOG.md (this entry)
+
+Next action:
+- Wait for the user to approve implementation of Prompt 19 (Download generated docs as ZIP). On approval, execute prompts/19-docs-zip-download.md: zip util, download endpoint, frontend button + hook, tests; verify typecheck + backend tests + build; update PROJECT_MEMORY.md + NEXT_ACTION.md + DECISIONS (DEC-023 → implemented); then completion report per AGENTS.md.

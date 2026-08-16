@@ -2,9 +2,9 @@
   "schema_version": "1.0",
   "project_name": "SpecForge Studio",
   "last_updated": "2026-08-17",
-  "current_prompt_id": "18",
-  "current_phase": "ecommerce-full-seeder",
-  "status": "completed",
+  "current_prompt_id": "19",
+  "current_phase": "docs-zip-download",
+  "status": "in_progress",
   "execution_mode": "human_approved_automation",
   "required_scope": [
     "00-bootstrap-memory-and-rules",
@@ -48,7 +48,7 @@
   ],
   "in_progress_phases": [],
   "pending_phases": [],
-  "next_action": "Prompt 18 (Full-detail e-commerce seeder) is complete and verified. Added a second demo — StoreSphere E-Commerce Platform (ASP.NET Core .NET backend API + React TypeScript frontend storefront) — via backend/scripts/seed-ecommerce.ts (seedEcommerceProject(db, {projectId?, graphId?}), defaults PRJ-0003/GRPH-0003; isEcommerceSeeded guard), scripts generate-ecommerce-example.ts (committed docs/workspace/generated-example-ecommerce/, PRJ-0004, 34 files) and seed-ecommerce-live.ts (live DB PRJ-0003 + 3 diagrams via real routes), backend/package.json scripts seed-ecommerce-example/seed-ecommerce-live, backend/tests/seed-ecommerce.test.ts (8 tests: content counts, .NET+React type/library assignment, skill rules, roadmap/task pack, approvals/governance/traceability, diagrams, docs workspace, coexistence with Acme in one DB). Child IDs use 0100+ ranges; workflow graph IDs derived from the base graphId (graphN offset) so the example at GRPH-0004 never collides. Verified: root typecheck clean, 171 tests pass / 0 fail (23 files, 682 expects), frontend + backend builds succeed, backend smoke 275/275 PASS, seed-ecommerce-example writes 34 files, seed-ecommerce-live idempotent + DIAG-0001/0002/0003 stored. Next: deliver the completion report per AGENTS.md; commit changes to main (user earlier requested commit to master — repo branch is main); wait for a new request or optional-backlog approval.",
+  "next_action": "Prompt 19 (Download generated docs as ZIP) PLAN CREATED — awaiting user approval to implement. Plan: backend/src/utils/zip.ts (zero-dependency ZIP writer: node:zlib deflateRawSync + CRC-32, method 8, UTF-8 names, deterministic entry order); new GET /docs/exports/:id/download (application/zip + Content-Disposition attachment, reusing readExportFiles so paths/content match the detail endpoint, 404 for unknown ids, optional downloaded event); frontend entities/docs/api.ts downloadDocsExport (raw fetch → Blob → object URL → anchor click, bypassing JSON client) + useDownloadDocsExport hook; DocsExportPage per-export Download ZIP button with loading/error states; backend ZIP tests (PK signature, headers, entry set/order/content, 404). No schema changes. Current state (prior scope): Prompts 00–16 required + user-requested Prompt 17 polish + Prompt 18 e-commerce seeder all complete and verified (171 tests / 0 fail, 23 files, 682 expects; typecheck clean; builds succeed; smoke 275/275; seed-ecommerce-example 34 files; seed-ecommerce-live idempotent + 3 diagrams). Commit a0b783e pushed Prompt 18 to main. Verify after implementation: root typecheck clean, backend tests pass, backend build passes. Then deliver the completion report per AGENTS.md.",
   "blockers": [],
   "awaiting_approval": [],
   "completion": {
@@ -68,7 +68,8 @@
     "Adopt the provided MASTER PROMPT (Project Execution Operating System) as the governing execution protocol and execute the project end-to-end through the memory-driven prompt sequence.",
     "Remove plan 13 (deployment-and-final-audit) and add new plan(s) for complex multi-project functionality: configurable project types/stacks/libraries, multi-type projects, connected workspaces with cross-project workflow calls, customizable node palette with categories, per-project sections incl. a new Skills section, per-project docs exports. Clarifying answers recorded in DEC-016; execution deferred to 'create plans only'.",
     "Add an animation/UI polish prompt for navigation etc., anything to make the website smoother (Prompt 17).",
-    "Create another full-detail seed example of the most common e-commerce project (.NET backend + React frontend) as Prompt 18, implemented and committed."
+    "Create another full-detail seed example of the most common e-commerce project (.NET backend + React frontend) as Prompt 18, implemented and committed.",
+    "Add a prompt (Prompt 19) for a Download as ZIP button on generated docs; plan created, awaiting approval to implement."
   ],
   "constraints_summary": [
     "Frontend must use React with Feature-Sliced Design",

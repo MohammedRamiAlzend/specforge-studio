@@ -198,6 +198,15 @@ Each decision must include:
 - status: approved
 - impact: The preview and generated example now demonstrate a second full-detail project (.NET + React) alongside Acme; all verification gates green (typecheck, 171 tests / 0 fail across 23 files, frontend + backend builds, backend smoke 275/275, seed-ecommerce-example 34 files, seed-ecommerce-live idempotent + 3 diagrams). Note: root tsconfig include does NOT cover backend/scripts, so the seeder/test pair was also verified via bun test + backend build.
 
+### DEC-023 — Download generated docs as ZIP (Prompt 19 plan)
+- decision ID: DEC-023
+- date: 2026-08-17
+- decision: User requested a new prompt for a "Download as ZIP" button on generated docs (Prompt 19). Plan created at prompts/19-docs-zip-download.md (create-plans-only — not yet implemented): backend/src/utils/zip.ts — minimal zero-dependency ZIP writer (node:zlib deflateRawSync method-8 + table-based CRC-32, local headers + central directory + EOCD, UTF-8 names, deterministic entry order); backend/src/modules/docs-generator/routes.ts — new GET /docs/exports/:id/download returning application/zip with Content-Disposition attachment (reusing readExportFiles so paths/content exactly match the detail endpoint; 404 for unknown ids; optional downloaded event_log); frontend/src/entities/docs/api.ts — downloadDocsExport (raw fetch → Blob → object URL → anchor click, bypassing the JSON API client) + useDownloadDocsExport hook; frontend/src/pages/DocsExportPage.tsx — per-export "Download ZIP" button with loading/error states; backend/tests/docs.test.ts or new docs-zip.test.ts asserting ZIP signature PK\x03\x04, Content-Type/Content-Disposition, entry names match files[].path in order, decompressed content matches, and 404 for a missing export id. No schema or docs_exports shape changes; the archive is generated on demand from files on disk. Alternative allowed: jszip/archiver as a plain npm dependency, but zero-dep ZIP writer is preferred.
+- reason: The Docs Export page currently has no way to download the whole workspace as a single archive; the plan formalizes the on-demand, DB-stays-source-of-truth approach so the download exactly matches the displayed/stored files.
+- status: approved (plan)
+- impact: Prompts/README.md updated to sequence 19 with a note. When implemented, users can download each generated workspace as a .zip matching the in-app file viewer. Verification gate: root typecheck clean, backend ZIP tests pass, backend build passes. Per AGENTS.md the plan was recorded and awaits the user's go-ahead to implement.
+- approval: User said "go ahead" (2026-08-17) — implementation approved. Status → implementing.
+
 ## Rejected Options
 
 No rejected options recorded yet.

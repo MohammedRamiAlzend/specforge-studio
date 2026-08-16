@@ -9,6 +9,7 @@ import { logEvent } from "../../utils/events";
 import { assertProjectExists } from "../../utils/exists";
 import { notFound } from "../../utils/errors";
 import { generateWorkspaceFiles, type WorkspaceFile } from "./workspace";
+import { createZip } from "../../utils/zip";
 
 // ---------------------------------------------------------------------------
 // Zod schemas
@@ -112,6 +113,25 @@ export function registerDocsGeneratorRoutes(app: FastifyInstance, deps: Deps): v
     const dir = exportDir(config, id);
     const files = readExportFiles(dir, JSON.parse(row.files) as FileMeta[]);
     return { data: { ...rowToApi(row), files } };
+  });
+
+  app.get("/docs/exports/:id/download", async (request, reply) => {
+    const { id } = exportIdSchema.parse(request.params);
+    const row = getExportRow(db, id);
+    const dir = exportDir(config, id);
+    const files = readExportFiles(dir, JSON.parse(row.files) as FileMeta[]);
+    const archive = createZip(files.map((f) => ({ path: f.path, content: f.content })));
+    const filename = `specforge-workspace-${id}.zip`;
+    reply.header("Content-Type", "application/zip");
+    reply.header("Content-Disposition", `attachment; filename="${filename}"`);
+    logEvent(db, {
+      projectId: row.project_id,
+      entityType: "docs_export",
+      entityId: id,
+      action: "downloaded",
+      payload: { fileCount: files.length, bytes: archive.length },
+    });
+    return reply.send(archive);
   });
 
   app.post("/docs/generate", async (request, reply) => {
