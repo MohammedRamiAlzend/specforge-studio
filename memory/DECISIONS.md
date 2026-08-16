@@ -134,6 +134,22 @@ Each decision must include:
 - status: approved
 - impact: The final audit (Prompt 13) can run `bun test` as the quality gate; future suites follow the same helpers pattern; any live-DB migration for the artifact_links FK needs a recorded APR.
 
+### DEC-015 — Remove required Prompt 13; replace with new required Prompts 13–16
+- decision ID: DEC-015
+- date: 2026-08-16
+- decision: Remove prompts/13-deployment-and-final-audit.md (Deployment and Final Audit) from the required scope and replace it with four new required prompts: 13-platform-configuration (dynamic project types, stacks, libraries, multi-type projects), 14-multi-project-workspace (explicit linked projects + cross-project workflow calls), 15-custom-node-palette (customizable node categories/types with custom fields), 16-skills-and-final-audit (per-project Skills section, per-project docs integration, final audit of the 13–16 scope). Deployment packaging (docker-compose, Dockerfiles, ops docs) is no longer required scope and becomes an optional-backlog candidate.
+- reason: User request "remove plan 13 and add new plans for it" with new functionality for complex multi-project products (configurable project types, stack/library selection, connected workspaces, cross-project workflow calls, customizable node palette, Skills section).
+- status: approved (user-directed scope change)
+- impact: prompts/13-deployment-and-final-audit.md deleted; prompts/README.md sequence updated to 00–16 with a note; STATE.json required_scope/pending_phases updated; docs/guide.md and docs/tutorial-ecommerce.md still reference the old sequence and must be fixed during Prompt 16.
+
+### DEC-016 — Confirmed design decisions for Prompts 13–16 (clarifying answers)
+- decision ID: DEC-016
+- date: 2026-08-16
+- decision: Adopt the user's clarifying answers as the design for the new prompts: (1) a project can have MULTIPLE types at once (Web + API, API-only, etc.); (2) configuration (project types, stacks, libraries, node palette/categories) is managed in a GLOBAL Settings page stored in DB tables; (3) stacks and libraries are editable in Settings AND pre-seeded with common defaults (.NET → MailKit/Scalar/EF Core, Laravel → Sanctum/Swagger, etc.); (4) cross-project workflow references support BOTH a dropdown picker (project → workflow) and manual workflow-ID entry; (5) explicit linked-project dependencies exist at the project level (project_dependencies, PDEP prefix); (6) the Skills section supports BOTH capability skills (with level) and tech skills (with tag); (7) custom node types can define custom FIELDS rendered by the inspector into node metadata; (8) execution mode is "create plans only" — no implementation starts until the user approves/continues.
+- reason: The user was asked clarifying questions before creating plans and selected these options.
+- status: approved (user-selected)
+- impact: Prompts 13–16 encode these choices; new ID prefixes PTYPE/STK/LIB (13), PDEP (14), NCAT/NTYP (15), SKL (16) must be added to docs/ontology/id-convention.md during execution.
+
 ## Rejected Options
 
 No rejected options recorded yet.

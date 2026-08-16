@@ -3,8 +3,8 @@
   "project_name": "SpecForge Studio",
   "last_updated": "2026-08-16",
   "current_prompt_id": "13",
-  "current_phase": "deployment-and-final-audit",
-  "status": "preview_requested_prompt13_deferred",
+  "current_phase": "platform-configuration",
+  "status": "plans_created_awaiting_approval",
   "execution_mode": "human_approved_automation",
   "required_scope": [
     "00-bootstrap-memory-and-rules",
@@ -20,7 +20,10 @@
     "10-roadmap-and-agent-tasks",
     "11-governance-and-approvals",
     "12-testing-and-validation",
-    "13-deployment-and-final-audit"
+    "13-platform-configuration",
+    "14-multi-project-workspace",
+    "15-custom-node-palette",
+    "16-skills-and-final-audit"
   ],
   "completed_phases": [
     "00-bootstrap-memory-and-rules",
@@ -39,9 +42,12 @@
   ],
   "in_progress_phases": [],
   "pending_phases": [
-    "13-deployment-and-final-audit"
+    "13-platform-configuration",
+    "14-multi-project-workspace",
+    "15-custom-node-palette",
+    "16-skills-and-final-audit"
   ],
-  "next_action": "Preview is running and verified. Prompt 13 (deployment-and-final-audit) remains the next required phase, explicitly deferred by the user — resume it when the user says 'continue' or otherwise asks.",
+  "next_action": "Plans for the new required scope are created (prompts/13-platform-configuration.md, prompts/14-multi-project-workspace.md, prompts/15-custom-node-palette.md, prompts/16-skills-and-final-audit.md; old prompt 13 deleted; prompts/README.md updated). No implementation has started (user chose 'create plans only'). Next action: execute Prompt 13 (Dynamic Platform Configuration) when the user approves/continues.",
   "blockers": [],
   "awaiting_approval": [],
   "completion": {
@@ -49,13 +55,22 @@
     "completion_verified": false,
     "completion_reported_to_user": false,
     "remaining_required_tasks": [
-      "13-deployment-and-final-audit"
+      "13-platform-configuration",
+      "14-multi-project-workspace",
+      "15-custom-node-palette",
+      "16-skills-and-final-audit"
     ],
-    "optional_suggestions": []
+    "optional_suggestions": [
+      "Deployment packaging (docker-compose, Dockerfiles, ops docs) from the removed Prompt 13 — moved to the optional backlog",
+      "Per-type diagram templates (e.g. API-first sequence templates, mobile flow templates)",
+      "Multi-project roadmap aggregation across linked projects",
+      "Skills-to-task-pack matching (auto-assign tasks to required skills)"
+    ]
   },
   "user_requests_summary": [
     "Inspect the connected repo MohammedRamiAlzend/specforge-studio, configure (without starting) the freebuff-preview install/dev/build commands, and summarize the project plus its env var/setup needs.",
-    "Adopt the provided MASTER PROMPT (Project Execution Operating System) as the governing execution protocol and execute the project end-to-end through the memory-driven prompt sequence."
+    "Adopt the provided MASTER PROMPT (Project Execution Operating System) as the governing execution protocol and execute the project end-to-end through the memory-driven prompt sequence.",
+    "Remove plan 13 (deployment-and-final-audit) and add new plan(s) for complex multi-project functionality: configurable project types/stacks/libraries, multi-type projects, connected workspaces with cross-project workflow calls, customizable node palette with categories, per-project sections incl. a new Skills section, per-project docs exports. Clarifying answers recorded in DEC-016; execution deferred to 'create plans only'."
   ],
   "constraints_summary": [
     "Frontend must use React with Feature-Sliced Design",
@@ -64,7 +79,8 @@
     "No external SaaS integrations unless explicitly approved",
     "Diagrams must be generated automatically from structured data",
     "Agent outputs must be agent-neutral and executable",
-    "MASTER_PROMPT.md is the governing execution protocol (DEC-001)"
+    "MASTER_PROMPT.md is the governing execution protocol (DEC-001)",
+    "Migrations are additive-only; destructive changes need an APR (backend/db/migrations/README.md)"
   ],
   "approved_decisions_summary": [
     "DEC-001: Adopted MASTER_PROMPT.md (Project Execution Operating System) as the governing execution protocol.",
@@ -81,7 +97,9 @@
     "DEC-011: Markdown workspace rendered from the database (docs-generator module, 19+ generators, protected sections, docs_exports table with DOCS prefix, migration 003, EXPORT_DIR, regenerable committed example).",
     "DEC-012: Roadmap engine (deterministic derivation → stored RMP snapshot with phases/epics/milestones/task drafts/dependencies/priorities/approval gates, migration 004) + agent task packager (materializes drafts into canonical tasks/task_checklists/task_dependencies, idempotent).",
     "DEC-013: Governance lifecycle (9 canonical statuses + transition map, 17-type artifact registry with domain sync, approval gates enforced structurally) + approvals (APR records, rejection requires reason, audit via event_log) + validation warnings (TR rules) + traceability coverage; artifact_governance overlay table (migration 005).",
-    "DEC-014: artifact_links ON DELETE CASCADE in canonical schema (rebuild migration for live DBs deferred, needs APR) + test approach: bun:test with in-memory apps (backend) and react-dom/server static rendering (frontend), zero new deps; TEST prefix + missing DOCS prefix added to id-convention."
+    "DEC-014: artifact_links ON DELETE CASCADE in canonical schema (rebuild migration for live DBs deferred, needs APR) + test approach: bun:test with in-memory apps (backend) and react-dom/server static rendering (frontend), zero new deps; TEST prefix + missing DOCS prefix added to id-convention.",
+    "DEC-015: Removed required Prompt 13 (deployment-and-final-audit); replaced with new required Prompts 13–16 (platform configuration, multi-project workspace, custom node palette, skills + final audit). Deployment moved to optional backlog.",
+    "DEC-016: Confirmed design decisions for Prompts 13–16 from user's clarifying answers: multi-type projects, global Settings page, editable+pre-seeded stacks/libs, cross-project refs via dropdown AND manual ID, explicit linked projects, capability + tech skills, custom node fields, create-plans-only execution."
   ],
   "rejected_options_summary": []
 }
