@@ -1,0 +1,716 @@
+-- ============================================================================
+-- SpecForge Studio — SQLite schema (canonical)
+-- Source of truth for the database layout. Migrations live in
+-- backend/db/migrations/ and are always additive on top of this file.
+--
+-- Conventions:
+--   * Every artifact table has a TEXT primary key holding the stable public
+--     ID (see docs/ontology/id-convention.md). Sequence counters are kept in
+--     id_sequences.
+--   * Timestamps are TEXT ISO-8601 UTC. created_at defaults to now;
+--     updated_at is maintained by the application layer.
+--   * Booleans are INTEGER (0/1).
+--   * JSON columns (TEXT with JSON content) are used only where relational
+--     modeling is excessive. Traceability links use artifact_links.
+--   * Secrets are never stored in plain text and never in this schema.
+--   * Foreign keys are enforced (PRAGMA foreign_keys = ON). Circular and
+--     polymorphic references (workflow start/end nodes, approval targets,
+--     task approval links) are validated in the application layer.
+-- ============================================================================
+
+PRAGMA foreign_keys = ON;
+
+-- ---------------------------------------------------------------------------
+-- Infrastructure
+-- ---------------------------------------------------------------------------
+
+-- ID allocation counters per prefix (DEC-002: registry-backed allocation).
+CREATE TABLE IF NOT EXISTS id_sequences (
+  prefix      TEXT PRIMARY KEY,
+  next_value  INTEGER NOT NULL DEFAULT 1,
+  project_id  TEXT
+);
+
+-- Record of applied migrations (see backend/db/migrations/README.md).
+CREATE TABLE IF NOT EXISTS schema_migrations (
+  version     INTEGER PRIMARY KEY,
+  description TEXT NOT NULL,
+  applied_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+-- ---------------------------------------------------------------------------
+-- Core containers
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS projects (
+  id             TEXT PRIMARY KEY,                      -- PRJ-0001
+  name           TEXT NOT NULL,
+  type           TEXT NOT NULL CHECK (type IN ('web','mobile','api','ai')),
+  description    TEXT,
+  repository_url TEXT,
+  status         TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','active','completed','archived')),
+  created_by     TEXT NOT NULL,
+  metadata       TEXT,                                  -- JSON
+  created_at     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+CREATE TABLE IF NOT EXISTS modules (
+  id          TEXT PRIMARY KEY,                         -- MOD-0001
+  project_id  TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  name        TEXT NOT NULL,
+  description TEXT,
+  owner_role  TEXT,
+  sort_order  INTEGER NOT NULL DEFAULT 0,
+  status      TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','active','deprecated','archived')),
+  created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  UNIQUE (project_id, name)
+);
+CREATE INDEX IF NOT EXISTS idx_modules_project ON modules(project_id);
+
+-- ---------------------------------------------------------------------------
+-- Requirements and use cases
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS requirements (
+  id                 TEXT PRIMARY KEY,                  -- REQ-0001
+  project_id         TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  module_id          TEXT REFERENCES modules(id) ON DELETE SET NULL,
+  title              TEXT NOT NULL,
+  type               TEXT CHECK (type IN ('functional','nonfunctional','constraint','data')),
+  priority           TEXT CHECK (priority IN ('must','should','could','wont')),
+  criticality        TEXT NOT NULL DEFAULT 'normal' CHECK (criticality IN ('critical','normal')),
+  description        TEXT,
+  acceptance_criteria TEXT,
+  status             TEXT NOT NULL DEFAULT 'proposed' CHECK (status IN ('proposed','approved','implemented','verified','rejected','archived')),
+  created_at         TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at         TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_requirements_project ON requirements(project_id);
+CREATE INDEX IF NOT EXISTS idx_requirements_module ON requirements(module_id);
+CREATE INDEX IF NOT EXISTS idx_requirements_status ON requirements(status);
+
+CREATE TABLE IF NOT EXISTS use_cases (
+  id               TEXT PRIMARY KEY,                    -- UC-0001
+  project_id       TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  module_id        TEXT REFERENCES modules(id) ON DELETE SET NULL,
+  title            TEXT NOT NULL,
+  actor            TEXT NOT NULL,
+  preconditions    TEXT,                                -- JSON array
+  postconditions   TEXT,                                -- JSON array
+  main_flow        TEXT,                                -- JSON array
+  alternate_flows  TEXT,                                -- JSON array
+  status           TEXT NOT NULL DEFAULT 'proposed' CHECK (status IN ('proposed','approved','implemented','verified','archived')),
+  created_at       TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at       TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_use_cases_project ON use_cases(project_id);
+CREATE INDEX IF NOT EXISTS idx_use_cases_module ON use_cases(module_id);
+
+-- ---------------------------------------------------------------------------
+-- Workflows
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS workflows (
+  id            TEXT PRIMARY KEY,                       -- WF-0001
+  project_id    TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  module_id     TEXT REFERENCES modules(id) ON DELETE SET NULL,
+  name          TEXT NOT NULL,
+  description   TEXT,
+  -- start/end node references are validated in the application layer
+  -- (graph rules TR-02/TR-03) to avoid a circular FK with workflow_nodes.
+  start_node_id TEXT,
+  end_node_id   TEXT,
+  owner_role    TEXT,
+  status        TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','reviewed','approved','archived')),
+  created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_workflows_project ON workflows(project_id);
+
+CREATE TABLE IF NOT EXISTS workflow_nodes (
+  id           TEXT PRIMARY KEY,                        -- WF-0001-N01
+  workflow_id  TEXT NOT NULL REFERENCES workflows(id) ON DELETE CASCADE,
+  node_type    TEXT NOT NULL CHECK (node_type IN ('start','end','task','decision','wait')),
+  label        TEXT NOT NULL,
+  description  TEXT,
+  assignee_role TEXT,
+  inputs       TEXT,                                    -- JSON
+  outputs      TEXT,                                    -- JSON
+  position     TEXT,                                    -- JSON {x, y} canvas layout
+  created_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_workflow_nodes_workflow ON workflow_nodes(workflow_id);
+
+CREATE TABLE IF NOT EXISTS workflow_edges (
+  id           TEXT PRIMARY KEY,                        -- WF-0001-E01
+  workflow_id  TEXT NOT NULL REFERENCES workflows(id) ON DELETE CASCADE,
+  from_node_id TEXT NOT NULL REFERENCES workflow_nodes(id) ON DELETE CASCADE,
+  to_node_id   TEXT NOT NULL REFERENCES workflow_nodes(id) ON DELETE CASCADE,
+  label        TEXT,
+  condition    TEXT,                                    -- required on decision-node edges (TR-04)
+  created_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_workflow_edges_workflow ON workflow_edges(workflow_id);
+CREATE INDEX IF NOT EXISTS idx_workflow_edges_from ON workflow_edges(from_node_id);
+CREATE INDEX IF NOT EXISTS idx_workflow_edges_to ON workflow_edges(to_node_id);
+
+-- ---------------------------------------------------------------------------
+-- Screens, data model, architecture
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS screens (
+  id          TEXT PRIMARY KEY,                         -- SCR-0001
+  project_id  TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  module_id   TEXT REFERENCES modules(id) ON DELETE SET NULL,
+  name        TEXT NOT NULL,
+  route       TEXT,
+  description TEXT,
+  status      TEXT NOT NULL DEFAULT 'proposed' CHECK (status IN ('proposed','approved','designed','implemented','archived')),
+  created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  UNIQUE (module_id, name)
+);
+CREATE INDEX IF NOT EXISTS idx_screens_project ON screens(project_id);
+
+CREATE TABLE IF NOT EXISTS entities (
+  id          TEXT PRIMARY KEY,                         -- DB-0001
+  project_id  TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  module_id   TEXT REFERENCES modules(id) ON DELETE SET NULL,
+  name        TEXT NOT NULL,
+  table_name  TEXT,
+  description TEXT,
+  status      TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','reviewed','approved','implemented','archived')),
+  created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  UNIQUE (project_id, name)
+);
+CREATE INDEX IF NOT EXISTS idx_entities_project ON entities(project_id);
+
+CREATE TABLE IF NOT EXISTS entity_fields (
+  id             TEXT PRIMARY KEY,                      -- DB-0001-F01
+  entity_id      TEXT NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
+  name           TEXT NOT NULL,
+  data_type      TEXT NOT NULL CHECK (data_type IN ('string','number','boolean','date','datetime','json','uuid','reference')),
+  nullable       INTEGER NOT NULL DEFAULT 0,
+  default_value  TEXT,
+  is_primary_key INTEGER NOT NULL DEFAULT 0,
+  is_unique      INTEGER NOT NULL DEFAULT 0,
+  constraints    TEXT,                                  -- JSON
+  created_at     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at     TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  UNIQUE (entity_id, name)
+);
+CREATE INDEX IF NOT EXISTS idx_entity_fields_entity ON entity_fields(entity_id);
+
+CREATE TABLE IF NOT EXISTS entity_relations (
+  id               TEXT PRIMARY KEY,                    -- REL-0001
+  project_id       TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  from_entity_id   TEXT NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
+  to_entity_id     TEXT NOT NULL REFERENCES entities(id) ON DELETE CASCADE,
+  relation_type    TEXT NOT NULL CHECK (relation_type IN ('1:1','1:N','N:M')),
+  through_entity_id TEXT REFERENCES entities(id) ON DELETE SET NULL, -- for N:M
+  on_delete        TEXT,
+  description      TEXT,
+  status           TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','reviewed','approved','archived')),
+  created_at       TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at       TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  CHECK (from_entity_id <> to_entity_id)
+);
+CREATE INDEX IF NOT EXISTS idx_entity_relations_from ON entity_relations(from_entity_id);
+CREATE INDEX IF NOT EXISTS idx_entity_relations_to ON entity_relations(to_entity_id);
+
+CREATE TABLE IF NOT EXISTS components (
+  id            TEXT PRIMARY KEY,                       -- CMP-0001
+  project_id    TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  name          TEXT NOT NULL,
+  layer         TEXT CHECK (layer IN ('presentation','application','domain','infrastructure','integration')),
+  responsibility TEXT,
+  technologies  TEXT,                                   -- JSON array
+  status        TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','reviewed','approved','archived')),
+  created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  UNIQUE (project_id, name)
+);
+CREATE INDEX IF NOT EXISTS idx_components_project ON components(project_id);
+
+-- Polymorphic link table: component <-> screens/entities/api_endpoints/
+-- architecture_diagrams/sequence_diagrams/modules/tasks (M:N).
+CREATE TABLE IF NOT EXISTS component_links (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  component_id TEXT NOT NULL REFERENCES components(id) ON DELETE CASCADE,
+  target_type  TEXT NOT NULL CHECK (target_type IN ('screen','entity','api_endpoint','architecture_diagram','sequence_diagram','module','task')),
+  target_id    TEXT NOT NULL,
+  created_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  UNIQUE (component_id, target_type, target_id)
+);
+CREATE INDEX IF NOT EXISTS idx_component_links_target ON component_links(target_type, target_id);
+
+CREATE TABLE IF NOT EXISTS api_endpoints (
+  id              TEXT PRIMARY KEY,                     -- API-0001
+  project_id      TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  module_id       TEXT REFERENCES modules(id) ON DELETE SET NULL,
+  method          TEXT NOT NULL CHECK (method IN ('GET','POST','PUT','PATCH','DELETE')),
+  path            TEXT NOT NULL,
+  purpose         TEXT,
+  auth            TEXT,
+  request_schema  TEXT,                                 -- JSON
+  response_schema TEXT,                                 -- JSON
+  error_codes     TEXT,                                 -- JSON array
+  status          TEXT NOT NULL DEFAULT 'proposed' CHECK (status IN ('proposed','approved','implemented','deprecated','archived')),
+  created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  UNIQUE (module_id, method, path)
+);
+CREATE INDEX IF NOT EXISTS idx_api_endpoints_project ON api_endpoints(project_id);
+
+-- ---------------------------------------------------------------------------
+-- Diagrams
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS sequence_diagrams (
+  id                 TEXT PRIMARY KEY,                  -- SEQ-0001
+  project_id         TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  name               TEXT NOT NULL,
+  source_use_case_id TEXT REFERENCES use_cases(id) ON DELETE SET NULL,
+  participants       TEXT,                              -- JSON array
+  steps              TEXT,                              -- JSON array
+  status             TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','generated','approved','superseded','archived')),
+  created_at         TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at         TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_sequence_diagrams_project ON sequence_diagrams(project_id);
+
+CREATE TABLE IF NOT EXISTS architecture_diagrams (
+  id          TEXT PRIMARY KEY,                         -- ARCH-0001
+  project_id  TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  name        TEXT NOT NULL,
+  view_type   TEXT CHECK (view_type IN ('context','container','component','deployment')),
+  description TEXT,
+  status      TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','generated','approved','superseded','archived')),
+  created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_arch_diagrams_project ON architecture_diagrams(project_id);
+
+-- ---------------------------------------------------------------------------
+-- Testing, risk, decisions, milestones
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS test_cases (
+  id               TEXT PRIMARY KEY,                    -- TC-0001
+  project_id       TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  module_id        TEXT REFERENCES modules(id) ON DELETE SET NULL,
+  title            TEXT NOT NULL,
+  test_type        TEXT,
+  precondition     TEXT,
+  steps            TEXT,                                -- JSON array
+  expected_results TEXT,                                -- JSON array
+  result           TEXT CHECK (result IN ('passed','failed','blocked')),
+  executed_by      TEXT,
+  evidence_ref     TEXT,
+  status           TEXT NOT NULL DEFAULT 'proposed' CHECK (status IN ('proposed','approved','passed','failed','blocked','archived')),
+  created_at       TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at       TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_test_cases_project ON test_cases(project_id);
+
+CREATE TABLE IF NOT EXISTS risks (
+  id          TEXT PRIMARY KEY,                         -- RISK-0001
+  project_id  TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  title       TEXT NOT NULL,
+  likelihood  TEXT NOT NULL CHECK (likelihood IN ('low','medium','high')),
+  impact      TEXT NOT NULL CHECK (impact IN ('low','medium','high','critical')),
+  mitigation  TEXT,
+  owner       TEXT,
+  status      TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','mitigated','accepted','closed')),
+  created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_risks_project ON risks(project_id);
+
+CREATE TABLE IF NOT EXISTS decisions (
+  id          TEXT PRIMARY KEY,                         -- ADR-0001
+  project_id  TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  title       TEXT NOT NULL,
+  decision    TEXT NOT NULL,
+  context     TEXT,
+  alternatives TEXT,                                    -- JSON array
+  consequences TEXT,
+  supersedes  TEXT REFERENCES decisions(id) ON DELETE SET NULL,
+  status      TEXT NOT NULL DEFAULT 'proposed' CHECK (status IN ('proposed','approved','rejected','superseded')),
+  created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_decisions_project ON decisions(project_id);
+
+CREATE TABLE IF NOT EXISTS milestones (
+  id            TEXT PRIMARY KEY,                       -- MS-0001
+  project_id    TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  name          TEXT NOT NULL,
+  due_date      TEXT,
+  description   TEXT,
+  gate_criteria TEXT,
+  status        TEXT NOT NULL DEFAULT 'planned' CHECK (status IN ('planned','in_progress','reached','missed','cancelled')),
+  created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_milestones_project ON milestones(project_id);
+
+-- ---------------------------------------------------------------------------
+-- Tasks and execution
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS tasks (
+  id                 TEXT PRIMARY KEY,                  -- TASK-0001
+  project_id         TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  module_id          TEXT REFERENCES modules(id) ON DELETE SET NULL,
+  milestone_id       TEXT REFERENCES milestones(id) ON DELETE SET NULL,
+  title              TEXT NOT NULL,
+  type               TEXT CHECK (type IN ('spec','backend','frontend','docs','test','governance','ops')),
+  priority           TEXT NOT NULL DEFAULT 'medium' CHECK (priority IN ('high','medium','low')),
+  objective          TEXT NOT NULL,
+  context            TEXT,
+  constraints        TEXT,                              -- JSON array
+  input_artifacts    TEXT,                              -- JSON array of artifact IDs
+  approval_required  INTEGER NOT NULL DEFAULT 0,
+  approval_id        TEXT,                              -- APR id; validated in application layer
+  status             TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','in_progress','blocked','done','cancelled')),
+  definition_of_done TEXT NOT NULL,
+  created_at         TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at         TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_tasks_project ON tasks(project_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_module ON tasks(module_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_milestone ON tasks(milestone_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
+
+CREATE TABLE IF NOT EXISTS task_checklists (
+  id               TEXT PRIMARY KEY,                    -- TASK-0001-C01
+  task_id          TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  position         INTEGER NOT NULL,
+  description      TEXT NOT NULL,
+  verification_hint TEXT,
+  status           TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','done','skipped')),
+  created_at       TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at       TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  UNIQUE (task_id, position)
+);
+CREATE INDEX IF NOT EXISTS idx_task_checklists_task ON task_checklists(task_id);
+
+-- ---------------------------------------------------------------------------
+-- Governance and audit
+-- ---------------------------------------------------------------------------
+
+CREATE TABLE IF NOT EXISTS approvals (
+  id                TEXT PRIMARY KEY,                   -- APR-0001
+  project_id        TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  artifact_id       TEXT NOT NULL,                      -- polymorphic target; app-validated
+  artifact_type     TEXT NOT NULL,
+  approver_role     TEXT NOT NULL,
+  approver_name     TEXT,
+  decision          TEXT CHECK (decision IN ('approved','rejected')),
+  status            TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected')),
+  comments          TEXT,
+  related_decision_id TEXT REFERENCES decisions(id) ON DELETE SET NULL,
+  supersedes        TEXT REFERENCES approvals(id) ON DELETE SET NULL,
+  created_at        TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at        TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_approvals_artifact ON approvals(artifact_id);
+CREATE INDEX IF NOT EXISTS idx_approvals_project ON approvals(project_id);
+
+CREATE TABLE IF NOT EXISTS agent_runs (
+  id              TEXT PRIMARY KEY,                     -- AGT-0001
+  project_id      TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  task_id         TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  agent_family    TEXT NOT NULL CHECK (agent_family IN ('claude','chatgpt','qwen','compatible_agent')),
+  status          TEXT NOT NULL DEFAULT 'queued' CHECK (status IN ('queued','running','completed','failed')),
+  started_at      TEXT,
+  completed_at    TEXT,
+  error_summary   TEXT,
+  log_ref         TEXT,
+  output_artifacts TEXT,                                -- JSON array of artifact IDs
+  created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_agent_runs_task ON agent_runs(task_id);
+
+-- Append-only audit log of lifecycle transitions and system actions.
+CREATE TABLE IF NOT EXISTS event_log (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id  TEXT,
+  entity_type TEXT NOT NULL,
+  entity_id   TEXT NOT NULL,
+  action      TEXT NOT NULL,                            -- created|updated|status_change|approved|rejected|generated|exported
+  from_status TEXT,
+  to_status   TEXT,
+  actor       TEXT,
+  actor_type  TEXT NOT NULL DEFAULT 'system' CHECK (actor_type IN ('human','agent','system')),
+  payload     TEXT,                                     -- JSON
+  created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_event_log_entity ON event_log(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_event_log_project ON event_log(project_id);
+
+-- ---------------------------------------------------------------------------
+-- Traceability links (TR rules backbone)
+-- ---------------------------------------------------------------------------
+
+-- Polymorphic link table for all traceability edges:
+-- REQ->UC/WF/TC/TASK, UC->SCR/API/SEQ, SEQ->API/CMP, TASK->REQ/ART, etc.
+CREATE TABLE IF NOT EXISTS artifact_links (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,  -- DEC-014: no orphan traceability rows
+  from_type  TEXT NOT NULL,
+  from_id    TEXT NOT NULL,
+  to_type    TEXT NOT NULL,
+  to_id      TEXT NOT NULL,
+  link_type  TEXT NOT NULL DEFAULT 'related',           -- satisfies|verifies|realizes|implements|derives|traces|related
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  UNIQUE (from_type, from_id, to_type, to_id, link_type)
+);
+CREATE INDEX IF NOT EXISTS idx_artifact_links_from ON artifact_links(from_type, from_id);
+CREATE INDEX IF NOT EXISTS idx_artifact_links_to ON artifact_links(to_type, to_id);
+CREATE INDEX IF NOT EXISTS idx_artifact_links_project ON artifact_links(project_id);
+
+-- ---------------------------------------------------------------------------
+-- Visual modeler canvases (Prompt 07)
+-- ---------------------------------------------------------------------------
+-- A model graph is the persisted, structured model behind a visual canvas.
+-- One graph per modeled artifact (workflow, data model, architecture,
+-- sequence). Nodes/edges carry the full inspector properties; the Mermaid
+-- diagram generator (Prompt 08) consumes these tables as structured input.
+-- Node/edge types are validated in the application layer (the catalog in
+-- backend/src/modules/modeler.ts) so the type set can grow without a
+-- destructive CHECK-constraint migration.
+
+CREATE TABLE IF NOT EXISTS model_graphs (
+  id           TEXT PRIMARY KEY,                        -- GRPH-0001
+  project_id   TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  kind         TEXT NOT NULL CHECK (kind IN ('workflow','data','architecture','sequence')),
+  name         TEXT NOT NULL,
+  description  TEXT,
+  artifact_type TEXT,                                   -- optional link: workflow|architecture_diagram|...
+  artifact_id  TEXT,                                    -- canonical artifact ID this graph models
+  status       TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','reviewed','approved','archived')),
+  created_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_model_graphs_project ON model_graphs(project_id);
+
+CREATE TABLE IF NOT EXISTS model_nodes (
+  id                TEXT PRIMARY KEY,                   -- GRPH-0001-N01
+  graph_id          TEXT NOT NULL REFERENCES model_graphs(id) ON DELETE CASCADE,
+  client_key        TEXT NOT NULL,                      -- stable client-side key (React Flow node id)
+  node_type         TEXT NOT NULL,                      -- catalog type: start|step|decision|...
+  title             TEXT NOT NULL,
+  description       TEXT,
+  inputs            TEXT,                               -- JSON array
+  outputs           TEXT,                               -- JSON array
+  preconditions     TEXT,                               -- JSON array
+  postconditions    TEXT,                               -- JSON array
+  related_artifacts TEXT,                               -- JSON array of canonical IDs
+  metadata          TEXT,                               -- JSON object (kind-specific extras)
+  position          TEXT NOT NULL,                      -- JSON {x, y} canvas layout
+  created_at        TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at        TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  UNIQUE (graph_id, client_key)
+);
+CREATE INDEX IF NOT EXISTS idx_model_nodes_graph ON model_nodes(graph_id);
+
+CREATE TABLE IF NOT EXISTS model_edges (
+  id         TEXT PRIMARY KEY,                          -- GRPH-0001-E01
+  graph_id   TEXT NOT NULL REFERENCES model_graphs(id) ON DELETE CASCADE,
+  from_node  TEXT NOT NULL REFERENCES model_nodes(id) ON DELETE CASCADE,
+  to_node    TEXT NOT NULL REFERENCES model_nodes(id) ON DELETE CASCADE,
+  label      TEXT,
+  condition  TEXT,                                      -- required on decision-node edges (TR-04)
+  edge_type  TEXT NOT NULL DEFAULT 'next' CHECK (edge_type IN ('success','failure','next','retry','escalation','related')),
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_model_edges_graph ON model_edges(graph_id);
+CREATE INDEX IF NOT EXISTS idx_model_edges_from ON model_edges(from_node);
+CREATE INDEX IF NOT EXISTS idx_model_edges_to ON model_edges(to_node);
+
+-- ---------------------------------------------------------------------------
+-- Generated diagrams (Prompt 08)
+-- ---------------------------------------------------------------------------
+-- Stores every generated Mermaid diagram with its provenance: diagram type,
+-- source artifact IDs (model graph and/or canonical artifacts), the mermaid
+-- source itself, and the validation warnings that applied at generation time.
+-- Mermaid is always generated from structured data; users never write it.
+
+CREATE TABLE IF NOT EXISTS generated_diagrams (
+  id              TEXT PRIMARY KEY,                     -- DIAG-0001
+  project_id      TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  graph_id        TEXT REFERENCES model_graphs(id) ON DELETE SET NULL,
+  diagram_type    TEXT NOT NULL CHECK (diagram_type IN ('workflow','sequence','erd','architecture')),
+  name            TEXT NOT NULL,
+  mermaid         TEXT NOT NULL,
+  source_artifacts TEXT,                                -- JSON array of canonical IDs
+  warnings        TEXT,                                 -- JSON array of validation warnings
+  status          TEXT NOT NULL DEFAULT 'generated' CHECK (status IN ('generated','approved','superseded','archived')),
+  created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_generated_diagrams_project ON generated_diagrams(project_id);
+CREATE INDEX IF NOT EXISTS idx_generated_diagrams_graph ON generated_diagrams(graph_id);
+
+-- ---------------------------------------------------------------------------
+-- Documentation workspace exports (Prompt 09)
+-- ---------------------------------------------------------------------------
+-- One row per generated Markdown workspace export. Files are written to the
+-- export folder (config EXPORT_DIR/<DOCS-id>/) as the portable output; this
+-- table records provenance (file list, counts) and export lifecycle.
+-- Regeneration creates a new export and marks older ones superseded.
+
+CREATE TABLE IF NOT EXISTS docs_exports (
+  id           TEXT PRIMARY KEY,                        -- DOCS-0001
+  project_id   TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  status       TEXT NOT NULL DEFAULT 'generated' CHECK (status IN ('generated','superseded','archived')),
+  file_count   INTEGER NOT NULL,
+  files        TEXT NOT NULL,                           -- JSON array of {path, bytes}
+  generated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  created_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at   TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_docs_exports_project ON docs_exports(project_id);
+
+-- ---------------------------------------------------------------------------
+-- Roadmaps and agent task packs (Prompt 10)
+-- ---------------------------------------------------------------------------
+-- The roadmap engine derives a plan (phases, milestones, epics, task drafts,
+-- dependencies, priorities, approval gates) from project artifacts and stores
+-- it as a snapshot. The agent task packager materializes the roadmap task
+-- drafts into the canonical tasks/task_checklists tables (executable,
+-- agent-neutral task packs) and records TASK->TASK ordering in
+-- task_dependencies. Child IDs: RMP-0001-P01 (phase), RMP-0001-EP01 (epic),
+-- RMP-0001-M01 (milestone), RMP-0001-T01 (task draft).
+
+CREATE TABLE IF NOT EXISTS roadmaps (
+  id         TEXT PRIMARY KEY,                          -- RMP-0001
+  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  name       TEXT NOT NULL,
+  status     TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','approved','archived')),
+  metadata   TEXT,                                      -- JSON {input_counts, derived_counts, generated_at}
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_roadmaps_project ON roadmaps(project_id);
+
+CREATE TABLE IF NOT EXISTS roadmap_phases (
+  id               TEXT PRIMARY KEY,                    -- RMP-0001-P01
+  roadmap_id       TEXT NOT NULL REFERENCES roadmaps(id) ON DELETE CASCADE,
+  position         INTEGER NOT NULL,
+  name             TEXT NOT NULL,
+  description      TEXT,
+  approval_required INTEGER NOT NULL DEFAULT 0,
+  gate_criteria    TEXT,
+  UNIQUE (roadmap_id, position)
+);
+CREATE INDEX IF NOT EXISTS idx_roadmap_phases_roadmap ON roadmap_phases(roadmap_id);
+
+CREATE TABLE IF NOT EXISTS roadmap_epics (
+  id          TEXT PRIMARY KEY,                         -- RMP-0001-EP01
+  roadmap_id  TEXT NOT NULL REFERENCES roadmaps(id) ON DELETE CASCADE,
+  phase_id    TEXT REFERENCES roadmap_phases(id) ON DELETE CASCADE,
+  module_id   TEXT REFERENCES modules(id) ON DELETE SET NULL,
+  name        TEXT NOT NULL,
+  description TEXT,
+  position    INTEGER NOT NULL DEFAULT 0,
+  UNIQUE (roadmap_id, name)
+);
+CREATE INDEX IF NOT EXISTS idx_roadmap_epics_roadmap ON roadmap_epics(roadmap_id);
+CREATE INDEX IF NOT EXISTS idx_roadmap_epics_phase ON roadmap_epics(phase_id);
+
+CREATE TABLE IF NOT EXISTS roadmap_milestones (
+  id            TEXT PRIMARY KEY,                       -- RMP-0001-M01
+  roadmap_id    TEXT NOT NULL REFERENCES roadmaps(id) ON DELETE CASCADE,
+  phase_id      TEXT REFERENCES roadmap_phases(id) ON DELETE SET NULL,
+  position      INTEGER NOT NULL,
+  name          TEXT NOT NULL,
+  due_date      TEXT,
+  gate_criteria TEXT,
+  status        TEXT NOT NULL DEFAULT 'planned' CHECK (status IN ('planned','in_progress','reached','missed','cancelled')),
+  UNIQUE (roadmap_id, position)
+);
+CREATE INDEX IF NOT EXISTS idx_roadmap_milestones_roadmap ON roadmap_milestones(roadmap_id);
+
+CREATE TABLE IF NOT EXISTS roadmap_tasks (
+  id                   TEXT PRIMARY KEY,                -- RMP-0001-T01
+  roadmap_id           TEXT NOT NULL REFERENCES roadmaps(id) ON DELETE CASCADE,
+  epic_id              TEXT REFERENCES roadmap_epics(id) ON DELETE SET NULL,
+  phase_id             TEXT REFERENCES roadmap_phases(id) ON DELETE SET NULL,
+  module_id            TEXT REFERENCES modules(id) ON DELETE SET NULL,
+  source_type          TEXT NOT NULL,                   -- requirement|api_endpoint|entity|screen|workflow|risk|test_case
+  source_id            TEXT NOT NULL,
+  title                TEXT NOT NULL,
+  type                 TEXT NOT NULL CHECK (type IN ('spec','backend','frontend','docs','test','governance','ops')),
+  priority             TEXT NOT NULL CHECK (priority IN ('high','medium','low')),
+  objective            TEXT NOT NULL,
+  context              TEXT,
+  constraints          TEXT,                            -- JSON array
+  input_artifacts      TEXT,                            -- JSON array of canonical artifact IDs
+  checklist            TEXT NOT NULL,                   -- JSON array of {description, verification}
+  definition_of_done   TEXT NOT NULL,
+  approval_required    INTEGER NOT NULL DEFAULT 0,
+  status               TEXT NOT NULL DEFAULT 'proposed' CHECK (status IN ('proposed','approved','archived')),
+  materialized_task_id TEXT,                            -- TASK id once packaged (agent-tasks)
+  UNIQUE (roadmap_id, source_type, source_id)
+);
+CREATE INDEX IF NOT EXISTS idx_roadmap_tasks_roadmap ON roadmap_tasks(roadmap_id);
+CREATE INDEX IF NOT EXISTS idx_roadmap_tasks_epic ON roadmap_tasks(epic_id);
+CREATE INDEX IF NOT EXISTS idx_roadmap_tasks_phase ON roadmap_tasks(phase_id);
+
+CREATE TABLE IF NOT EXISTS roadmap_task_dependencies (
+  id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+  roadmap_id          TEXT NOT NULL REFERENCES roadmaps(id) ON DELETE CASCADE,
+  task_id             TEXT NOT NULL REFERENCES roadmap_tasks(id) ON DELETE CASCADE,
+  depends_on_task_id  TEXT NOT NULL REFERENCES roadmap_tasks(id) ON DELETE CASCADE,
+  reason              TEXT,
+  UNIQUE (task_id, depends_on_task_id),
+  CHECK (task_id <> depends_on_task_id)
+);
+CREATE INDEX IF NOT EXISTS idx_roadmap_deps_task ON roadmap_task_dependencies(task_id);
+
+-- Canonical TASK->TASK ordering recorded by the agent task packager.
+CREATE TABLE IF NOT EXISTS task_dependencies (
+  id                 INTEGER PRIMARY KEY AUTOINCREMENT,
+  project_id         TEXT NOT NULL,
+  task_id            TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  depends_on_task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  reason             TEXT,
+  UNIQUE (task_id, depends_on_task_id),
+  CHECK (task_id <> depends_on_task_id)
+);
+CREATE INDEX IF NOT EXISTS idx_task_dependencies_task ON task_dependencies(task_id);
+CREATE INDEX IF NOT EXISTS idx_task_dependencies_depends ON task_dependencies(depends_on_task_id);
+
+-- ---------------------------------------------------------------------------
+-- Governance overlay (Prompt 11)
+-- ---------------------------------------------------------------------------
+-- The canonical governance status lifecycle (draft -> auto_generated ->
+-- needs_review -> approved -> ready_for_agent -> in_progress ->
+-- needs_verification -> done, with rejected as a branch) lives here as a
+-- per-artifact overlay. Domain status columns on the artifact tables remain
+-- the artifacts' own lifecycles; the governance service validates transitions
+-- against this overlay, enforces approval gates (final requirements,
+-- architecture, data model, API contracts, security workflows, production
+-- decisions — DEC-003), best-effort syncs the domain status via a per-type
+-- translation, and records every transition in event_log.
+
+CREATE TABLE IF NOT EXISTS artifact_governance (
+  artifact_type TEXT NOT NULL,
+  artifact_id   TEXT NOT NULL,
+  project_id    TEXT NOT NULL,
+  status        TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft','auto_generated','needs_review','approved','ready_for_agent','in_progress','needs_verification','done','rejected')),
+  needs_approval INTEGER NOT NULL DEFAULT 0,
+  approval_id   TEXT,
+  created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  PRIMARY KEY (artifact_type, artifact_id)
+);
+CREATE INDEX IF NOT EXISTS idx_artifact_governance_project ON artifact_governance(project_id);

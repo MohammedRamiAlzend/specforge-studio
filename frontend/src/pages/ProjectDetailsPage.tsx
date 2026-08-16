@@ -1,0 +1,77 @@
+import { Link, useParams } from "react-router-dom";
+import { useProject } from "../entities/project/api";
+import { StatusSelect } from "../features/project-status/StatusSelect";
+import { Card } from "../shared/ui/Card";
+import { PageHeader } from "../shared/ui/PageHeader";
+import { ErrorState } from "../shared/ui/States";
+import { formatDate } from "../shared/lib/format";
+
+const SECTIONS = [
+  { to: "workflows", title: "Workflows", blurb: "Business processes with start, end, and decision branches." },
+  { to: "data-model", title: "Data Model", blurb: "Entities, fields, and relations behind the product." },
+  { to: "architecture", title: "Architecture", blurb: "Components, layers, and system boundaries." },
+  { to: "docs", title: "Docs Export", blurb: "Generated Markdown workspace for the project." },
+  { to: "tasks", title: "Tasks", blurb: "Executable work items with checklists and definitions of done." },
+] as const;
+
+export function ProjectDetailsPage() {
+  const { projectId } = useParams<{ projectId: string }>();
+  const { data: project, isLoading, error } = useProject(projectId);
+
+  if (error) return <ErrorState message={error.message} />;
+  if (isLoading || !project) {
+    return (
+      <div className="space-y-6">
+        <div className="h-10 w-64 animate-pulse rounded-md bg-slate-200" />
+        <Card className="h-48 animate-pulse" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <PageHeader
+        title={project.name}
+        description={`${project.type.toUpperCase()} project · ${project.id}`}
+        actions={<StatusSelect projectId={project.id} status={project.status} />}
+      />
+
+      <Card className="p-5">
+        <p className="text-sm text-slate-600">
+          {project.description ?? "No description provided yet."}
+        </p>
+        <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-2 text-xs sm:grid-cols-4">
+          <div>
+            <dt className="text-slate-500">Created by</dt>
+            <dd className="mt-0.5 text-slate-700">{project.created_by}</dd>
+          </div>
+          <div>
+            <dt className="text-slate-500">Created</dt>
+            <dd className="mt-0.5 text-slate-700">{formatDate(project.created_at)}</dd>
+          </div>
+          <div>
+            <dt className="text-slate-500">Updated</dt>
+            <dd className="mt-0.5 text-slate-700">{formatDate(project.updated_at)}</dd>
+          </div>
+          <div>
+            <dt className="text-slate-500">Status</dt>
+            <dd className="mt-0.5 capitalize text-slate-700">{project.status}</dd>
+          </div>
+        </dl>
+      </Card>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {SECTIONS.map((section) => (
+          <Link key={section.to} to={section.to} className="group">
+            <Card className="h-full p-5 transition-shadow group-hover:shadow-md">
+              <h3 className="text-sm font-semibold text-slate-900 group-hover:text-forge-700">
+                {section.title} →
+              </h3>
+              <p className="mt-1 text-xs text-slate-500">{section.blurb}</p>
+            </Card>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
+}

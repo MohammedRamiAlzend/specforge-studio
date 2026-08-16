@@ -1,0 +1,23 @@
+{
+  "name": "@specforge/backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "PORT=3000 bun --watch src/server.ts",
+    "start": "bun src/server.ts",
+    "smoke": "bun scripts/smoke.ts",
+    "test": "bun test tests/",
+    "seed-example": "bun scripts/generate-example.ts",
+    "build": "tsc --noEmit",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "fastify": "^5.2.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.6.3"
+  }
+}
