@@ -1,10 +1,10 @@
 {
   "schema_version": "1.0",
   "project_name": "SpecForge Studio",
-  "last_updated": "",
-  "current_prompt_id": "00",
-  "current_phase": "bootstrap",
-  "status": "not_started",
+  "last_updated": "2026-08-16",
+  "current_prompt_id": "13",
+  "current_phase": "deployment-and-final-audit",
+  "status": "preview_requested_prompt13_deferred",
   "execution_mode": "human_approved_automation",
   "required_scope": [
     "00-bootstrap-memory-and-rules",
@@ -22,9 +22,7 @@
     "12-testing-and-validation",
     "13-deployment-and-final-audit"
   ],
-  "completed_phases": [],
-  "in_progress_phases": [],
-  "pending_phases": [
+  "completed_phases": [
     "00-bootstrap-memory-and-rules",
     "01-product-definition",
     "02-domain-ontology-and-ids",
@@ -37,10 +35,13 @@
     "09-document-generation",
     "10-roadmap-and-agent-tasks",
     "11-governance-and-approvals",
-    "12-testing-and-validation",
+    "12-testing-and-validation"
+  ],
+  "in_progress_phases": [],
+  "pending_phases": [
     "13-deployment-and-final-audit"
   ],
-  "next_action": "Execute Prompt 00 and initialize the memory system.",
+  "next_action": "Preview is running and verified. Prompt 13 (deployment-and-final-audit) remains the next required phase, explicitly deferred by the user — resume it when the user says 'continue' or otherwise asks.",
   "blockers": [],
   "awaiting_approval": [],
   "completion": {
@@ -48,32 +49,39 @@
     "completion_verified": false,
     "completion_reported_to_user": false,
     "remaining_required_tasks": [
-      "00-bootstrap-memory-and-rules",
-      "01-product-definition",
-      "02-domain-ontology-and-ids",
-      "03-markdown-workspace-spec",
-      "04-database-schema",
-      "05-backend-core",
-      "06-frontend-foundation-fsd",
-      "07-visual-modeler",
-      "08-diagram-generation",
-      "09-document-generation",
-      "10-roadmap-and-agent-tasks",
-      "11-governance-and-approvals",
-      "12-testing-and-validation",
       "13-deployment-and-final-audit"
     ],
     "optional_suggestions": []
   },
-  "user_requests_summary": [],
+  "user_requests_summary": [
+    "Inspect the connected repo MohammedRamiAlzend/specforge-studio, configure (without starting) the freebuff-preview install/dev/build commands, and summarize the project plus its env var/setup needs.",
+    "Adopt the provided MASTER PROMPT (Project Execution Operating System) as the governing execution protocol and execute the project end-to-end through the memory-driven prompt sequence."
+  ],
   "constraints_summary": [
     "Frontend must use React with Feature-Sliced Design",
     "Backend must use Node.js with SQLite",
     "Generated documentation must be English only",
     "No external SaaS integrations unless explicitly approved",
     "Diagrams must be generated automatically from structured data",
-    "Agent outputs must be agent-neutral and executable"
+    "Agent outputs must be agent-neutral and executable",
+    "MASTER_PROMPT.md is the governing execution protocol (DEC-001)"
   ],
-  "approved_decisions_summary": [],
+  "approved_decisions_summary": [
+    "DEC-001: Adopted MASTER_PROMPT.md (Project Execution Operating System) as the governing execution protocol.",
+    "APR-001: Approved the product definition (final requirements) — docs/product/ is final.",
+    "DEC-002: Adopted the ontology ID convention (docs/ontology/id-convention.md).",
+    "DEC-003: Adopted the ontology status model with approval gates (docs/ontology/status-lifecycle.md).",
+    "DEC-004: Adopted the Markdown workspace specification (docs/workspace/) as the canonical export format.",
+    "DEC-005: Adopted the SQLite schema design (backend/db/schema.sql) with id_sequences, artifact_links, event_log.",
+    "DEC-006: Use bun:sqlite as the SQLite driver (better-sqlite3 native binary incompatible with Bun).",
+    "DEC-007: Monorepo workspace layout (root workspaces backend/ + frontend/) with root scripts for the Freebuff preview.",
+    "DEC-008: Tailwind CSS for the frontend (OQ-02 resolved), forge accent palette.",
+    "DEC-009: React Flow canvas (@xyflow/react v12) for the visual modeler (OQ-01 resolved); modeler graph tables model_graphs/model_nodes/model_edges with GRPH IDs; GRPH/FEAT prefixes added.",
+    "DEC-010: Deterministic graph-based Mermaid generation (workflow/sequence/ERD/architecture) with generated_diagrams storage (DIAG prefix, migration 002) and a stateless preview endpoint.",
+    "DEC-011: Markdown workspace rendered from the database (docs-generator module, 19+ generators, protected sections, docs_exports table with DOCS prefix, migration 003, EXPORT_DIR, regenerable committed example).",
+    "DEC-012: Roadmap engine (deterministic derivation → stored RMP snapshot with phases/epics/milestones/task drafts/dependencies/priorities/approval gates, migration 004) + agent task packager (materializes drafts into canonical tasks/task_checklists/task_dependencies, idempotent).",
+    "DEC-013: Governance lifecycle (9 canonical statuses + transition map, 17-type artifact registry with domain sync, approval gates enforced structurally) + approvals (APR records, rejection requires reason, audit via event_log) + validation warnings (TR rules) + traceability coverage; artifact_governance overlay table (migration 005).",
+    "DEC-014: artifact_links ON DELETE CASCADE in canonical schema (rebuild migration for live DBs deferred, needs APR) + test approach: bun:test with in-memory apps (backend) and react-dom/server static rendering (frontend), zero new deps; TEST prefix + missing DOCS prefix added to id-convention."
+  ],
   "rejected_options_summary": []
 }

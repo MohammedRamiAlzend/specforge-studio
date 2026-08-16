@@ -18,6 +18,12 @@ The agent must read this file before every session and must not violate it.
 - The agent must update memory after every meaningful unit of work.
 - The agent must not start optional tasks without explicit approval.
 
+## Governance Constraints (adopted 2026-08-16)
+
+- MASTER_PROMPT.md at repository root is the governing execution protocol (DEC-001). It must be read at session start along with AGENTS.md and the memory files.
+- Human approval is required before finalizing: requirements, architecture, database schema, API contracts, security-sensitive workflows, production-related decisions, destructive database migrations, optional tasks, and material scope changes.
+- Task packs must include concrete, sequential executable checklists and must be agent-neutral (Claude, ChatGPT, Qwen, or compatible agents).
+
 ## Forbidden Actions
 
 - Do not skip memory updates.
