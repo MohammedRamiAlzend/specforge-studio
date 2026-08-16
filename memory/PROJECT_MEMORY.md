@@ -54,13 +54,13 @@ Agent behavior:
 ## Current State
 
 Current phase:
-- ui-polish-and-motion (COMPLETE — Prompts 00–16 required scope + user-requested Prompt 17 polish done and verified)
+- ecommerce-full-seeder (COMPLETE — Prompts 00–16 required scope + user-requested Prompt 17 polish + user-requested Prompt 18 e-commerce seeder done and verified)
 
 Current prompt:
-- 17-ui-polish-and-motion (completed 2026-08-16)
+- 18-ecommerce-full-seeder (completed 2026-08-17)
 
 Status:
-- completed (all required scope 00–16 + user-requested polish 17 complete; no remaining tasks, blockers, or pending approvals)
+- completed (all required scope 00–16 + user-requested polish 17 + user-requested second demo seeder 18 complete; no remaining tasks, blockers, or pending approvals)
 
 ## Completed Work
 
@@ -223,11 +223,24 @@ Status:
   - Verified: 163 tests pass / 0 fail (620 expects, 22 files), root bun run typecheck clean, bun run build succeeds.
   - Deliverable: docs/features/ui-polish.md (FEAT-012).
   - Recorded DEC-021 in memory/DECISIONS.md.
+- Prompt 18 (full-detail e-commerce seeder) — completed 2026-08-17:
+  - prompts/18-ecommerce-full-seeder.md created; prompts/README.md sequence updated to 18 + note.
+  - backend/scripts/seed-ecommerce.ts: `seedEcommerceProject(db, {projectId?, graphId?})` (defaults live PRJ-0003 / GRPH-0003) + `isEcommerceSeeded(db, projectId)`. Seeds StoreSphere E-Commerce Platform (ASP.NET Core .NET backend API + React TypeScript frontend storefront):
+    - Multi-type project: api → .NET stack (STK-0001) + MailKit/Scalar/EF Core/Serilog; web → React stack (STK-0004) + React Router/Zustand/Tailwind CSS (INSERT...SELECT resolved from platform-config seeds; verified those names exist in platform-config/seed.ts).
+    - 8 modules MOD-0101..0108, 14 requirements REQ-0101..0114 (functional/constraint/data/nonfunctional with priority/criticality), 5 use cases UC-0101..0105, 4 workflows WF-0101..0104, 4 workflow model graphs (ids derived from the base via graphN(offset) so the committed example at GRPH-0004 never collides), 11 entities DB-0101..0111 + 51 fields + 10 relations REL-0101..0110 (1:1/1:N/N:M per schema CHECK), 13 API endpoints API-0101..0113 with explicit per-endpoint auth, 8 screens SCR-0101..0108, 7 components CMP-0101..0107, 8 skills SKL-0101..0108 (capability requires level, tech requires tag), 4 risks, 3 ADRs, 3 milestones, 6 test cases.
+    - Approvals APR-0101 (REQ-0101 approved by Ada Lovelace) + APR-0102 (WF-0101 pending → approved by Alan Turing with artifact_governance sync + workflow status update); 21 artifact_links; storeRoadmap + materializeTaskPack (60 packaged tasks); governance demo (roadmap needs_review + first task in_progress).
+    - Child IDs use the 0100+ ranges so the Acme example (0001+) and user projects never collide; TASK ids from the roadmap packager.
+  - backend/scripts/generate-ecommerce-example.ts (`bun run --cwd backend seed-ecommerce-example`) → committed docs/workspace/generated-example-ecommerce/ (PRJ-0004, 34 files).
+  - backend/scripts/seed-ecommerce-live.ts (`bun run --cwd backend seed-ecommerce-live`) → live DB PRJ-0003 + 3 diagrams (workflow GRPH-0003, ERD, architecture) via the real routes (DIAG-0001/0002/0003); idempotent (skips when PRJ-0003 exists).
+  - backend/package.json scripts added (seed-ecommerce-example / seed-ecommerce-live).
+  - backend/tests/seed-ecommerce.test.ts (8 tests: content counts, .NET+React type/library assignment, skill rules, roadmap + task pack, approvals/governance/traceability, workflow/ERD/architecture diagrams, docs workspace, coexistence with the Acme demo in one DB).
+  - Verified: root typecheck clean, 171 tests pass / 0 fail (23 files, 682 expects), frontend + backend builds succeed, backend smoke 275/275 PASS, seed-ecommerce-example 34 files, seed-ecommerce-live idempotent + 3 diagrams stored.
+  - Recorded DEC-022 in memory/DECISIONS.md.
 
 ## Pending Work
 
 Required phases pending:
-- none — all required scope (Prompts 00–16) plus the user-requested Prompt 17 polish are complete.
+- none — all required scope (Prompts 00–16) plus the user-requested Prompt 17 polish and Prompt 18 e-commerce seeder are complete.
 
 No optional task is in progress. Optional candidates live in memory/OPTIONAL_BACKLOG.md and require explicit approval.
 
@@ -243,10 +256,7 @@ No blockers currently recorded.
 
 ## User Requests
 
-No user requests recorded yet in this memory file.
-
-All future user requests must be recorded in:
-- memory/USER_REQUESTS.md
+All user requests are recorded in memory/USER_REQUESTS.md (latest: Prompt 18 — second full-detail e-commerce demo).
 
 ## Constraints
 
@@ -269,7 +279,7 @@ All future decisions must be recorded in:
 
 ## Next Action
 
-All completed scope (Prompts 00–16 required + user-requested Prompt 17 polish) is done and verified. Per AGENTS.md Completion Protocol, finalize by reporting completion, committing changes (user earlier requested commit to master), and waiting for explicit approval before starting any optional backlog work.
+All completed scope (Prompts 00–16 required + user-requested Prompt 17 polish + user-requested Prompt 18 e-commerce seeder) is done and verified. Per AGENTS.md Completion Protocol, finalize by reporting completion, committing changes (user earlier requested commit to master; local repo branch is main), and waiting for explicit approval before starting any optional backlog work.
 
 ## Completion Policy
 
@@ -307,3 +317,4 @@ The agent must never start optional work without approval.
 - CUSTOM NODE PALETTE COMPLETE (2026-08-16, DEC-019): Prompt 15 delivered node_categories/node_types DB tables (migration 008, NCAT/NTYP), palette module (seedNodePalette 14 types incl. loop demo NTYP-0014 with iterations/mode fields + CRUD routes with built-in/in-use guards), modeler DB-driven (buildPaletteMap/enabledNodeTypes, static catalog removed, UNKNOWN/DISABLED/KIND validation, /modeler/node-types 14→15 with fields), generic workflowShape diagram rendering, entities/palette + NodePalette rebuilt by DB categories, InspectorPanel CustomFieldsSection + changeType reseeds, NodePaletteSettingsPanel in Settings > Node palette tab, NCAT/NTYP + FEAT-010 docs, seed integration, palette suites (backend 15, frontend 7). Verified: backend 99/99 tests, frontend 41/41 tests, root typecheck clean, bun run build succeeds, smoke 256/256, seed-example 33 files. Remaining required scope: only Prompt 16 (skills + final audit).
 - SKILLS + FINAL AUDIT COMPLETE (2026-08-16, DEC-020): Prompt 16 delivered skills table (migration 009, SKL ids), skills module CRUD with kind-consistent validation (capability→level, tech→tag), 07-guides/skills.md appended at END of WORKSPACE_FILES (example export now 34 files, ART-0034), 4 seeded demo skills, SkillsPage + entities/skill + route/nav/section, SKL id-convention row, FEAT-011 + docs/final-audit.md (AUDIT-001), stale references fixed in guide.md + tutorial-ecommerce.md, skills suites (backend 14, frontend 5). Verified: backend 113/113 tests, frontend 46/46 tests (159 pass / 0 fail), root typecheck clean, bun run build succeeds, smoke 275/275, seed-example 34 files. ALL REQUIRED SCOPE (Prompts 00–16) COMPLETE.
 - UI POLISH AND MOTION COMPLETE (2026-08-16, DEC-021): Prompt 17 (user-requested) delivered sf-page-enter/sf-rise/sf-scale-in CSS keyframes + prefers-reduced-motion block in index.css, AppShell page-transition wrapper keyed by location.pathname + nav micro-interactions, Button/Card/States polish, staggered Dashboard + ProjectDetails grid entrance with hover lift, frontend/tests/ui-polish.test.tsx (4 tests), FEAT-012, prompts/17-ui-polish-and-motion.md. No new runtime dependency. Verified: 163 tests pass / 0 fail (620 expects, 22 files), root typecheck clean, build succeeds. All completed scope done.
+- E-COMMERCE SEEDER COMPLETE (2026-08-17, DEC-022): Prompt 18 (user-requested) delivered a second full-detail demo — StoreSphere E-Commerce Platform (ASP.NET Core .NET backend API + React TypeScript frontend storefront) — via backend/scripts/seed-ecommerce.ts (seedEcommerceProject/isEcommerceSeeded; multi-type api→.NET + web→React with libraries; 8 modules, 14 requirements, 5 use cases, 4 workflows + 4 model graphs with base-derived graph ids, 11 entities + 51 fields + 10 relations, 13 API endpoints, 8 screens, 7 components, 8 skills, 4 risks, 3 ADRs, 3 milestones, 6 test cases, APR-0101/APR-0102 governance demo, 21 artifact_links, roadmap + 60 packaged tasks), scripts generate-ecommerce-example.ts (committed docs/workspace/generated-example-ecommerce/, PRJ-0004, 34 files) + seed-ecommerce-live.ts (live PRJ-0003 + 3 diagrams via real routes, idempotent), package.json scripts, and backend/tests/seed-ecommerce.test.ts (8 tests). Child IDs use 0100+ ranges. Verified: 171 tests pass / 0 fail (23 files, 682 expects), root typecheck clean, builds succeed, smoke 275/275, seed-example 34 files. All completed scope done; remaining next action is the completion report + commit to main.

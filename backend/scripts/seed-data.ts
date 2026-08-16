@@ -151,7 +151,7 @@ export function seedDemoProject(db: Database, opts: SeedOptions = {}): SeedResul
        VALUES (?, ?, ?, ?, ?, ?, '[]', '[]', '[]', '[]', ?, ?)`,
     ).run(id, graphId, id, type, title, description, JSON.stringify(["REQ-0002"]), JSON.stringify({ x, y }));
   }
-  const workflowEdges: [string, string, string, string, string, string][] = [
+  const workflowEdges: [string, string, string, string, string | null, string][] = [
     [eid(1), nid(1), nid(2), "next", null, "next"],
     [eid(2), nid(2), nid(3), "next", null, "next"],
     [eid(3), nid(3), nid(4), "success", "200 OK", "success"],

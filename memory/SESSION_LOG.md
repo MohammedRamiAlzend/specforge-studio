@@ -647,3 +647,33 @@ Memory files updated:
 
 Next action:
 - Finalize: completion report per AGENTS.md, then commit changes (user earlier requested commit to master), then wait for user's next request / optional-backlog approval.
+
+## Session — Prompt 18 (Full-Detail E-Commerce Seeder) — 2026-08-17
+
+User request:
+- "create another full detail seed example of most common ecommerce project" (from the previous session) — a second, full-detail demo of the most common e-commerce project (.NET backend + React frontend) as Prompt 18. This session continued that implementation from the summary review, finished it, and verified it.
+
+Work completed:
+- prompts/18-ecommerce-full-seeder.md created (objective, constraints, deliverables, 16 seed-content requirements, ID strategy, DoD); prompts/README.md sequence updated to "18. Full-detail e-commerce seeder (.NET backend + React frontend demo example)" + Prompt 18 note.
+- backend/scripts/seed-ecommerce.ts: `seedEcommerceProject(db, opts)` (defaults PRJ-0003 / GRPH-0003) + `isEcommerceSeeded(db, projectId)`. Seeds the StoreSphere E-Commerce Platform: multi-type api→.NET (STK-0001, MailKit/Scalar/EF Core/Serilog) + web→React (STK-0004, React Router/Zustand/Tailwind CSS) via INSERT...SELECT against platform-config seeds; 8 modules MOD-0101..0108, 14 requirements REQ-0101..0114, 5 use cases UC-0101..0105, 4 workflows WF-0101..0104, 4 workflow model graphs (ids derived from base via graphN(offset)), 11 entities DB-0101..0111 + 51 fields + 10 relations REL-0101..0110 (1:1/1:N/N:M only), 13 API endpoints API-0101..0113 (explicit per-endpoint auth), 8 screens SCR-0101..0108, 7 components CMP-0101..0107, 8 skills SKL-0101..0108, 4 risks, 3 ADRs, 3 milestones, 6 test cases, approvals APR-0101 + APR-0102 (WF-0101 pending→approved with artifact_governance sync), 21 artifact_links, storeRoadmap + materializeTaskPack (60 tasks), governance demo (roadmap needs_review + first task in_progress).
+- backend/scripts/generate-ecommerce-example.ts + seed-ecommerce-live.ts; backend/package.json scripts seed-ecommerce-example / seed-ecommerce-live.
+- backend/tests/seed-ecommerce.test.ts (8 tests).
+- Fixed during verification: dead/type-broken model-graph block rewritten (nested node arrays, nullable edge conditions, edge_type from valid set, edges by canonical node ids), relation types N:1 → 1:N/N:M (schema CHECK), graph id collision for the GRPH-0004 example (derived graph ids), endpoint tuple type (explicit auth field), screens 5-tuple, seed-data.ts edge condition nullable, tests expecting 24 edges / 51 fields / 2 Acme modules.
+- Regenerated committed example: docs/workspace/generated-example-ecommerce/ (34 files).
+
+Work partially completed: none.
+
+Blockers: none.
+
+Verified:
+- root `bun run typecheck` clean (scripts now surfaced via test imports; type errors fixed in both seed-data.ts and seed-ecommerce.ts).
+- `bun test backend/tests frontend/tests`: 171 pass / 0 fail (23 files, 682 expects) — 8 new e-commerce tests pass.
+- `bun run build` (frontend) + `bun run --cwd backend build` succeed.
+- backend smoke 275/275 PASS (SMOKE TEST OK).
+- seed-ecommerce-example writes 34 files; seed-ecommerce-live idempotent + stores workflow/ERD/architecture diagrams (DIAG-0001/0002/0003).
+
+Memory files updated:
+- memory/DECISIONS.md (DEC-022), memory/USER_REQUESTS.md (Prompt 18 request), memory/STATE.json (current_prompt_id 18, completed_phases + 18-ecommerce-full-seeder, DEC-022, request, next_action), memory/PROJECT_MEMORY.md, memory/NEXT_ACTION.md (rewritten), memory/SESSION_LOG.md (this entry)
+
+Next action:
+- Finalize: deliver the completion report per AGENTS.md, then commit changes to main (user earlier requested commit to master; local branch is main), then wait for a new request / optional-backlog approval.

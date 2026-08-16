@@ -33,6 +33,7 @@ This folder contains the scheduled prompt sequence for building SpecForge Studio
 15. Customizable node palette and categories
 16. Skills section, per-project docs integration, and final audit
 17. UI polish and motion (smooth navigation, micro-interactions, reduced-motion)
+18. Full-detail e-commerce seeder (.NET backend + React frontend demo example)
 
 Note: the original Prompt 13 (Deployment and Final Audit) was removed from the
 required scope by user request (2026-08-16) and replaced by Prompts 13–16
@@ -45,3 +46,9 @@ Prompt 17 (2026-08-16) was added after the Prompt 16 completion report by user
 request ("add animation prompt for navigation etc., anything to make the
 website smoother") — a UI polish scope executed without new runtime
 dependencies.
+
+Prompt 18 (2026-08-17) was added by user request ("add seeder prompt for
+ecommerce project with full details ... using dotnet for back and using react
+for front with skills") — a full-detail demo e-commerce seeder (ASP.NET Core +
+React) seeded as PRJ-0003 (live) / PRJ-0004 (committed example) alongside the
+existing Acme example.
