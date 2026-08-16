@@ -831,3 +831,71 @@ CREATE TABLE IF NOT EXISTS project_dependencies (
 );
 CREATE INDEX IF NOT EXISTS idx_project_dependencies_project ON project_dependencies(project_id);
 CREATE INDEX IF NOT EXISTS idx_project_dependencies_depends ON project_dependencies(depends_on_project_id);
+
+-- ---------------------------------------------------------------------------
+-- Customizable node palette (Prompt 15)
+-- ---------------------------------------------------------------------------
+-- Node categories and node types are workspace-global configuration stored in
+-- the database instead of the hard-coded modeler catalog. Built-in rows are
+-- seeded idempotently so existing behavior is unchanged until edited.
+-- `node_types.kinds` is a JSON array of model kinds the type is available for;
+-- `node_types.fields` is a JSON array of custom field definitions that the
+-- inspector renders into a custom node's metadata.
+
+CREATE TABLE IF NOT EXISTS node_categories (
+  id         TEXT PRIMARY KEY,                     -- NCAT-0001
+  key        TEXT NOT NULL UNIQUE,                 -- flow|system|governance|ai|...
+  label      TEXT NOT NULL,
+  color      TEXT NOT NULL DEFAULT '#64748b',
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  enabled    INTEGER NOT NULL DEFAULT 1,
+  built_in   INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_node_categories_enabled ON node_categories(enabled);
+
+CREATE TABLE IF NOT EXISTS node_types (
+  id            TEXT PRIMARY KEY,                  -- NTYP-0001
+  key           TEXT NOT NULL UNIQUE,              -- start|end|decision|loop|...
+  label         TEXT NOT NULL,
+  category_id   TEXT NOT NULL REFERENCES node_categories(id) ON DELETE RESTRICT,
+  description   TEXT NOT NULL DEFAULT '',
+  color         TEXT NOT NULL DEFAULT '#64748b',
+  kinds         TEXT NOT NULL DEFAULT '["workflow"]',  -- JSON array of ModelKind
+  default_title TEXT NOT NULL DEFAULT '',
+  fields        TEXT NOT NULL DEFAULT '[]',            -- JSON array of NodeFieldDef
+  sort_order    INTEGER NOT NULL DEFAULT 0,
+  enabled       INTEGER NOT NULL DEFAULT 1,
+  built_in      INTEGER NOT NULL DEFAULT 0,
+  created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_node_types_category ON node_types(category_id);
+CREATE INDEX IF NOT EXISTS idx_node_types_enabled ON node_types(enabled);
+
+-- ---------------------------------------------------------------------------
+-- Per-project skills (Prompt 16)
+-- ---------------------------------------------------------------------------
+-- A project's Skills section. Two skill kinds live in one table:
+--   * `capability` skills describe a team capability (e.g. "Payments
+--     engineering") and carry a `level` (beginner/intermediate/advanced/expert).
+--   * `tech` skills describe a technology/stack skill (e.g. "React") and carry
+--     a free-text `tag` (e.g. "frontend", "smtp").
+-- One table keeps skill management uniform; validation is enforced in the
+-- application layer (skilled level vs tag per kind).
+
+CREATE TABLE IF NOT EXISTS skills (
+  id          TEXT PRIMARY KEY,                      -- SKL-0001
+  project_id  TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  kind        TEXT NOT NULL CHECK (kind IN ('capability','tech')),
+  name        TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  level       TEXT CHECK (level IN ('beginner','intermediate','advanced','expert')),  -- capability skills
+  tag         TEXT,                                  -- tech skills (frontend, payments, smtp, ...)
+  sort_order  INTEGER NOT NULL DEFAULT 0,
+  created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_skills_project ON skills(project_id);
+CREATE INDEX IF NOT EXISTS idx_skills_kind ON skills(project_id, kind);

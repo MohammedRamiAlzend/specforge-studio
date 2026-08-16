@@ -56,6 +56,9 @@ describe("schema", () => {
       "project_type_assignments",
       "project_type_config",
       "project_libraries",
+      "node_categories",
+      "node_types",
+      "skills",
     ];
     for (const table of required) {
       expect(names.has(table), `missing table ${table}`).toBe(true);

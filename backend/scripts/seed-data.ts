@@ -17,6 +17,8 @@ import { storeRoadmap } from "../src/modules/roadmap/routes";
 import { materializeTaskPack } from "../src/modules/agent-tasks/packager";
 import { logEvent } from "../src/utils/events";
 import { seedPlatformConfiguration } from "../src/modules/platform-config/seed";
+import { seedNodePalette } from "../src/modules/palette/seed";
+import type { SkillKind, SkillLevel } from "../src/modules/skills";
 
 export interface SeedOptions {
   projectId?: string;
@@ -48,6 +50,9 @@ export function seedDemoProject(db: Database, opts: SeedOptions = {}): SeedResul
   // (types + stack + libraries). Seeds the built-in defaults first so the
   // selection tables can reference them deterministically.
   seedPlatformConfiguration(db);
+  // Prompt 15: the modeler nodes reference the DB palette; seed defaults so
+  // validation and diagram generation work on the in-memory/live demo DB.
+  seedNodePalette(db);
 
   db.query(
     `INSERT INTO projects (id, name, type, description, repository_url, status, created_by, created_at, updated_at)
@@ -384,6 +389,31 @@ export function seedDemoProject(db: Database, opts: SeedOptions = {}): SeedResul
     actorType: "agent",
   });
   console.log("Governance demo seeded: APR-0002 approved (WF-0001), roadmap awaiting review, audit trail written.");
+
+  // -------------------------------------------------------------------------
+  // Skills (Prompt 16) — per-project capability + tech skills
+  // -------------------------------------------------------------------------
+
+  const skills: [string, SkillKind, string, SkillLevel | null, string | null, string, number][] = [
+    ["SKL-0001", "capability", "Payments engineering", "expert", null, "PCI-sensitive checkout and payment provider integration design.", 1],
+    ["SKL-0002", "capability", "Full-stack TypeScript", "advanced", null, "End-to-end TypeScript across the React storefront and the Fastify API.", 2],
+    ["SKL-0003", "tech", "React", null, "frontend", "Storefront UI with Tailwind CSS and TanStack Query.", 3],
+    ["SKL-0004", "tech", "Node.js / Fastify", null, "backend", "Order API with zod validation and bun:sqlite persistence.", 4],
+  ];
+  for (const [id, kind, name, level, tag, description, sortOrder] of skills) {
+    db.query(
+      `INSERT INTO skills (id, project_id, kind, name, description, level, tag, sort_order)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(id, projectId, kind, name, description, level, tag, sortOrder);
+    logEvent(db, {
+      projectId,
+      entityType: "skill",
+      entityId: id,
+      action: "created",
+      payload: { kind, name },
+    });
+  }
+  console.log(`Skills seeded: ${skills.length} (acme project).`);
 
   return { projectId, roadmapId, taskCount: pack.created };
 }

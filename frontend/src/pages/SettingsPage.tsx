@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { PlatformSettingsPanel } from "../features/platform-settings/PlatformSettingsPanel";
+import { NodePaletteSettingsPanel } from "../features/palette-settings/NodePaletteSettingsPanel";
 import { Card, CardHeader } from "../shared/ui/Card";
 import { PageHeader } from "../shared/ui/PageHeader";
 import { API_BASE_URL } from "../shared/config";
@@ -11,7 +12,7 @@ const DOCS = [
   { path: "docs/data/database-design.md", label: "Database design" },
 ];
 
-const TABS = ["Platform configuration", "Environment", "Reference"] as const;
+const TABS = ["Platform configuration", "Node palette", "Environment", "Reference"] as const;
 
 export function SettingsPage() {
   const [tab, setTab] = useState<(typeof TABS)[number]>("Platform configuration");
@@ -20,7 +21,7 @@ export function SettingsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Settings"
-        description="Workspace configuration, project platform types/stacks/libraries, and reference material."
+        description="Workspace configuration, project platform types/stacks/libraries, modeler node palette, and reference material."
       />
 
       <div className="flex flex-wrap gap-2">
@@ -41,6 +42,8 @@ export function SettingsPage() {
       </div>
 
       {tab === "Platform configuration" ? <PlatformSettingsPanel /> : null}
+
+      {tab === "Node palette" ? <NodePaletteSettingsPanel /> : null}
 
       {tab === "Environment" ? (
         <div className="grid gap-4 lg:grid-cols-2">

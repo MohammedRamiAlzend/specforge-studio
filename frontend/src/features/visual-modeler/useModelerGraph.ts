@@ -112,6 +112,10 @@ export function useModelerGraph({ graphId, catalog }: UseModelerGraphOptions) {
   const addNode = useCallback(
     (type: ModelNodeType, position?: XYPosition) => {
       const id = randomKey("node");
+      const metadata: Record<string, unknown> = {};
+      for (const field of type.fields ?? []) {
+        if (field.default !== undefined) metadata[field.key] = field.default;
+      }
       const newNode: ModelerNode = {
         id,
         type: "model",
@@ -131,6 +135,7 @@ export function useModelerGraph({ graphId, catalog }: UseModelerGraphOptions) {
             description: type.description,
             color: type.color,
           },
+          metadata,
           serverId: null,
         },
       };

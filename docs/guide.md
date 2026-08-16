@@ -43,7 +43,7 @@ This guide is the entry point for humans **and** agents. Read
 | Traceability is enforced | Requirements ↔ use cases ↔ workflows ↔ APIs ↔ entities ↔ tests ↔ tasks (TR rules, `docs/ontology/traceability-rules.md`) |
 | Approval gates are structural | No artifact reaches `approved` without a recorded approval (APR) |
 | Agent-neutral execution | Task packs are executable checklists consumable by Claude, ChatGPT, Qwen, or any compatible agent |
-| Memory-driven protocol | The repo executes a 14-prompt sequence with a persistent memory system (`memory/`, `AGENTS.md`, `MASTER_PROMPT.md`) |
+| Memory-driven protocol | The repo executes a 17-prompt sequence (00–16) with a persistent memory system (`memory/`, `AGENTS.md`, `MASTER_PROMPT.md`) |
 
 ---
 
@@ -54,7 +54,7 @@ This guide is the entry point for humans **and** agents. Read
 ├── AGENTS.md                # Agent execution protocol (read first!)
 ├── MASTER_PROMPT.md         # Governing execution OS (DEC-001)
 ├── memory/                  # Execution memory (STATE, DECISIONS, NEXT_ACTION, …)
-├── prompts/                 # The 14-phase prompt sequence (00–13) + commands
+├── prompts/                 # The 17-prompt sequence (00–16) + commands
 ├── backend/                 # Node.js + Fastify + SQLite API
 │   ├── db/
 │   │   ├── schema.sql       # Canonical schema (34 tables, idempotent)
@@ -106,7 +106,7 @@ react-router 6, React Flow (`@xyflow/react` 12) for the visual modeler.
 
 ---
 
-## 4. The Execution Model (prompts 00–13)
+## 4. The Execution Model (prompts 00–16)
 
 The project is built and maintained through a **memory-driven prompt
 sequence** (`prompts/`). Each phase has defined deliverables and a
@@ -116,7 +116,7 @@ definition of done; state is persisted in `memory/STATE.json`.
 |---|-------|-----------|
 | 00 | Bootstrap memory and rules | `AGENTS.md`, `memory/`, `MASTER_PROMPT.md` |
 | 01 | Product definition | `docs/product/` (APR-001 approved) |
-| 02 | Domain ontology and IDs | `docs/ontology/` (24 entities, TR-01…TR-20) |
+| 02 | Domain ontology and IDs | `docs/ontology/` (24 entities, TR-01…TR-21) |
 | 03 | Markdown workspace spec | `docs/workspace/` (WS-001…WS-003 + templates) |
 | 04 | Database schema | `backend/db/schema.sql` + design docs |
 | 05 | Backend core | Fastify app, projects/requirements/use-cases/workflows/entities/api/tasks/artifacts |
@@ -127,7 +127,10 @@ definition of done; state is persisted in `memory/STATE.json`.
 | 10 | Roadmap and agent tasks | Roadmap engine + task packager |
 | 11 | Governance and approvals | Status lifecycle, APR records, audit trail |
 | 12 | Testing and validation | 75 tests, validation rules, quality gates |
-| 13 | Deployment and final audit | **Deferred by user request (2026-08-16)** — still required |
+| 13 | Platform configuration | Dynamic project types/stacks/libraries (`docs/features/platform-configuration.md`) |
+| 14 | Multi-project workspace | Cross-project workflow calls + dependencies (`docs/features/multi-project-links.md`) |
+| 15 | Custom node palette | DB-driven categories/types + custom node fields (`docs/features/node-palette.md`) |
+| 16 | Skills + final audit | Per-project skills, per-project docs, final audit (`docs/features/skills.md`) |
 
 **Agent commands:** `continue` (resume from memory), `status` (report state),
 `approve` (mark a pending approval). Every meaningful unit of work updates
@@ -358,10 +361,11 @@ and must never be hand-maintained as a source of truth.
 
 ## 12. Known Limitations & Next Steps
 
-- **Prompt 13 (deployment + final audit) is deferred** by explicit user
-  request (2026-08-16). Remaining deliverables: docker-compose,
-  backend/frontend Dockerfiles, `docs/ops/` (deployment, backup,
-  local-runner), `docs/final-audit.md`, and the completion report.
+- **Prompt 13–16 delivered the full required scope** (platform configuration,
+  multi-project workspace, custom node palette, skills + final audit).
+  Deployment packaging was removed from required scope by user request
+  (2026-08-16) and moved to the optional backlog (docker-compose,
+  backend/frontend Dockerfiles, `docs/ops/`).
 - The `artifact_links` cascade (DEC-014) is in the canonical schema; a
   table-rebuild migration for existing live databases still needs a recorded
   approval.

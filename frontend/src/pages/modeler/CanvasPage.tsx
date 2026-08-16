@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { ReactFlowProvider } from "@xyflow/react";
 import { useParams } from "react-router-dom";
-import { useModelNodeTypes } from "../../entities/model-graph/api";
 import { usePreviewDiagram } from "../../entities/diagram/api";
 import type { DiagramPreview } from "../../entities/diagram/types";
+import { allNodeTypes, enabledNodeTypes } from "../../entities/palette/lib";
+import { useNodePalette } from "../../entities/palette/api";
 import { DiagramPreviewDialog } from "../../features/diagram-preview/DiagramPreviewDialog";
 import { InspectorPanel } from "../../features/visual-modeler/InspectorPanel";
 import { ModelerCanvas } from "../../features/visual-modeler/ModelerCanvas";
@@ -17,8 +18,10 @@ import { Spinner } from "../../shared/ui/Spinner";
 
 export function CanvasPage() {
   const { projectId, graphId } = useParams<{ projectId: string; graphId: string }>();
-  const { data: catalog, isLoading: catalogLoading } = useModelNodeTypes();
-  const modeler = useModelerGraph({ graphId, catalog: catalog ?? [] });
+  const { data: palette, isLoading: paletteLoading } = useNodePalette();
+  const catalog = useMemo(() => allNodeTypes(palette), [palette]);
+  const enabledCatalog = useMemo(() => enabledNodeTypes(palette), [palette]);
+  const modeler = useModelerGraph({ graphId, catalog });
   const preview = usePreviewDiagram();
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewData, setPreviewData] = useState<DiagramPreview | null>(null);
@@ -39,7 +42,7 @@ export function CanvasPage() {
     return <ErrorState message="Missing project or graph id." />;
   }
 
-  if (catalogLoading) {
+  if (paletteLoading) {
     return (
       <div className="flex h-full items-center justify-center">
         <Spinner className="h-6 w-6 text-slate-400" />
@@ -75,7 +78,12 @@ export function CanvasPage() {
 
       <div className="flex min-h-0 flex-1">
         <aside className="w-64 shrink-0 overflow-y-auto border-r border-slate-200 bg-white">
-          <NodePalette kind={modeler.kind} catalog={catalog ?? []} onAdd={modeler.addNode} />
+          <NodePalette
+            kind={modeler.kind}
+            categories={palette?.categories ?? []}
+            catalog={enabledCatalog}
+            onAdd={modeler.addNode}
+          />
         </aside>
 
         <main className="min-w-0 flex-1">
@@ -83,7 +91,7 @@ export function CanvasPage() {
             <ModelerCanvas
               nodes={modeler.nodes}
               edges={modeler.edges}
-              catalog={catalog ?? []}
+              catalog={catalog}
               onNodesChange={modeler.onNodesChange}
               onEdgesChange={modeler.onEdgesChange}
               onConnect={modeler.onConnect}
@@ -98,7 +106,7 @@ export function CanvasPage() {
             node={modeler.selectedNode}
             edge={modeler.selectedEdge}
             kind={modeler.kind}
-            catalog={catalog ?? []}
+            catalog={catalog}
             projectId={projectId}
             onUpdateNode={modeler.updateNode}
             onUpdateEdge={modeler.updateEdge}

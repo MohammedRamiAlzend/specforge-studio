@@ -30,7 +30,7 @@ A modern e-commerce platform: catalog browsing, shopping cart, checkout, order m
 - 04-ui — screen specifications
 - 05-testing — test plan, test cases, templates
 - 06-ops — deployment guide
-- 07-guides — developer and user guides
+- 07-guides — developer and user guides, skills
 - 08-governance — ADRs, approvals
 - 09-agent-plans — master plan, tasks, checklists, agent guide
 ## Reading Order

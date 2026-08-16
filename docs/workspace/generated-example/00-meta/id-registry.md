@@ -18,6 +18,8 @@ Stable, immutable public IDs are the traceability backbone (docs/ontology/id-con
 | Prefix | Next value |
 | --- | --- |
 | LIB | 33 |
+| NCAT | 5 |
+| NTYP | 15 |
 | PTYPE | 5 |
 | RMP | 2 |
 | STK | 13 |

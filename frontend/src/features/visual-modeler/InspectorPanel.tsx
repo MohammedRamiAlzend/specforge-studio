@@ -44,6 +44,93 @@ function LinesTextarea({
   );
 }
 
+function asString(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (typeof value === "number") return String(value);
+  if (typeof value === "boolean") return String(value);
+  return "";
+}
+
+/** Custom per-type fields defined on the node palette; values live in metadata. */
+function CustomFieldsSection({
+  metadata,
+  fields,
+  onChange,
+}: {
+  metadata?: Record<string, unknown> | null;
+  fields?: ModelNodeType["fields"];
+  onChange: (metadata: Record<string, unknown>) => void;
+}) {
+  const defs = fields ?? [];
+  if (defs.length === 0) return null;
+
+  const setField = (key: string, value: unknown) => {
+    onChange({ ...(metadata ?? {}), [key]: value });
+  };
+  const raw = { ...(metadata ?? {}) };
+
+  return (
+    <div className="rounded-md border border-sky-200 bg-sky-50 p-3">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-sky-600">
+        Custom fields
+      </p>
+      <div className="mt-2 space-y-3">
+        {defs.map((field) => (
+          <Field key={field.key} label={`${field.label}${field.required ? " *" : ""}`}>
+            {field.type === "textarea" ? (
+              <textarea
+                className={`${inputClass} min-h-[64px] resize-y leading-relaxed`}
+                value={asString(raw[field.key])}
+                placeholder={asString(field.default)}
+                onChange={(e) => setField(field.key, e.target.value)}
+              />
+            ) : field.type === "number" ? (
+              <input
+                type="number"
+                className={inputClass}
+                value={asString(raw[field.key])}
+                placeholder={field.default === undefined ? "" : String(field.default)}
+                onChange={(e) =>
+                  setField(field.key, e.target.value === "" ? "" : Number(e.target.value))
+                }
+              />
+            ) : field.type === "select" ? (
+              <select
+                className={inputClass}
+                value={asString(raw[field.key])}
+                onChange={(e) => setField(field.key, e.target.value)}
+              >
+                <option value="">Select…</option>
+                {(field.options ?? []).map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            ) : field.type === "boolean" ? (
+              <label className="flex items-center gap-2 text-xs text-slate-700">
+                <input
+                  type="checkbox"
+                  checked={Boolean(raw[field.key])}
+                  onChange={(e) => setField(field.key, e.target.checked)}
+                />
+                {asString(field.default)}
+              </label>
+            ) : (
+              <input
+                className={inputClass}
+                value={asString(raw[field.key])}
+                placeholder={asString(field.default)}
+                onChange={(e) => setField(field.key, e.target.value)}
+              />
+            )}
+          </Field>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export interface InspectorPanelProps {
   node: ModelerNode | null;
   edge: ModelerEdge | null;
@@ -220,6 +307,25 @@ export function InspectorPanel({
   if (node) {
     const data = node.data;
     const typeOptions = catalog.filter((t) => (kind ? t.kinds.includes(kind) : true));
+    const typeDef = catalog.find((t) => t.type === data.type);
+
+    const changeType = (next: string) => {
+      const defined = catalog.find((t) => t.type === next);
+      const seededFields = (defined?.fields ?? []).reduce(
+        (acc: Record<string, unknown>, field) => {
+          if (field.default !== undefined && acc[field.key] === undefined) {
+            acc[field.key] = field.default;
+          }
+          return acc;
+        },
+        {} as Record<string, unknown>,
+      );
+      onUpdateNode(node.id, {
+        type: next,
+        meta: metaForType(next, catalog),
+        metadata: { ...(data.metadata ?? {}), ...seededFields },
+      });
+    };
     return (
       <div className="flex h-full flex-col gap-4 overflow-y-auto px-4 py-4">
         <div>
@@ -237,8 +343,7 @@ export function InspectorPanel({
             className={inputClass}
             value={data.type}
             onChange={(e) => {
-              const next = e.target.value;
-              onUpdateNode(node.id, { type: next, meta: metaForType(next, catalog) });
+              changeType(e.target.value);
             }}
           >
             {typeOptions.map((t) => (
@@ -305,6 +410,12 @@ export function InspectorPanel({
             placeholder="Canonical IDs, e.g. REQ-0001"
           />
         </Field>
+
+        <CustomFieldsSection
+          metadata={data.metadata}
+          fields={typeDef?.fields}
+          onChange={(metadata) => onUpdateNode(node.id, { metadata })}
+        />
 
         {data.type === "workflow_call" ? (
           <CrossProjectSection

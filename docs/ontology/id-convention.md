@@ -85,6 +85,9 @@ Extended prefixes (added by this ontology, DEC-002):
 | STK | Stack (platform configuration, Prompt 13) |
 | LIB | Library (platform configuration, Prompt 13) |
 | PDEP | ProjectDependency (multi-project workspace link, Prompt 14) |
+| NCAT | NodeCategory (modeler node palette, Prompt 15) |
+| NTYP | NodeType (modeler node palette, Prompt 15) |
+| SKL | Skill (per-project skills, Prompt 16) |
 
 Child codes:
 

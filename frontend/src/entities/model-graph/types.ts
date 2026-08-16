@@ -13,14 +13,27 @@ export interface ModelGraph {
   updated_at: string;
 }
 
+export type ModelNodeFieldType = "text" | "textarea" | "number" | "select" | "boolean";
+
+export interface ModelNodeFieldDef {
+  key: string;
+  label: string;
+  type: ModelNodeFieldType;
+  options?: string[];
+  required?: boolean;
+  default?: string | number | boolean;
+}
+
+/** Catalog shape returned by GET /modeler/node-types (Prompt 15: DB-driven). */
 export interface ModelNodeType {
   type: string;
   label: string;
-  category: "flow" | "system" | "governance" | "ai";
+  category: string;
   description: string;
   color: string;
   kinds: ModelKind[];
   defaultTitle: string;
+  fields?: ModelNodeFieldDef[];
 }
 
 export interface ModelNode {

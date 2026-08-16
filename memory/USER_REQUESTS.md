@@ -55,3 +55,9 @@ Each request must include:
 - mandatory or optional: mandatory (user-requested scope change)
 - affected phase or artifact: prompts/13-deployment-and-final-audit.md (removed); new prompts 13+; backend schema + modules; frontend pages (Settings, project creation, modeler, project details, skills)
 - confirmed answers (2026-08-16, recorded in DEC-016): multiple types per project; global Settings page for configuration; stacks/libraries editable + pre-seeded; cross-project references via dropdown AND manual ID; explicit linked projects; Skills section = capability skills + tech skills; custom node types can define custom fields; execution = create plans only (no implementation yet).
+
+### 2026-08-16 — Commit completed changes to master
+- request: "when u finish commit changes to master" — after all required work (Prompt 16) is complete and the completion report is delivered, commit all changes to the local git repository on the master branch.
+- implication: Once the completion protocol is satisfied (all required scope done, memory updated, completion report delivered), stage and commit all project changes to master with a clear message. No push/PR unless subsequently requested.
+- mandatory or optional: mandatory (user-requested)
+- affected phase or artifact: git repository (master branch), all completed deliverables

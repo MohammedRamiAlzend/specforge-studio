@@ -29,7 +29,7 @@ regenerable workspace at `docs/workspace/generated-example/` (project
 `PRJ-0001`), so every output shown here is real generated output, not
 placeholder prose.
 
-Each step maps to one phase of the execution sequence (`prompts/00–13`) and
+Each step maps to one phase of the execution sequence (`prompts/00–16`) and
 tells you **what to do**, **what you get**, and **where it lives**.
 
 ---
@@ -332,12 +332,33 @@ decision branches, TR-01/05/06/07, orphan links).
 
 ---
 
-## Step 13 — Deploy (Prompt 13 — pending)
+## Step 13 — Platform configuration (Prompts 13–16)
 
-Deployment deliverables (docker-compose, backend/frontend Dockerfiles,
-`docs/ops/`, final audit) are the last required phase and are currently
-deferred by user request. The Freebuff preview is already verified
-end-to-end (root, `/api/healthz`, `/api/projects` all 200).
+The original deployment prompt was removed by user request and replaced with
+four feature phases that are all delivered and verified end-to-end.
+
+**What to do (Prompt 13 — platform configuration):** open **Settings →
+Platform configuration**, pick the built-in `web` type with the `React` stack
+and a couple of libraries, and re-create/edit a project as multi-type.
+
+**What to do (Prompt 14 — multi-project workspace):** add a
+`workflow_call` node to the checkout graph and point it at a dependency
+project's workflow (`metadata.cross_project`), then regenerate docs to see the
+resolved cross-project call in the workflow.
+
+**What to do (Prompt 15 — custom node palette):** open **Settings → Node
+palette**, add a custom node type with a number field (e.g. `loop` with
+`iterations`), drag it onto the canvas, and edit it in the inspector.
+
+**What to do (Prompt 16 — skills + final audit):** open the project's
+**Skills** section, add a capability skill (with a level) and a tech skill
+(with a tag), then generate docs and confirm `07-guides/skills.md` reflects
+them in the project's own export.
+
+**E-commerce coverage you get:** dynamic project types/stacks/libraries,
+cross-project workflow calls with dependency isolation, a database-backed
+node palette with custom fields, and per-project skills with per-project docs
+exports (the example workspace is now 34 files, ART-0001…ART-0034).
 
 ---
 
@@ -357,7 +378,10 @@ end-to-end (root, `/api/healthz`, `/api/projects` all 200).
 | 10 | Roadmap + tasks | RMP-0001, TASK-0001…0014 | `roadmaps` + `tasks` |
 | 11 | Governance | APR-0002 gates WF-0001, audit | `approvals` + `event_log` |
 | 12 | Testing | 75 tests + smoke + TR validation | `backend/tests/`, `frontend/tests/` |
-| 13 | Deployment | Docker/ops/final audit | **pending (deferred)** |
+| 13 | Platform configuration | Multi-type project, stack + libraries | `project_types`/`stacks`/`libraries` |
+| 14 | Multi-project workspace | Cross-project workflow calls | `project_dependencies` (PDEP) |
+| 15 | Custom node palette | DB categories/types + custom fields | `node_categories`/`node_types` |
+| 16 | Skills + final audit | Per-project skills + docs | `skills` (SKL) + `docs_exports` |
 
 The regenerable example of every step above lives in
 `docs/workspace/generated-example/` — recreate it any time with

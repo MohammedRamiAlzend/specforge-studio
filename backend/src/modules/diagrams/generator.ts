@@ -178,6 +178,17 @@ export function resolveCrossProjectCalls(
 // Workflow (flowchart)
 // ---------------------------------------------------------------------------
 
+/**
+ * Canonical node shape per type. Custom node types (Prompt 15) have no
+ * dedicated shape and fall back to the generic rounded box, keeping diagrams
+ * renderable for any palette without generator changes.
+ */
+function workflowShape(type: string): "stadium" | "decision" | "generic" {
+  if (type === "start" || type === "end") return "stadium";
+  if (type === "decision") return "decision";
+  return "generic";
+}
+
 export function generateWorkflow(
   nodes: DiagramNode[],
   edges: DiagramEdge[],
@@ -209,15 +220,16 @@ export function generateWorkflow(
   for (const node of sorted) {
     const id = sanitizeId(node.id);
     const label = mermaidLabel(node.title);
-    if (node.type === "start" || node.type === "end") {
-      lines.push(`  ${id}([${label}])`);
-    } else if (node.type === "decision") {
-      lines.push(`  ${id}{${label}}`);
-    } else if (node.type === "workflow_call" && calls.has(node.id)) {
+    const shape = workflowShape(node.type);
+    if (node.type === "workflow_call" && calls.has(node.id)) {
       const call = calls.get(node.id)!;
       lines.push(`  subgraph ${sanitizeId(`xp_${node.id}`)}[${mermaidLabel(`${call.projectName} (${call.projectId})`)}]`);
       lines.push(`    ${id}[${mermaidLabel(`${call.graphName} (${call.graphId})`)}]`);
       lines.push("  end");
+    } else if (shape === "stadium") {
+      lines.push(`  ${id}([${label}])`);
+    } else if (shape === "decision") {
+      lines.push(`  ${id}{${label}}`);
     } else {
       if (node.type === "workflow_call") {
         warnings.push({

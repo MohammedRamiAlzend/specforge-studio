@@ -75,6 +75,9 @@ export function AppShell() {
               <NavLink to={`/projects/${project.id}/tasks`} className={({ isActive }) => navLinkClass(isActive)}>
                 Tasks
               </NavLink>
+              <NavLink to={`/projects/${project.id}/skills`} className={({ isActive }) => navLinkClass(isActive)}>
+                Skills
+              </NavLink>
             </>
           ) : null}
 

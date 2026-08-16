@@ -176,12 +176,109 @@ let projectId = "";
   const res = await request("GET", "/modeler/node-types");
   check("GET /modeler/node-types -> 200", res.statusCode === 200, res.body);
   const types = res.json().data as { type: string }[];
-  check("GET /modeler/node-types 13 types", types.length === 13, types.length);
-  const required = ["start", "end", "step", "decision", "screen", "api_call", "database", "external_system", "event", "wait", "approval", "ai_agent", "workflow_call"];
+  check("GET /modeler/node-types 14 types", types.length === 14, types.length);
+  const required = ["start", "end", "step", "decision", "screen", "api_call", "database", "external_system", "event", "wait", "approval", "ai_agent", "workflow_call", "loop"];
   check(
     "GET /modeler/node-types covers all required types",
     required.every((t) => types.some((n) => n.type === t)),
   );
+  check("GET /modeler/node-types includes fields arrays", types.every((t) => Array.isArray((t as { fields?: unknown[] }).fields)));
+}
+
+// 12b. node palette (Prompt 15): seeded categories + custom type + validation
+let paletteCategoryId = "";
+let retryTypeId = "";
+{
+  const res = await request("GET", "/node-palette");
+  check("GET /node-palette -> 200", res.statusCode === 200, res.body);
+  const cats = res.json().data?.categories ?? [];
+  check("GET /node-palette 4 seeded categories", cats.length === 4, cats.length);
+  const keys = cats.map((c: { key: string }) => c.key);
+  check(
+    "GET /node-palette has flow/system/governance/ai",
+    ["flow", "system", "governance", "ai"].every((k) => keys.includes(k)),
+    keys,
+  );
+  const total = cats.reduce((n: number, c: { nodeTypes: unknown[] }) => n + c.nodeTypes.length, 0);
+  check("GET /node-palette 14 seeded node types", total === 14, total);
+  paletteCategoryId = cats.find((c: { key: string }) => c.key === "flow")?.id ?? "";
+  check("GET /node-palette has category ids", paletteCategoryId.length > 0, paletteCategoryId);
+}
+
+// seeded demo loop type carries custom fields
+{
+  const res = await request("GET", "/modeler/node-types");
+  const types = res.json().data as { type: string; fields?: { key: string; type: string }[] }[];
+  const loop = types.find((t) => t.type === "loop");
+  check("seeded loop carries custom fields", loop?.fields?.length === 2 && loop?.fields?.[0]?.key === "iterations", loop?.fields);
+}
+
+// custom node type with custom fields
+{
+  const res = await request("POST", "/node-palette/types", {
+    key: "retry",
+    label: "Retry",
+    category_id: paletteCategoryId,
+    color: "#f43f5e",
+    kinds: ["workflow"],
+    default_title: "New retry step",
+    fields: [
+      { key: "max_attempts", label: "Max attempts", type: "number", required: true, default: 3 },
+      { key: "mode", label: "Mode", type: "select", options: ["fixed", "backoff"], default: "backoff" },
+    ],
+    sort_order: 99,
+  });
+  check("POST /node-palette/types -> 201", res.statusCode === 201, res.body);
+  retryTypeId = res.json().data?.id ?? "";
+  check("POST /node-palette/types id NTYP-0015", retryTypeId === "NTYP-0015", retryTypeId);
+}
+
+{
+  const res = await request("GET", "/modeler/node-types");
+  const types = res.json().data as { type: string; fields?: { key: string; type: string }[] }[];
+  check("GET /modeler/node-types now 15", types.length === 15, types.length);
+  const retry = types.find((t) => t.type === "retry");
+  check("GET /modeler/node-types includes retry", Boolean(retry));
+  check(
+    "retry type carries custom fields",
+    retry?.fields?.length === 2 && retry?.fields?.[0]?.key === "max_attempts",
+    retry?.fields,
+  );
+}
+
+// duplicate key rejected
+{
+  const res = await request("POST", "/node-palette/types", {
+    key: "retry",
+    label: "Retry again",
+    category_id: paletteCategoryId,
+    kinds: ["workflow"],
+  });
+  check("POST /node-palette/types duplicate key -> 409", res.statusCode === 409, res.body);
+}
+
+// validation: disabled type + wrong-kind type produce warnings
+{
+  const patch = await request("PATCH", `/node-palette/types/${retryTypeId}`, { enabled: false });
+  check("PATCH disable retry -> 200", patch.statusCode === 200, patch.body);
+  const disabled = await request("POST", "/modeler/validate", {
+    kind: "workflow",
+    nodes: [{ key: "r", type: "retry", title: "Retry", position: { x: 0, y: 0 } }],
+    edges: [],
+  });
+  const dw = disabled.json().data?.warnings as { code: string }[];
+  check("validate reports DISABLED_NODE_TYPE", dw.some((w) => w.code === "DISABLED_NODE_TYPE"), dw);
+
+  const wrongKind = await request("POST", "/modeler/validate", {
+    kind: "data",
+    nodes: [{ key: "r", type: "retry", title: "Retry", position: { x: 0, y: 0 } }],
+    edges: [],
+  });
+  const kw = wrongKind.json().data?.warnings as { code: string }[];
+  check("validate reports KIND_NOT_SUPPORTED", kw.some((w) => w.code === "KIND_NOT_SUPPORTED"), kw);
+
+  const reenabled = await request("PATCH", `/node-palette/types/${retryTypeId}`, { enabled: true });
+  check("PATCH re-enable retry -> 200", reenabled.statusCode === 200, reenabled.body);
 }
 
 // 13. modeler: create graph
@@ -334,6 +431,11 @@ let graphId = "";
   const get = await request("GET", `/modeler/graphs/${graphId}`);
   check("GET deleted graph -> 404", get.statusCode === 404, get.body);
 }
+
+// 19b/19c. palette delete guards + category CRUD are covered at the end of
+// the script (see "palette delete guards + category CRUD" below): their
+// temporary usage graph would otherwise shift the GRPH id sequence that the
+// multi-project links section expects.
 
 // 20. diagrams: create a fresh workflow graph to generate from
 let diagramGraphId = "";
@@ -932,6 +1034,140 @@ let depId = "";
   check("DELETE /projects/:id/dependencies/:depId -> 204", del.statusCode === 204, del.body);
   const gone = await request("GET", `/projects/${projectId}/dependencies`);
   check("GET dependencies after delete empty", (gone.json().data ?? []).length === 0, gone.body);
+}
+
+// 19b/19c. palette delete guards + category CRUD (Prompt 15). Placed at the
+// end so its temporary usage graph cannot shift the GRPH id sequence that
+// earlier sections assert on.
+{
+  // Custom category host — built-in categories are never deletable.
+  const catRes = await request("POST", "/node-palette/categories", {
+    key: "gatekeep",
+    label: "Gatekeeping",
+    color: "#16a34a",
+    sort_order: 50,
+  });
+  check("POST /node-palette/categories -> 201", catRes.statusCode === 201, catRes.body);
+  const guardCatId = catRes.json().data?.id ?? "";
+  check("POST category id NCAT-0005", guardCatId === "NCAT-0005", guardCatId);
+
+  const patchCat = await request("PATCH", `/node-palette/categories/${guardCatId}`, {
+    label: "Gatekeeping & Review",
+    sort_order: 51,
+  });
+  check("PATCH /node-palette/categories -> 200", patchCat.statusCode === 200, patchCat.body);
+  check("PATCH category label updated", patchCat.json().data?.label === "Gatekeeping & Review", patchCat.body);
+  check("PATCH category sort_order updated", patchCat.json().data?.sort_order === 51, patchCat.body);
+
+  const dupCat = await request("POST", "/node-palette/categories", {
+    key: "flow",
+    label: "Flow duplicate",
+  });
+  check("POST /node-palette/categories duplicate key -> 409", dupCat.statusCode === 409, dupCat.body);
+
+  // Re-parent retry under the custom category so the delete guards apply.
+  const moved = await request("PATCH", `/node-palette/types/${retryTypeId}`, { category_id: guardCatId });
+  check("PATCH re-parent retry -> 200", moved.statusCode === 200, moved.body);
+
+  // In-use type + non-empty category delete guards.
+  const createGraph = await request("POST", "/modeler/graphs", {
+    project_id: projectId,
+    kind: "workflow",
+    name: "Retry usage",
+  });
+  const usedGraphId = createGraph.json().data?.id ?? "";
+  await request("PUT", `/modeler/graphs/${usedGraphId}`, {
+    nodes: [
+      { key: "g-start", type: "start", title: "Start", position: { x: 0, y: 0 } },
+      {
+        key: "g-retry",
+        type: "retry",
+        title: "Retry step",
+        position: { x: 200, y: 0 },
+        metadata: { max_attempts: 3, mode: "backoff" },
+      },
+    ],
+    edges: [{ key: "e1", source: "g-start", target: "g-retry", type: "next" }],
+  });
+
+  const delType = await request("DELETE", `/node-palette/types/${retryTypeId}`);
+  check("DELETE in-use node type -> 409", delType.statusCode === 409, delType.body);
+  const delCat = await request("DELETE", `/node-palette/categories/${guardCatId}`);
+  check("DELETE non-empty category -> 409", delCat.statusCode === 409, delCat.body);
+
+  const delGraph = await request("DELETE", `/modeler/graphs/${usedGraphId}`);
+  check("DELETE usage graph -> 204", delGraph.statusCode === 204);
+
+  const delType2 = await request("DELETE", `/node-palette/types/${retryTypeId}`);
+  check("DELETE unused node type -> 204", delType2.statusCode === 204, delType2.body);
+  const delCat2 = await request("DELETE", `/node-palette/categories/${guardCatId}`);
+  check("DELETE unused category -> 204", delCat2.statusCode === 204, delCat2.body);
+
+  const final = await request("GET", "/modeler/node-types");
+  check("GET /modeler/node-types back to 14", (final.json().data as { type: string }[]).length === 14);
+}
+
+// 20. skills (Prompt 16)
+{
+  // Initial list for a fresh project is empty.
+  const empty = await request("GET", `/skills?project=${projectId}`);
+  check("GET /skills?project empty initially", (empty.json().data ?? []).length === 0, empty.body);
+
+  const capability = await request("POST", "/skills", {
+    project_id: projectId,
+    kind: "capability",
+    name: "Payments engineering",
+    description: "PCI-sensitive checkout design.",
+    level: "expert",
+  });
+  check("POST /skills capability -> 201", capability.statusCode === 201, capability.body);
+  const capabilityId = capability.json().data?.id ?? "";
+  check("POST /skills id SKL-0001", capabilityId === "SKL-0001", capabilityId);
+  check("POST /skills capability has level", capability.json().data?.level === "expert");
+
+  const tech = await request("POST", "/skills", {
+    project_id: projectId,
+    kind: "tech",
+    name: "React",
+    tag: "frontend",
+    sort_order: 5,
+  });
+  check("POST /skills tech -> 201", tech.statusCode === 201, tech.body);
+  const techId = tech.json().data?.id ?? "";
+  check("POST /skills id SKL-0002", techId === "SKL-0002", techId);
+  check("POST /skills tech stores tag not level", tech.json().data?.tag === "frontend" && tech.json().data?.level === null, tech.body);
+
+  const list = await request("GET", `/skills?project=${projectId}`);
+  check("GET /skills?project has both kinds", (list.json().data ?? []).length === 2, list.body);
+
+  const patched = await request("PATCH", `/skills/${capabilityId}`, { level: "advanced" });
+  check("PATCH /skills/:id -> 200", patched.statusCode === 200, patched.body);
+  check("PATCH /skills/:id level updated", patched.json().data?.level === "advanced", patched.body);
+
+  const badCapability = await request("POST", "/skills", { project_id: projectId, kind: "capability", name: "No level" });
+  check("POST /skills capability without level -> 400", badCapability.statusCode === 400, badCapability.body);
+  const badTech = await request("POST", "/skills", { project_id: projectId, kind: "tech", name: "React", level: "expert" });
+  check("POST /skills tech with level -> 400", badTech.statusCode === 400, badTech.body);
+  const badProject = await request("POST", "/skills", { project_id: "PRJ-9999", kind: "tech", name: "X" });
+  check("POST /skills unknown project -> 404", badProject.statusCode === 404, badProject.body);
+
+  // Docs integration: skills.md appears inside the generated workspace.
+  const docs = await request("POST", "/docs/generate", { project_id: projectId });
+  const docPaths = (docs.json().data?.files ?? []).map((f: { path: string }) => f.path);
+  check("POST docs includes 07-guides/skills.md", docPaths.includes("07-guides/skills.md"), docPaths);
+  const skillsDoc = docs.json().data?.files?.find((f: { path: string }) => f.path === "07-guides/skills.md")?.content ?? "";
+  check("POST docs skills.md has Capability + Tech sections", skillsDoc.includes("Capability Skills") && skillsDoc.includes("Tech Skills"), skillsDoc.slice(0, 120));
+  check("POST docs skills.md lists seeded skills", skillsDoc.includes("Payments engineering") && skillsDoc.includes("React"), skillsDoc.slice(0, 200));
+
+  const audit = await request("GET", "/audit");
+  const events = audit.json().data ?? [];
+  check("GET /audit logs skill creation", events.some((e: { entity_type: string; entity_id: string }) =>
+    e.entity_type === "skill" && e.entity_id === capabilityId), events.length);
+
+  const delTech = await request("DELETE", `/skills/${techId}`);
+  check("DELETE /skills/:id -> 204", delTech.statusCode === 204, delTech.body);
+  const delGone = await request("DELETE", `/skills/${techId}`);
+  check("DELETE /skills/:id again -> 404", delGone.statusCode === 404, delGone.body);
 }
 
 await app.close();

@@ -22,6 +22,7 @@ const SECTIONS = [
   { to: "architecture", title: "Architecture", blurb: "Components, layers, and system boundaries." },
   { to: "docs", title: "Docs Export", blurb: "Generated Markdown workspace for the project." },
   { to: "tasks", title: "Tasks", blurb: "Executable work items with checklists and definitions of done." },
+  { to: "skills", title: "Skills", blurb: "Capabilities and technologies this project relies on." },
 ] as const;
 
 export function ProjectDetailsPage() {

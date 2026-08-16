@@ -29,6 +29,7 @@ import {
 } from "../diagrams/generator";
 import { erdFromTables } from "../diagrams/routes";
 import { listProjectDependencies, listProjectDependents, workflowCallsForProject } from "../links/routes";
+import { listSkills } from "../skills";
 
 // ---------------------------------------------------------------------------
 // Row shapes
@@ -478,7 +479,7 @@ export function genReadme(ctx: GeneratorContext): string {
       "04-ui — screen specifications",
       "05-testing — test plan, test cases, templates",
       "06-ops — deployment guide",
-      "07-guides — developer and user guides",
+      "07-guides — developer and user guides, skills",
       "08-governance — ADRs, approvals",
       "09-agent-plans — master plan, tasks, checklists, agent guide",
     ])) +
@@ -954,6 +955,39 @@ export function genProjectDependencies(ctx: GeneratorContext): string {
     ));
 
   return frontmatterFor(ctx, "Project Dependencies", "index") + body;
+}
+
+export function genSkillsDoc(ctx: GeneratorContext): string {
+  const skills = listSkills(ctx.db, ctx.projectId);
+  const capability = skills.filter((s) => s.kind === "capability");
+  const tech = skills.filter((s) => s.kind === "tech");
+
+  const body =
+    p("# Skills") +
+    section("Purpose", p("The capabilities and technologies this project relies on (Prompt 16). Capability skills carry a proficiency level; tech skills carry a practical tag. Skills are project-specific — each project exports its own skills.")) +
+    section(
+      "Capability Skills",
+      capability.length === 0
+        ? p("No capability skills defined yet.")
+        : table(
+            ["ID", "Skill", "Level", "Description"],
+            capability.map((s) => [s.id, s.name, `\`${s.level}\``, s.description || "—"]),
+          ),
+    ) +
+    section(
+      "Tech Skills",
+      tech.length === 0
+        ? p("No tech skills defined yet.")
+        : table(
+            ["ID", "Skill", "Tag", "Description"],
+            tech.map((s) => [s.id, s.name, s.tag ? `\`${s.tag}\`` : "—", s.description || "—"]),
+          ),
+    ) +
+    section("Task Tie-in", skills.length === 0
+      ? p("Task packs do not reference skills until this project defines some.")
+      : p(`Agents executing this project's task packs should be competent in: ${[...capability.map((s) => s.name), ...tech.map((s) => s.name)].join(", ")}.`));
+
+  return frontmatterFor(ctx, "Skills", "index") + body;
 }
 
 export function genErdDoc(ctx: GeneratorContext): string {

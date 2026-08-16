@@ -1,29 +1,24 @@
 import type { DragEvent } from "react";
 import type { ModelKind, ModelNodeType } from "../../entities/model-graph/types";
+import type { NodeCategory } from "../../entities/palette/types";
 
 const DND_TYPE = "application/specforge-node-type";
 
-const CATEGORY_LABELS: Record<string, string> = {
-  flow: "Flow",
-  system: "System",
-  governance: "Governance",
-  ai: "AI & Agents",
-};
-
-const CATEGORY_ORDER = ["flow", "system", "governance", "ai"];
-
 export interface NodePaletteProps {
   kind: ModelKind | null;
+  categories: NodeCategory[];
   catalog: ModelNodeType[];
   onAdd: (type: ModelNodeType) => void;
 }
 
-export function NodePalette({ kind, catalog, onAdd }: NodePaletteProps) {
+export function NodePalette({ kind, categories, catalog, onAdd }: NodePaletteProps) {
   const available = catalog.filter((t) => (kind ? t.kinds.includes(kind) : true));
-  const grouped = CATEGORY_ORDER.map((category) => ({
-    category,
-    types: available.filter((t) => t.category === category),
-  })).filter((g) => g.types.length > 0);
+  const grouped = categories
+    .map((category) => ({
+      category,
+      types: available.filter((t) => t.category === category.key),
+    }))
+    .filter((g) => g.types.length > 0);
 
   const handleDragStart = (event: DragEvent, type: string) => {
     event.dataTransfer.setData(DND_TYPE, type);
@@ -37,9 +32,13 @@ export function NodePalette({ kind, catalog, onAdd }: NodePaletteProps) {
       </p>
       <div className="flex-1 space-y-4 overflow-y-auto px-3 pb-4">
         {grouped.map((group) => (
-          <div key={group.category}>
-            <p className="mb-1.5 text-[11px] font-semibold text-slate-500">
-              {CATEGORY_LABELS[group.category] ?? group.category}
+          <div key={group.category.id}>
+            <p className="mb-1.5 flex items-center gap-1.5 text-[11px] font-semibold text-slate-500">
+              <span
+                className="h-2 w-2 rounded-full"
+                style={{ backgroundColor: group.category.color }}
+              />
+              {group.category.label}
             </p>
             <div className="space-y-1.5">
               {group.types.map((type) => (

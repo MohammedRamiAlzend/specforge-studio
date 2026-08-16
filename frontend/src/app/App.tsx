@@ -13,6 +13,7 @@ import { RoadmapPage } from "../pages/roadmap/RoadmapPage";
 import { GovernancePage } from "../pages/governance/GovernancePage";
 import { DocsExportPage } from "../pages/DocsExportPage";
 import { TasksPage } from "../pages/TasksPage";
+import { SkillsPage } from "../pages/SkillsPage";
 import { SettingsPage } from "../pages/SettingsPage";
 
 const queryClient = new QueryClient({
@@ -39,6 +40,7 @@ export function App() {
             <Route path="projects/:projectId/governance" element={<GovernancePage />} />
             <Route path="projects/:projectId/docs" element={<DocsExportPage />} />
             <Route path="projects/:projectId/tasks" element={<TasksPage />} />
+            <Route path="projects/:projectId/skills" element={<SkillsPage />} />
             <Route path="settings" element={<SettingsPage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Route>

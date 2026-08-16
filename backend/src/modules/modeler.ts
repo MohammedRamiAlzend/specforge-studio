@@ -6,9 +6,10 @@ import { allocateId } from "../utils/ids";
 import { logEvent } from "../utils/events";
 import { assertProjectExists } from "../utils/exists";
 import { badRequest, notFound } from "../utils/errors";
+import { getNodePalette, listNodeTypes, type NodeFieldDef } from "./palette/routes";
 
 // ---------------------------------------------------------------------------
-// Node type catalog (Prompt 07: at least these 12 types)
+// Node palette (Prompt 15: stored in DB, editable from Settings)
 // ---------------------------------------------------------------------------
 
 export type ModelKind = "workflow" | "data" | "architecture" | "sequence";
@@ -16,136 +17,52 @@ export type ModelKind = "workflow" | "data" | "architecture" | "sequence";
 export interface NodeTypeDefinition {
   type: string;
   label: string;
-  category: "flow" | "system" | "governance" | "ai";
+  category: string;
   description: string;
   color: string;
   kinds: ModelKind[];
   defaultTitle: string;
+  fields?: NodeFieldDef[];
 }
 
-export const NODE_TYPE_CATALOG: NodeTypeDefinition[] = [
-  {
-    type: "start",
-    label: "Start",
-    category: "flow",
-    description: "Entry point of a process or flow.",
-    color: "#059669",
-    kinds: ["workflow", "architecture", "sequence"],
-    defaultTitle: "Start",
-  },
-  {
-    type: "end",
-    label: "End",
-    category: "flow",
-    description: "Terminal state of a process or flow.",
-    color: "#64748b",
-    kinds: ["workflow", "architecture", "sequence"],
-    defaultTitle: "End",
-  },
-  {
-    type: "step",
-    label: "Step",
-    category: "flow",
-    description: "A single action or activity performed by a role or system.",
-    color: "#0284c7",
-    kinds: ["workflow", "architecture", "sequence"],
-    defaultTitle: "New step",
-  },
-  {
-    type: "decision",
-    label: "Decision",
-    category: "flow",
-    description: "A branch point; outgoing edges must carry conditions.",
-    color: "#d97706",
-    kinds: ["workflow"],
-    defaultTitle: "Decision",
-  },
-  {
-    type: "wait",
-    label: "Wait",
-    category: "flow",
-    description: "A delay, queue, or scheduled pause before continuing.",
-    color: "#7c3aed",
-    kinds: ["workflow", "sequence"],
-    defaultTitle: "Wait",
-  },
-  {
-    type: "event",
-    label: "Event",
-    category: "system",
-    description: "An external or internal event that triggers or interrupts a flow.",
-    color: "#0891b2",
-    kinds: ["workflow", "architecture", "sequence"],
-    defaultTitle: "New event",
-  },
-  {
-    type: "screen",
-    label: "Screen",
-    category: "system",
-    description: "A user-facing screen or page in the product.",
-    color: "#4f46e5",
-    kinds: ["workflow", "architecture", "sequence"],
-    defaultTitle: "New screen",
-  },
-  {
-    type: "api_call",
-    label: "API Call",
-    category: "system",
-    description: "A request to an API endpoint.",
-    color: "#2563eb",
-    kinds: ["workflow", "architecture", "sequence"],
-    defaultTitle: "New API call",
-  },
-  {
-    type: "database",
-    label: "Database",
-    category: "system",
-    description: "A data store, table, or entity in the data model.",
-    color: "#0d9488",
-    kinds: ["workflow", "data", "architecture", "sequence"],
-    defaultTitle: "New entity",
-  },
-  {
-    type: "external_system",
-    label: "External System",
-    category: "system",
-    description: "A third-party or legacy system outside the product boundary.",
-    color: "#ea580c",
-    kinds: ["workflow", "architecture", "sequence"],
-    defaultTitle: "External system",
-  },
-  {
-    type: "approval",
-    label: "Approval",
-    category: "governance",
-    description: "A human approval gate; progress pauses until decided.",
-    color: "#e11d48",
-    kinds: ["workflow", "sequence"],
-    defaultTitle: "Approval",
-  },
-  {
-    type: "ai_agent",
-    label: "AI Agent",
-    category: "ai",
-    description: "An AI/agent step that produces output or makes a decision.",
-    color: "#c026d3",
-    kinds: ["workflow", "architecture", "sequence"],
-    defaultTitle: "AI agent",
-  },
-  {
-    type: "workflow_call",
-    label: "Workflow Call",
-    category: "system",
-    description: "Calls a workflow from another project (multi-project workspace).",
-    color: "#7c3aed",
-    kinds: ["workflow"],
-    defaultTitle: "Workflow call",
-  },
-];
+/** DB palette entry used by graph validation (all types incl. disabled). */
+export interface PaletteEntry {
+  kinds: ModelKind[];
+  enabled: boolean;
+}
 
-const NODE_TYPE_SET = new Set(NODE_TYPE_CATALOG.map((n) => n.type));
 const EDGE_TYPE_SET = new Set(["success", "failure", "next", "retry", "escalation", "related"]);
 const KIND_SET = new Set<ModelKind>(["workflow", "data", "architecture", "sequence"]);
+
+/** Builds the full type-key → { kinds, enabled } map from the DB palette. */
+export function buildPaletteMap(db: Database): Map<string, PaletteEntry> {
+  const map = new Map<string, PaletteEntry>();
+  for (const type of listNodeTypes(db)) {
+    map.set(type.key, { kinds: type.kinds, enabled: type.enabled === 1 });
+  }
+  return map;
+}
+
+/** Enabled node types flattened into the classic catalog response shape. */
+export function enabledNodeTypes(db: Database): NodeTypeDefinition[] {
+  const types: NodeTypeDefinition[] = [];
+  for (const category of getNodePalette(db)) {
+    for (const type of category.nodeTypes) {
+      if (!type.enabled) continue;
+      types.push({
+        type: type.key,
+        label: type.label,
+        category: type.category_key,
+        description: type.description,
+        color: type.color,
+        kinds: type.kinds,
+        defaultTitle: type.default_title,
+        fields: type.fields.map((field) => ({ ...field })),
+      });
+    }
+  }
+  return types;
+}
 
 // ---------------------------------------------------------------------------
 // Graph row shapes
@@ -313,7 +230,10 @@ function validateGraph(
   kind: ModelKind,
   nodes: NodeInput[],
   edges: EdgeInput[],
-  options?: { crossProjectResolves?: (node: NodeInput) => boolean },
+  options?: {
+    crossProjectResolves?: (node: NodeInput) => boolean;
+    palette?: Map<string, PaletteEntry>;
+  },
 ): ValidationWarning[] {
   const warnings: ValidationWarning[] = [];
   const nodeKeys = new Set(nodes.map((n) => n.key));
@@ -454,13 +374,31 @@ function validateGraph(
 
   // Kind-agnostic rules.
   for (const node of nodes) {
-    if (!NODE_TYPE_SET.has(node.type)) {
+    const entry = options?.palette?.get(node.type);
+    if (!entry) {
       warnings.push({
         code: "UNKNOWN_NODE_TYPE",
         level: "error",
         message: `Node "${node.title}" uses unknown type "${node.type}".`,
         nodeKey: node.key,
       });
+    } else {
+      if (!entry.enabled) {
+        warnings.push({
+          code: "DISABLED_NODE_TYPE",
+          level: "warning",
+          message: `Node "${node.title}" uses node type "${node.type}" which is disabled in the palette — re-enable it in Settings to keep it editable.`,
+          nodeKey: node.key,
+        });
+      }
+      if (!entry.kinds.includes(kind)) {
+        warnings.push({
+          code: "KIND_NOT_SUPPORTED",
+          level: "warning",
+          message: `Node "${node.title}" (type "${node.type}") is not available for ${kind} graphs.`,
+          nodeKey: node.key,
+        });
+      }
     }
     if (node.type === "workflow_call") {
       const ref = crossProjectRefOf(node);
@@ -589,11 +527,12 @@ function edgeToApi(row: ModelEdgeRow) {
   };
 }
 
-function assertNodeInputsValid(input: NodeInput[]): void {
+function assertNodeInputsValid(db: Database, input: NodeInput[]): void {
+  const palette = buildPaletteMap(db);
   for (const node of input) {
-    if (!NODE_TYPE_SET.has(node.type)) {
+    if (!palette.has(node.type)) {
       throw badRequest(`Unknown node type "${node.type}"`, {
-        validTypes: [...NODE_TYPE_SET],
+        validTypes: [...palette.keys()],
       });
     }
     if (node.type === "workflow_call" && !crossProjectRefOf(node)) {
@@ -673,7 +612,7 @@ export function loadGraph(db: Database, graphId: string) {
       label: e.label ?? undefined,
       condition: e.condition ?? undefined,
     })),
-    { crossProjectResolves: (n) => crossProjectResolves(db, n) },
+    { crossProjectResolves: (n) => crossProjectResolves(db, n), palette: buildPaletteMap(db) },
   );
   return { graph, nodes, edges, warnings };
 }
@@ -688,7 +627,7 @@ function saveGraph(
   graphId: string,
   input: z.infer<typeof saveGraphSchema>,
 ) {
-  assertNodeInputsValid(input.nodes);
+  assertNodeInputsValid(db, input.nodes);
   assertEdgeInputsValid(input.edges);
 
   const graph = getGraphRow(db, graphId);
@@ -801,7 +740,7 @@ export function registerModelerRoutes(app: FastifyInstance, deps: Deps): void {
   const { db } = deps;
 
   app.get("/modeler/node-types", async () => {
-    return { data: NODE_TYPE_CATALOG };
+    return { data: enabledNodeTypes(db) };
   });
 
   app.get("/modeler/graphs", async (request) => {
@@ -839,6 +778,7 @@ export function registerModelerRoutes(app: FastifyInstance, deps: Deps): void {
       data: {
         warnings: validateGraph(body.kind, body.nodes, body.edges, {
           crossProjectResolves: (n) => crossProjectResolves(db, n),
+          palette: buildPaletteMap(db),
         }),
       },
     };

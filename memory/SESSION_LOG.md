@@ -563,3 +563,62 @@ Memory files updated:
 
 Next action:
 - Execute Prompt 15 (Custom Node Palette) on "continue". Remaining required scope: 15-custom-node-palette, 16-skills-and-final-audit.
+
+## Session — Prompt 15 (Custom Node Palette) — 2026-08-16
+
+Work completed:
+- Read all memory files + MASTER_PROMPT.md + prompts/15-custom-node-palette.md; analyzed schema, modeler, diagrams, docs generator, FSD structure first.
+- Schema: additive node_categories + node_types tables in backend/db/schema.sql (NCAT/NTYP ids, JSON kinds + fields columns, built_in/disabled flags) + migration backend/db/migrations/008_node_palette.sql.
+- Backend palette module (backend/src/modules/palette/seed.ts + routes.ts, registered in app.ts): seedNodePalette(db) seeds 14 types (13 legacy catalog incl. workflow_call + demo loop NTYP-0014 in NCAT-0001 "Flow control" with fields iterations number default 1 + mode select [for/while/until] default "for"); first custom type NTYP-0015 / custom category NCAT-0005 asserted. CRUD routes /palette/categories + /palette/node-types with built-in (cannot hard-delete, can disable) and in-use delete guards; event-logged.
+- Backend modeler.ts: static NODE_TYPE_CATALOG / NODE_TYPE_SET REMOVED; buildPaletteMap(db) + enabledNodeTypes(db) (incl. fields) + validateGraph palette option (UNKNOWN_NODE_TYPE/DISABLED_NODE_TYPE/KIND_NOT_SUPPORTED) + assertNodeInputsValid(db, input); GET /modeler/node-types preserved returning 14→15 enabled types with fields. Fixed JSON parse of kinds/fields (parseJsonArray helper/toRow) and updateCategory color-null bug.
+- Backend diagrams generator.ts: workflowShape(type) — stadium start/end, decision diamond, generic rounded-box fallback for all other/custom types (no catalog switch).
+- Frontend: entities/palette (types.ts + api.ts hooks + lib.ts allNodeTypes/enabledNodeTypes); entities/model-graph/types.ts widened (category: string, NodeFieldType/NodeFieldDef, fields?); visual-modeler/NodePalette.tsx rebuilt from DB categories; CanvasPage uses useNodePalette + allNodeTypes/enabledNodeTypes with paletteLoading spinner; InspectorPanel CustomFieldsSection (text/textarea/number/select/boolean bound to metadata[field.key]) + changeType reseeds defaults; useModelerGraph addNode seeds field defaults.
+- Frontend Settings: features/palette-settings/NodePaletteSettingsPanel.tsx (category cards inline edit/disable/delete + NodeTypeCard with FieldDefEditor + kind checkboxes + re-parenting, built-in/in-use guards); SettingsPage tabs = Platform configuration / Node palette / Environment / Reference.
+- Docs: NCAT/NTYP rows in docs/ontology/id-convention.md; docs/features/custom-node-palette.md (FEAT-010, 14 seeds incl. loop demo).
+- Seed: seed-data.ts calls seedNodePalette(db); seed-example regenerated (33 files).
+- Tests: backend/tests/palette.test.ts (15 tests) + node_categories/node_types added to database.test.ts required tables; frontend/tests/palette.test.tsx (7 tests; NodePalette type import aliased NodePaletteData); smoke extended to 256 checks (blocks 19b/19c moved to END because the temp usage graph shifted the GRPH id sequence hard-coded in the links section).
+
+Work partially completed: none.
+
+Blockers: none.
+
+Verified:
+- root bun run typecheck clean; bun run build succeeds (Vite, 526.52 kB JS chunk warning only).
+- backend tests 99/99 PASS (11 files, 568 expect total across root); frontend tests 41/41 PASS (8 files).
+- backend smoke 256/256 PASS (SMOKE TEST OK).
+- seed-example regenerates docs/workspace/generated-example/ (33 files).
+
+Memory files updated:
+- memory/DECISIONS.md (DEC-019), memory/STATE.json, memory/PROJECT_MEMORY.md, memory/NEXT_ACTION.md, memory/SESSION_LOG.md (this entry)
+
+Next action:
+- Execute Prompt 16 (Skills + Final Audit) on "continue". Remaining required scope: only 16-skills-and-final-audit.
+
+## Session — Prompt 16 (Skills + Final Audit) — 2026-08-16
+
+Work completed:
+- Read all memory files + AGENTS.md + MASTER_PROMPT.md + prompts/16-skills-and-final-audit.md; resumed automatically from memory (STATE.json current_prompt_id 16).
+- Schema: additive `skills` table in backend/db/schema.sql (SKL ids project-scoped, project_id FK ON DELETE CASCADE, kind CHECK capability/tech, level CHECK beginner/intermediate/advanced/expert, tag TEXT, sort_order, indexes on project_id and (project_id, kind)) + migration backend/db/migrations/009_skills.sql.
+- Backend skills module (backend/src/modules/skills.ts, registered in app.ts): createSkillSchema/updateSkillSchema (zod), assertKindConsistency (capability requires level; tech rejects level and requires non-empty tag), listSkills/getSkill/createSkill/updateSkill/deleteSkill, routes GET /skills?project=, POST /skills, PATCH /skills/:id, DELETE /skills/:id; validation 400s, unknown project 404; event-logged (entity_type skill).
+- Backend docs generator (generators.ts + workspace.ts): genSkillsDoc (imports listSkills) emits 07-guides/skills.md — Capability Skills + Tech Skills tables + Task tie-in — appended at END of WORKSPACE_FILES (ART ids stable; example export now 34 files); genReadme contents mentions skills.
+- Seed: backend/scripts/seed-data.ts seeds 4 demo skills (SKL-0001 Payments engineering/expert, SKL-0002 Full-stack TypeScript/advanced, SKL-0003 React/frontend, SKL-0004 Node.js/Fastify/backend) with event-log entries.
+- Frontend: entities/skill (types.ts + api hooks useSkills/useCreateSkill/useUpdateSkill/useDeleteSkill invalidating ["skills", projectId] + lib.ts LEVELS/LEVEL_COLORS/skillKindLabel/skillLevelLabel/splitSkills); pages/SkillsPage.tsx (capability + tech two-card layout, inline add/edit forms, level pill vs tag pill, delete, empty/loading/error states); app/App.tsx route /projects/:projectId/skills; AppShell.tsx Skills nav link; ProjectDetailsPage.tsx SECTIONS gains skills entry.
+- Docs: SKL prefix row in docs/ontology/id-convention.md; docs/features/skills.md (FEAT-011); docs/final-audit.md (AUDIT-001, final audit of the Prompt 13–16 scope).
+- Stale-reference fixes: docs/guide.md (17-prompt sequence, §4 execution model table 00–16 with rows 13–16 = real phases, §12 Prompt-13-deferred note → "Prompt 13–16 delivered full scope; deployment in optional backlog"); docs/tutorial-ecommerce.md (prompts/00–16, Step 13 rewritten as Platform configuration (Prompts 13–16), recap rows 13–16).
+- Tests: backend/tests/skills.test.ts (14 tests) + skills added to database.test.ts required tables; frontend/tests/skills.test.tsx (5 tests; fixed TS2532 via optional chaining). Smoke extended to 275 checks (skills block before app.close(): empty list, create capability + tech SKL-0001/0002, list count, patch level, kind-consistency 400s, unknown project 404, docs includes 07-guides/skills.md with Capability/Tech sections + seeded skills, audit logs skill, delete 204/404).
+
+Work partially completed: none.
+
+Blockers: none.
+
+Verified:
+- root bun run typecheck clean; bun run build succeeds (Vite, chunk warning only).
+- backend tests 113/113 PASS (12 files), frontend tests 46/46 PASS (9 files) — 159 pass / 0 fail, 615 expect() calls.
+- backend smoke 275/275 PASS (SMOKE TEST OK).
+- seed-example regenerates docs/workspace/generated-example/ (34 files, ART-0001…ART-0034).
+
+Memory files updated:
+- memory/DECISIONS.md (DEC-020), memory/STATE.json (status completed, all_required_tasks_complete true), memory/PROJECT_MEMORY.md, memory/NEXT_ACTION.md, memory/SESSION_LOG.md (this entry)
+
+Next action:
+- ALL REQUIRED SCOPE (Prompts 00–16) COMPLETE. Deliver the completion report per AGENTS.md, then execute the user's request to commit all changes to master, then wait for explicit approval before any optional backlog work.

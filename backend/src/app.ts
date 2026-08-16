@@ -20,6 +20,9 @@ import { registerGovernanceRoutes } from "./modules/governance/routes";
 import { seedPlatformConfiguration } from "./modules/platform-config/seed";
 import { registerPlatformConfigRoutes } from "./modules/platform-config/routes";
 import { registerLinkRoutes } from "./modules/links/routes";
+import { seedNodePalette } from "./modules/palette/seed";
+import { registerPaletteRoutes } from "./modules/palette/routes";
+import { registerSkillRoutes } from "./modules/skills";
 
 export interface BuildAppOptions {
   config?: Config;
@@ -34,6 +37,9 @@ export async function buildApp(options: BuildAppOptions = {}) {
   // stacks, libraries) so every database has usable defaults without any
   // manual setup step.
   seedPlatformConfiguration(db);
+  // Prompt 15: idempotent built-in node palette (categories + node types) so
+  // the modeler has usable defaults that can be edited from Settings.
+  seedNodePalette(db);
 
   const app = Fastify({ logger: { level: config.LOG_LEVEL } });
   registerErrorHandler(app);
@@ -47,6 +53,8 @@ export async function buildApp(options: BuildAppOptions = {}) {
   registerProjectRoutes(app, deps);
   registerPlatformConfigRoutes(app, deps);
   registerLinkRoutes(app, deps);
+  registerPaletteRoutes(app, deps);
+  registerSkillRoutes(app, deps);
   registerRequirementRoutes(app, deps);
   registerUseCaseRoutes(app, deps);
   registerWorkflowRoutes(app, deps);
