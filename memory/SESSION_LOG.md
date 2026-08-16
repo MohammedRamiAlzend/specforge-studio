@@ -500,3 +500,66 @@ Next action:
 - Execute Prompt 13 (Dynamic Platform Configuration) when the user approves/continues. Prompts 13–16 are the new required scope; no implementation has started.
 
 Awaiting approvals: approval to begin executing the new required scope (Prompts 13–16).
+
+### Session 2026-08-16 — Prompt 13 (platform configuration) implementation
+
+Work completed:
+- Read all memory files + MASTER_PROMPT.md + prompts/13-platform-configuration.md; analyzed schema, modules, tests, docs generator, and FSD structure first.
+- Schema: added 5 additive tables to backend/db/schema.sql (project_types, stacks, libraries, project_type_assignments, project_type_config, project_libraries); marked projects.type DEPRECATED; created backend/db/migrations/006_platform_configuration.sql (idempotent).
+- Backend module backend/src/modules/platform-config/: seed.ts (4 built-in types, 12 stacks, 32 libraries, idempotent, bumps id_sequences) + routes.ts (GET /platform-config full tree; POST/PATCH/DELETE types/stacks/libraries; built-in rows disabled-but-not-deletable, in-use rows 409; event_log audit). Registered in app.ts (seed on boot + routes).
+- backend/src/modules/projects.ts: multi-type create/patch via types[] with full validation (unknown/disabled type, stack-not-in-type, library-not-in-stack, libraries-without-stack); legacy `type` back-compat (mapped to seeded type); enriched types[] in create/get/list/patch responses; primary legacy column derived on patch.
+- Fixed POST /projects handler to return enriched types[] (createProject now returns types via loadProjectTypes).
+- Frontend: entities/platform-config (types.ts + api.ts, all CRUD hooks); features/platform-settings/PlatformSettingsPanel.tsx; features/create-project/CreateProjectForm.tsx rewritten (multi-type toggle grid + per-type stack select + library checkboxes + legacy primary select); widgets/platform-badges/PlatformBadges.tsx; pages/DashboardPage + ProjectDetailsPage (badges); pages/SettingsPage.tsx rebuilt with tabs (Platform configuration / Environment / Reference); entities/project/types.ts extended.
+- Docs generator: genProjectMeta Platform Configuration table + projectTypeSelection helper.
+- docs/ontology/id-convention.md: PTYPE/STK/LIB prefixes added.
+- Seed example: seed-data.ts seeds web + React stack + React Router/Zustand/Tailwind CSS on Acme (fixed FK ordering — project insert must precede assignments); seed-example regenerated (32 files, Platform Configuration table in 00-meta/project.md).
+- Tests: backend/tests/platform-config.test.ts (20 tests) + frontend/tests/platform-config.test.tsx (4 tests); smoke.ts extended to sections 38–39 (204 checks total).
+- Fixes during verification: 5× TS2532 in CreateProjectForm (non-null assertions via keys), seed FK ordering, delete-guard tests switched to custom rows for 409 (built-in = 400).
+
+Work partially completed: none.
+
+Blockers: none.
+
+Verified:
+- backend tsc --noEmit OK; frontend tsc --noEmit OK.
+- backend tests 73/73 PASS (9 files, 329 expect); frontend tests 26/26 PASS (6 files, 74 expect).
+- backend smoke 204/204 PASS (SMOKE TEST OK).
+- seed-example regenerates docs/workspace/generated-example/ (32 files).
+
+Memory files updated:
+- memory/DECISIONS.md (DEC-017), memory/STATE.json, memory/PROJECT_MEMORY.md, memory/NEXT_ACTION.md, memory/SESSION_LOG.md (this entry)
+
+Next action:
+- Execute Prompt 14 (Multi-Project Workspace) on "continue". Remaining required scope: 14-multi-project-workspace, 15-custom-node-palette, 16-skills-and-final-audit.
+
+## Session — Prompt 14 (Multi-Project Workspace) — 2026-08-16
+
+Work completed:
+- Backend schema: additive `project_dependencies` table in backend/db/schema.sql (PDEP ids, FK cascade both sides, kind CHECK in workflow_call/data/deploy/other, UNIQUE(project_id, depends_on_project_id, kind), CHECK no self-link) + 2 indexes; migration backend/db/migrations/007_multi_project_links.sql.
+- Backend links module (backend/src/modules/links/routes.ts, registered in app.ts): dependency CRUD (GET/POST /projects/:id/dependencies, DELETE /projects/:id/dependencies/:depId), GET /projects/:id/dependents (fixed depending_project_id alias), GET /projects/:id/reference-targets (linked-first + others with workflows), GET /projects/:id/workflow-calls (resolved rows).
+- Backend modeler.ts: workflow_call node type (catalog now 13, category system, color #7c3aed); crossProjectRefOf/crossProjectRefStatus; validateGraph options.crossProjectResolves + CROSS_PROJECT_REF_MISSING; assertNodeInputsValid rejects structurally-invalid refs (400); loadGraph + /modeler/validate pass resolution.
+- Backend diagrams: resolveCrossProjectCalls → nested subgraph `subgraph xp_<node id>[<project name> (<project id>)]`; generate + preview both resolve (byte-identical stored/preview).
+- Backend docs: genWorkflowsDoc "Cross-project Calls" section; genProjectDependencies; WORKSPACE_FILES appends 00-meta/dependencies.md at END (ART ids stable; example now 33 files, ART-0033).
+- Backend governance TR-21; validation response shape {errors, warnings, infos, all}; violation labels include broken target.
+- Ontology docs: PDEP prefix, TR-21 (21 rules), README count; guide/tutorial reference counts left for Prompt 16.
+- Frontend: entities/project-link (types + hooks + lib); visual-modeler metadata passthrough; InspectorPanel CrossProjectSection (target dropdown + workflow dropdown + manual GRPH id); widgets/linked-projects/LinkedProjectsCard on ProjectDetailsPage; widgets/project-calls/CrossProjectCalls on WorkflowsPage.
+- Tests: backend/tests/links.test.ts (11 tests) + frontend/tests/links.test.tsx (8 tests); fixed pre-existing TS errors in backend/tests/platform-config.test.ts.
+- Smoke: extended to 226 checks (13 node types; dep CRUD, dependents, cross-project save/resolution, subgraph render, shape-invalid 400, TR-21, dependencies.md, workflows.md Cross-project Calls section, delete).
+- Seed example regenerated (33 files incl. 00-meta/dependencies.md).
+- Deliverable: docs/features/multi-project-links.md (FEAT-009).
+
+Work partially completed: none.
+
+Blockers: none.
+
+Verified:
+- root tsc -b --noEmit OK.
+- backend tests 84/84 PASS (10 files, 381 expect); frontend tests 34/34 PASS (7 files, 102 expect).
+- backend smoke 226/226 PASS (SMOKE TEST OK).
+- seed-example regenerates docs/workspace/generated-example/ (33 files).
+
+Memory files updated:
+- memory/DECISIONS.md (DEC-018), memory/STATE.json, memory/PROJECT_MEMORY.md, memory/NEXT_ACTION.md, memory/SESSION_LOG.md (this entry)
+
+Next action:
+- Execute Prompt 15 (Custom Node Palette) on "continue". Remaining required scope: 15-custom-node-palette, 16-skills-and-final-audit.

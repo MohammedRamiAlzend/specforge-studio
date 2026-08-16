@@ -18,8 +18,17 @@ import {
   todayIso,
   ul,
 } from "./markdown";
-import { generateWorkflow, generateSequence, generateArchitectureFromComponents, generateErd, type DiagramEdge, type DiagramNode } from "../diagrams/generator";
+import {
+  generateWorkflow,
+  generateSequence,
+  generateArchitectureFromComponents,
+  generateErd,
+  resolveCrossProjectCalls,
+  type DiagramEdge,
+  type DiagramNode,
+} from "../diagrams/generator";
 import { erdFromTables } from "../diagrams/routes";
+import { listProjectDependencies, listProjectDependents, workflowCallsForProject } from "../links/routes";
 
 // ---------------------------------------------------------------------------
 // Row shapes
@@ -524,27 +533,78 @@ export function genAgents(ctx: GeneratorContext): string {
 export function genProjectMeta(ctx: GeneratorContext): string {
   const project = getProject(ctx.db, ctx.projectId);
   const modules = listModules(ctx.db, ctx.projectId);
+  const platform = projectTypeSelection(ctx.db, ctx.projectId);
+  const identity = table(
+    ["Field", "Value"],
+    [
+      ["ID", project.id],
+      ["Name", project.name],
+      ["Type", project.type],
+      ["Status", project.status],
+      ["Repository", project.repository_url ?? "—"],
+      ["Created by", project.created_by],
+      ["Created", dateOnly(project.created_at)],
+      ["Updated", dateOnly(project.updated_at)],
+    ],
+  );
+  const typeRows = platform.map((t) => [
+    t.type_id,
+    t.label,
+    `\`${t.key}\``,
+    t.stack_name ?? "—",
+    t.libraries.length === 0 ? "—" : t.libraries.map((l) => l.name).join(", "),
+  ]);
   const body =
     p("# Project Profile") +
-    section("Identity", p(table(
-      ["Field", "Value"],
-      [
-        ["ID", project.id],
-        ["Name", project.name],
-        ["Type", project.type],
-        ["Status", project.status],
-        ["Repository", project.repository_url ?? "—"],
-        ["Created by", project.created_by],
-        ["Created", dateOnly(project.created_at)],
-        ["Updated", dateOnly(project.updated_at)],
-      ],
-    ))) +
+    section("Identity", p(identity)) +
     section("Description", p(project.description ?? "No description provided.")) +
+    section(
+      "Platform Configuration",
+      platform.length === 0
+        ? p("No platform types assigned yet.")
+        : table(["Type ID", "Type", "Key", "Stack", "Libraries"], typeRows),
+    ) +
     section("Modules", modules.length === 0
       ? p("No modules defined yet.")
       : table(["ID", "Module", "Owner", "Status"], modules.map((m) => [m.id, m.name, m.owner_role ?? "—", statusBadge(m.status)])));
 
   return frontmatterFor(ctx, "Project Profile", "project") + body;
+}
+
+interface ProjectTypeSelectionRow {
+  type_id: string;
+  label: string;
+  key: string;
+  stack_id: string | null;
+  stack_name: string | null;
+}
+
+/** Loads a project's platform type selection (types + chosen stack + libraries). */
+export function projectTypeSelection(db: Database, projectId: string): (ProjectTypeSelectionRow & {
+  libraries: { id: string; name: string }[];
+})[] {
+  const rows = db
+    .query(
+      `SELECT pt.id AS type_id, pt.label, pt.key, ptc.stack_id AS stack_id, st.name AS stack_name
+       FROM project_type_assignments pta
+       JOIN project_types pt ON pt.id = pta.type_id
+       LEFT JOIN project_type_config ptc ON ptc.project_id = pta.project_id AND ptc.type_id = pta.type_id
+       LEFT JOIN stacks st ON st.id = ptc.stack_id
+       WHERE pta.project_id = ?
+       ORDER BY pt.sort_order, pt.id`,
+    )
+    .all(projectId) as (ProjectTypeSelectionRow & { stack_id: string | null; stack_name: string | null })[];
+  const libraryQuery = db.query(
+    `SELECT lib.id, lib.name
+     FROM project_libraries pl
+     JOIN libraries lib ON lib.id = pl.library_id
+     WHERE pl.project_id = ? AND pl.type_id = ?
+     ORDER BY lib.name`,
+  );
+  return rows.map((row) => ({
+    ...row,
+    libraries: libraryQuery.all(projectId, row.type_id) as { id: string; name: string }[],
+  }));
 }
 
 export function genIdRegistry(ctx: GeneratorContext): string {
@@ -805,11 +865,12 @@ export function genLld(ctx: GeneratorContext): string {
 export function genWorkflowsDoc(ctx: GeneratorContext): string {
   const workflows = listWorkflows(ctx.db, ctx.projectId);
   const graphs = listGraphs(ctx.db, ctx.projectId, "workflow");
+  const calls = workflowCallsForProject(ctx.db, ctx.projectId);
 
   const graphSections = graphs.map((graph) => {
     const nodes = toDiagramNodes(graphNodes(ctx.db, graph.id));
     const edges = toDiagramEdges(graphEdges(ctx.db, graph.id));
-    const result = generateWorkflow(nodes, edges);
+    const result = generateWorkflow(nodes, edges, resolveCrossProjectCalls(ctx.db, nodes));
     return h(3, `${graph.id} — ${graph.name}`) +
       p(`Status: ${statusBadge(graph.status)}${graph.description ? " · " + graph.description : ""}`) +
       mermaidBlock(result.mermaid) +
@@ -818,6 +879,22 @@ export function genWorkflowsDoc(ctx: GeneratorContext): string {
         : "");
   }).join("\n");
 
+  const callSections = graphs
+    .map((graph) => {
+      const graphCalls = calls.filter((c) => c.workflow_id === graph.id);
+      if (graphCalls.length === 0) return "";
+      return h(3, `${graph.id} — ${graph.name}`) +
+        table(
+          ["Caller node", "Target project", "Target workflow"],
+          graphCalls.map((c) => [
+            `${c.node_id} (${c.node_title})`,
+            `${c.target_project_id} — ${c.target_project_name}`,
+            `${c.target_graph_id} — ${c.target_graph_name}`,
+          ]),
+        );
+    })
+    .join("\n");
+
   const body =
     p("# Workflows") +
     section("Workflow Models", graphs.length === 0
@@ -825,13 +902,58 @@ export function genWorkflowsDoc(ctx: GeneratorContext): string {
           ? p("No workflows defined yet. Model workflows visually in the Visual Modeler (Prompt 07 surface).")
           : p("Workflow records exist but no visual models yet: " + ul(workflows.map((w) => `${w.id} — ${w.name} (${statusBadge(w.status)})`))))
       : graphSections) +
+    (calls.length > 0
+      ? section("Cross-project Calls", p("These workflows call workflows located in other projects (workflow_call nodes):") + callSections)
+      : "") +
     section("Rules", ul([
       "Every workflow has a start and an end.",
       "Decision nodes require conditions on outgoing edges (TR-04).",
+      "Cross-project workflow calls point at a workflow-kind graph of another project (TR-21).",
       "Diagrams are generated from structured data — never hand-written Mermaid.",
     ]));
 
   return frontmatterFor(ctx, "Workflows", "index", { related: workflows.map((w) => w.id) }) + body;
+}
+
+export function genProjectDependencies(ctx: GeneratorContext): string {
+  const outgoing = listProjectDependencies(ctx.db, ctx.projectId);
+  const inbound = listProjectDependents(ctx.db, ctx.projectId);
+  const body =
+    p("# Project Dependencies") +
+    section("Purpose", p("Explicit, declared links between projects in this workspace (Prompt 14). A dependency means this project relies on the target project — for workflow calls, shared data, deployment, or other reasons. Per-project exports stay isolated: this file lists the dependency metadata only, never the target project's artifacts.")) +
+    section("Outgoing Dependencies", outgoing.length === 0
+      ? p("No outgoing dependencies declared yet.")
+      : table(
+          ["ID", "Depends on", "Kind", "Note"],
+          outgoing.map((d) => [
+            d.id,
+            `${d.depends_on_project_id} — ${d.depends_on_project_name} (${statusBadge(d.depends_on_project_type)}, ${statusBadge(d.depends_on_project_status)})`,
+            `\`${d.kind}\``,
+            d.note ?? "—",
+          ]),
+        )) +
+    section("Incoming Dependents", inbound.length === 0
+      ? p("No projects declare a dependency on this project.")
+      : table(
+          ["ID", "Depending project", "Kind", "Note"],
+          inbound.map((d) => [
+            d.id,
+            `${d.depending_project_id} — ${d.depending_project_name} (${statusBadge(d.depending_project_type)}, ${statusBadge(d.depending_project_status)})`,
+            `\`${d.kind}\``,
+            d.note ?? "—",
+          ]),
+        )) +
+    section("Kinds", table(
+      ["Kind", "Meaning"],
+      [
+        ["workflow_call", "The project calls workflows of the target project (workflow_call nodes)."],
+        ["data", "The project shares or consumes the target project's data model."],
+        ["deploy", "The project deploys to shared infrastructure with the target project."],
+        ["other", "Any other declared dependency."],
+      ],
+    ));
+
+  return frontmatterFor(ctx, "Project Dependencies", "index") + body;
 }
 
 export function genErdDoc(ctx: GeneratorContext): string {

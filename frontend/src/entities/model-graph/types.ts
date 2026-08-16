@@ -68,6 +68,13 @@ export interface ModelGraphPayload {
   warnings: ValidationWarning[];
 }
 
+/** Cross-project reference stored on a workflow_call node (Prompt 14). */
+export interface CrossProjectRef {
+  project_id: string;
+  graph_id: string;
+  node_id?: string | null;
+}
+
 export interface NodeDraft {
   key: string;
   type: string;

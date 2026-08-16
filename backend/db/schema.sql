@@ -45,6 +45,9 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 CREATE TABLE IF NOT EXISTS projects (
   id             TEXT PRIMARY KEY,                      -- PRJ-0001
   name           TEXT NOT NULL,
+  -- DEPRECATED (Prompt 13): legacy primary type for backward compatibility.
+  -- The source of truth for a project's full type set is
+  -- project_type_assignments (see the Platform configuration section below).
   type           TEXT NOT NULL CHECK (type IN ('web','mobile','api','ai')),
   description    TEXT,
   repository_url TEXT,
@@ -714,3 +717,117 @@ CREATE TABLE IF NOT EXISTS artifact_governance (
   PRIMARY KEY (artifact_type, artifact_id)
 );
 CREATE INDEX IF NOT EXISTS idx_artifact_governance_project ON artifact_governance(project_id);
+
+-- ---------------------------------------------------------------------------
+-- Platform configuration (Prompt 13)
+-- ---------------------------------------------------------------------------
+-- Project platform types, stacks, and libraries are fully dynamic and stored
+-- here (managed from the global Settings page) instead of hardcoded enum
+-- values. A project can carry MULTIPLE types; per type it may optionally pick
+-- one stack and any libraries of that stack. `projects.type` is DEPRECATED:
+-- it remains only as the legacy primary type for backward compatibility —
+-- the source of truth for a project's full type set is
+-- project_type_assignments (+ project_type_config / project_libraries).
+
+CREATE TABLE IF NOT EXISTS project_types (
+  id          TEXT PRIMARY KEY,                          -- PTYPE-0001
+  key         TEXT NOT NULL UNIQUE,                      -- web|mobile|api|ai|custom...
+  label       TEXT NOT NULL,
+  description TEXT,
+  color       TEXT,
+  icon        TEXT,
+  sort_order  INTEGER NOT NULL DEFAULT 0,
+  enabled     INTEGER NOT NULL DEFAULT 1,                -- disabled rows hide from creation but stay readable
+  built_in    INTEGER NOT NULL DEFAULT 0,                -- built-in rows may be edited/disabled but not deleted
+  created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_project_types_enabled ON project_types(enabled);
+
+CREATE TABLE IF NOT EXISTS stacks (
+  id          TEXT PRIMARY KEY,                          -- STK-0001
+  type_id     TEXT NOT NULL REFERENCES project_types(id) ON DELETE CASCADE,
+  name        TEXT NOT NULL,
+  language    TEXT,
+  description TEXT,
+  sort_order  INTEGER NOT NULL DEFAULT 0,
+  enabled     INTEGER NOT NULL DEFAULT 1,
+  built_in    INTEGER NOT NULL DEFAULT 0,
+  created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  UNIQUE (type_id, name)
+);
+CREATE INDEX IF NOT EXISTS idx_stacks_type ON stacks(type_id);
+
+CREATE TABLE IF NOT EXISTS libraries (
+  id          TEXT PRIMARY KEY,                          -- LIB-0001
+  stack_id    TEXT NOT NULL REFERENCES stacks(id) ON DELETE CASCADE,
+  name        TEXT NOT NULL,
+  purpose     TEXT,
+  category    TEXT,                                      -- free text: smtp|api-docs|auth|orm|logging|...
+  url         TEXT,
+  sort_order  INTEGER NOT NULL DEFAULT 0,
+  enabled     INTEGER NOT NULL DEFAULT 1,
+  built_in    INTEGER NOT NULL DEFAULT 0,
+  created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  UNIQUE (stack_id, name)
+);
+CREATE INDEX IF NOT EXISTS idx_libraries_stack ON libraries(stack_id);
+
+-- Multi-type projects: which project types a project carries.
+CREATE TABLE IF NOT EXISTS project_type_assignments (
+  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  type_id    TEXT NOT NULL REFERENCES project_types(id) ON DELETE CASCADE,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  PRIMARY KEY (project_id, type_id)
+);
+CREATE INDEX IF NOT EXISTS idx_pta_project ON project_type_assignments(project_id);
+CREATE INDEX IF NOT EXISTS idx_pta_type ON project_type_assignments(type_id);
+
+-- Per-type stack choice for a project (one stack per project type).
+CREATE TABLE IF NOT EXISTS project_type_config (
+  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  type_id    TEXT NOT NULL REFERENCES project_types(id) ON DELETE CASCADE,
+  stack_id   TEXT REFERENCES stacks(id) ON DELETE SET NULL,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  PRIMARY KEY (project_id, type_id)
+);
+CREATE INDEX IF NOT EXISTS idx_ptc_project ON project_type_config(project_id);
+CREATE INDEX IF NOT EXISTS idx_ptc_stack ON project_type_config(stack_id);
+
+-- Library selections for a project across its types (libraries of chosen stacks).
+CREATE TABLE IF NOT EXISTS project_libraries (
+  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  type_id    TEXT NOT NULL REFERENCES project_types(id) ON DELETE CASCADE,
+  library_id TEXT NOT NULL REFERENCES libraries(id) ON DELETE CASCADE,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  PRIMARY KEY (project_id, type_id, library_id)
+);
+CREATE INDEX IF NOT EXISTS idx_project_libraries_project ON project_libraries(project_id);
+CREATE INDEX IF NOT EXISTS idx_project_libraries_library ON project_libraries(library_id);
+
+-- ---------------------------------------------------------------------------
+-- Multi-project workspace links (Prompt 14)
+-- ---------------------------------------------------------------------------
+-- Explicit project-level dependencies: a project declares that it depends on
+-- another project, with a kind and an optional note. Self-links are rejected
+-- (CHECK); application layer re-validates and returns 400. Cycles are allowed
+-- and reported as warnings by the governance validation (TR-21).
+-- Cross-project workflow calls themselves are stored on model_nodes.metadata
+-- (cross_project = { project_id, graph_id, node_id? }) and validated by the
+-- modeler module; this table only records the declared project links.
+
+CREATE TABLE IF NOT EXISTS project_dependencies (
+  id                    TEXT PRIMARY KEY,                   -- PDEP-0001
+  project_id            TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  depends_on_project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  kind                  TEXT NOT NULL CHECK (kind IN ('workflow_call','data','deploy','other')),
+  note                  TEXT,
+  created_at            TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  UNIQUE (project_id, depends_on_project_id, kind),
+  CHECK (project_id <> depends_on_project_id)
+);
+CREATE INDEX IF NOT EXISTS idx_project_dependencies_project ON project_dependencies(project_id);
+CREATE INDEX IF NOT EXISTS idx_project_dependencies_depends ON project_dependencies(depends_on_project_id);

@@ -39,12 +39,13 @@ Every rule has an ID (TR-xx), a statement, and a verification method. The tracea
 | TR-18 | Every Component should appear in at least one ArchitectureDiagram. | Report warning |
 | TR-19 | Every Risk should have a mitigation or be explicitly accepted. | Report warning |
 | TR-20 | Every approved Requirement should have at least one Task referencing it. | Report warning |
+| TR-21 | Every cross-project workflow call (workflow_call node) must resolve to an existing workflow-kind graph of another project. | Report warning |
 
 ## 3. Traceability Report
 
 The generated traceability report must include:
 
-1. Rule-by-rule pass/fail status (TR-01 … TR-20).
+1. Rule-by-rule pass/fail status (TR-01 … TR-21).
 2. Lists of violating entity IDs.
 3. Coverage metrics per requirement (linked UC/WF/TASK/TC count).
 4. Orphan and dangling-reference lists.

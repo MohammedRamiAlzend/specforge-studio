@@ -1,10 +1,20 @@
 import { Link, useParams } from "react-router-dom";
 import { useProject } from "../entities/project/api";
+import {
+  useCreateProjectDependency,
+  useDeleteProjectDependency,
+  useProjectDependencies,
+  useProjectDependents,
+  useReferenceTargets,
+} from "../entities/project-link/api";
 import { StatusSelect } from "../features/project-status/StatusSelect";
 import { Card } from "../shared/ui/Card";
 import { PageHeader } from "../shared/ui/PageHeader";
 import { ErrorState } from "../shared/ui/States";
 import { formatDate } from "../shared/lib/format";
+import { PlatformBadges } from "../widgets/platform-badges/PlatformBadges";
+import { LinkedProjectsCard } from "../widgets/linked-projects/LinkedProjectsCard";
+import { errorMessage } from "../shared/api/client";
 
 const SECTIONS = [
   { to: "workflows", title: "Workflows", blurb: "Business processes with start, end, and decision branches." },
@@ -17,6 +27,11 @@ const SECTIONS = [
 export function ProjectDetailsPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const { data: project, isLoading, error } = useProject(projectId);
+  const { data: outgoing } = useProjectDependencies(projectId);
+  const { data: incoming } = useProjectDependents(projectId);
+  const { data: targets } = useReferenceTargets(projectId);
+  const createDependency = useCreateProjectDependency(projectId);
+  const deleteDependency = useDeleteProjectDependency(projectId);
 
   if (error) return <ErrorState message={error.message} />;
   if (isLoading || !project) {
@@ -32,12 +47,13 @@ export function ProjectDetailsPage() {
     <div className="space-y-6">
       <PageHeader
         title={project.name}
-        description={`${project.type.toUpperCase()} project · ${project.id}`}
+        description={`${project.id}${project.types && project.types.length > 0 ? ` · ${project.types.map((t) => t.label).join(" + ")}` : ` · ${project.type.toUpperCase()} project`}`}
         actions={<StatusSelect projectId={project.id} status={project.status} />}
       />
 
       <Card className="p-5">
-        <p className="text-sm text-slate-600">
+        {project.types && project.types.length > 0 ? <PlatformBadges types={project.types} /> : null}
+        <p className={`text-sm text-slate-600 ${project.types && project.types.length > 0 ? "mt-3" : ""}`}>
           {project.description ?? "No description provided yet."}
         </p>
         <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-2 text-xs sm:grid-cols-4">
@@ -72,6 +88,22 @@ export function ProjectDetailsPage() {
           </Link>
         ))}
       </div>
+
+      <LinkedProjectsCard
+        outgoing={outgoing ?? []}
+        incoming={incoming ?? []}
+        targets={targets ?? []}
+        adding={createDependency.isPending}
+        onAdd={(input) => createDependency.mutate(input)}
+        onRemove={(depId) => deleteDependency.mutate(depId)}
+      />
+
+      {createDependency.isError ? (
+        <p className="text-xs text-rose-600">{errorMessage(createDependency.error)}</p>
+      ) : null}
+      {deleteDependency.isError ? (
+        <p className="text-xs text-rose-600">{errorMessage(deleteDependency.error)}</p>
+      ) : null}
     </div>
   );
 }

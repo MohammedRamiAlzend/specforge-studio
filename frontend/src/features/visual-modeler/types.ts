@@ -24,6 +24,8 @@ export type ModelerNodeData = {
   postconditions: string[];
   relatedArtifacts: string[];
   meta: NodeTypeMeta;
+  /** Kind-specific extra metadata (e.g. cross_project on workflow_call nodes). */
+  metadata?: Record<string, unknown> | null;
   /** Canonical server ID after the last save (null before first save). */
   serverId: string | null;
 };
@@ -71,6 +73,7 @@ export function serverNodeToRf(node: ModelNode, catalog: ModelNodeType[]): Model
       postconditions: node.postconditions,
       relatedArtifacts: node.related_artifacts,
       meta: metaForType(node.node_type, catalog),
+      metadata: node.metadata,
       serverId: node.id,
     },
   };

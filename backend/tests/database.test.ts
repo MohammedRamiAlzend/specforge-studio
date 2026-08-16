@@ -50,6 +50,12 @@ describe("schema", () => {
       "roadmap_tasks",
       "roadmap_task_dependencies",
       "artifact_governance",
+      "project_types",
+      "stacks",
+      "libraries",
+      "project_type_assignments",
+      "project_type_config",
+      "project_libraries",
     ];
     for (const table of required) {
       expect(names.has(table), `missing table ${table}`).toBe(true);

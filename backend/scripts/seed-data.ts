@@ -16,6 +16,7 @@ import type { Database } from "bun:sqlite";
 import { storeRoadmap } from "../src/modules/roadmap/routes";
 import { materializeTaskPack } from "../src/modules/agent-tasks/packager";
 import { logEvent } from "../src/utils/events";
+import { seedPlatformConfiguration } from "../src/modules/platform-config/seed";
 
 export interface SeedOptions {
   projectId?: string;
@@ -43,6 +44,11 @@ export function seedDemoProject(db: Database, opts: SeedOptions = {}): SeedResul
   const nid = (n: number) => `${graphId}-N${String(n).padStart(2, "0")}`;
   const eid = (n: number) => `${graphId}-E${String(n).padStart(2, "0")}`;
 
+  // Prompt 13: the demo project carries a full platform configuration
+  // (types + stack + libraries). Seeds the built-in defaults first so the
+  // selection tables can reference them deterministically.
+  seedPlatformConfiguration(db);
+
   db.query(
     `INSERT INTO projects (id, name, type, description, repository_url, status, created_by, created_at, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
@@ -57,6 +63,28 @@ export function seedDemoProject(db: Database, opts: SeedOptions = {}): SeedResul
     now(),
     now(),
   );
+
+  db.query(
+    `INSERT INTO project_type_assignments (project_id, type_id)
+     VALUES (?, (SELECT id FROM project_types WHERE key = 'web'))`,
+  ).run(projectId);
+  db.query(
+    `INSERT INTO project_type_config (project_id, type_id, stack_id)
+     VALUES (?, (SELECT id FROM project_types WHERE key = 'web'),
+               (SELECT st.id FROM stacks st
+                  JOIN project_types pt ON pt.id = st.type_id
+                 WHERE pt.key = 'web' AND st.name = 'React'))`,
+  ).run(projectId);
+  for (const libName of ["React Router", "Zustand", "Tailwind CSS"]) {
+    db.query(
+      `INSERT INTO project_libraries (project_id, type_id, library_id)
+       SELECT ?, pt.id, lib.id
+         FROM project_types pt, libraries lib
+         JOIN stacks st ON st.id = lib.stack_id
+        WHERE pt.key = 'web' AND lib.name = ?
+          AND st.type_id = pt.id AND st.name = 'React'`,
+    ).run(projectId, libName);
+  }
 
   db.query("INSERT INTO modules (id, project_id, name, description, owner_role, sort_order, status) VALUES (?, ?, ?, ?, ?, ?, ?)").run(
     "MOD-0001", projectId, "Catalog", "Product catalog, search, and detail views.", "product", 1, "active",

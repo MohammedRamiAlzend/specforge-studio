@@ -34,4 +34,5 @@ flowchart TD
 
 - Every workflow has a start and an end.
 - Decision nodes require conditions on outgoing edges (TR-04).
+- Cross-project workflow calls point at a workflow-kind graph of another project (TR-21).
 - Diagrams are generated from structured data — never hand-written Mermaid.

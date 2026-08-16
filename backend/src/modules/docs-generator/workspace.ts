@@ -19,6 +19,7 @@ import {
   genLld,
   genMasterPlan,
   genMilestones,
+  genProjectDependencies,
   genProjectMeta,
   genReadme,
   genRiskRegister,
@@ -87,6 +88,8 @@ export const WORKSPACE_FILES: WorkspaceFileSpec[] = [
   { path: "09-agent-plans/tasks.md", type: "index", title: "Task Packs", generate: genTasks },
   { path: "09-agent-plans/checklists.md", type: "index", title: "Executable Checklists", generate: genChecklists },
   { path: "09-agent-plans/agent-guide.md", type: "guide", title: "Agent Guide", generate: genAgentGuide },
+  // Prompt 14: appended at the end so existing ART ids never shift.
+  { path: "00-meta/dependencies.md", type: "index", title: "Project Dependencies", generate: genProjectDependencies },
 ];
 
 /**

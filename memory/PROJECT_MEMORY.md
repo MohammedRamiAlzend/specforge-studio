@@ -54,13 +54,13 @@ Agent behavior:
 ## Current State
 
 Current phase:
-- platform-configuration (pending — plans created, no implementation started)
+- multi-project-workspace (completed — Prompt 14 done; Prompt 15 starts on "continue")
 
 Current prompt:
-- 13-platform-configuration
+- 15-custom-node-palette
 
 Status:
-- plans_created_awaiting_approval (Prompts 00–12 complete; old Prompt 13 — deployment and final audit — REMOVED from required scope by user request and replaced with new required Prompts 13–16; plans created; implementation starts when the user approves/continues)
+- in_progress (Prompts 00–14 complete; remaining required scope: 15-custom-node-palette, 16-skills-and-final-audit)
 
 ## Completed Work
 
@@ -161,12 +161,35 @@ Status:
   - Scripts: root `bun test backend/tests frontend/tests`, backend + frontend `test` scripts; test dirs added to root tsconfig include (tests are typechecked).
   - Verified: 75/75 tests PASS (53 backend + 22 frontend); root tsc -b --noEmit clean; backend smoke 185/185 PASS; seed-example regenerates.
   - Recorded DEC-014 in memory/DECISIONS.md.
+- Prompt 13 (platform configuration) — completed 2026-08-16:
+  - Schema: five additive tables project_types, stacks, libraries, project_type_assignments, project_type_config, project_libraries in backend/db/schema.sql (+ migration backend/db/migrations/006_platform_configuration.sql, idempotent); `projects.type` marked DEPRECATED but kept for back-compat.
+  - Backend (backend/src/modules/platform-config/): seed.ts seeds 4 built-in types (web/mobile/api/ai PTYPE-0001…), 12 stacks (STK-0001…), 32 libraries (LIB-0001…) idempotently on boot (bumps id_sequences); routes.ts exposes GET /platform-config (full tree) + POST/PATCH/DELETE for types/stacks/libraries. Built-in rows editable/disableable but never hard-deletable (400); rows referenced by any project cannot be deleted (409 CONFLICT). All changes logged to event_log (project_type/stack/library created/updated).
+  - Backend (backend/src/modules/projects.ts): create/patch accept `types[]` (type_id + stack_id + library_ids); validation rejects unknown/disabled types, stacks not belonging to the type, libraries not belonging to the chosen stack, libraries without a stack; legacy `type` key still works (mapped to seeded type when types omitted); responses include enriched `types[]` (key, label, color, stack id/name/language, libraries) via loadProjectTypes; patch derives the legacy type column from the first assignment.
+  - Backend (app.ts): imports + calls seedPlatformConfiguration(db); registers registerPlatformConfigRoutes.
+  - Docs generator: genProjectMeta emits a Platform Configuration table + projectTypeSelection helper.
+  - Frontend: entities/platform-config (types + all CRUD hooks); features/platform-settings/PlatformSettingsPanel (type cards, stack blocks, library lists, add/edit/disable/delete); features/create-project/CreateProjectForm rewritten for multi-type toggle grid + per-type stack select + library checkboxes + legacy primary select; widgets/platform-badges/PlatformBadges on Dashboard + ProjectDetails; pages/SettingsPage rebuilt with tabs (Platform configuration / Environment / Reference).
+  - Seed example: seed-data.ts seeds web + React stack + React Router/Zustand/Tailwind CSS onto Acme PRJ-0001 (fixed FK ordering); seed-example regenerates docs/workspace/generated-example/ (32 files incl. Platform Configuration table in 00-meta/project.md).
+  - Tests: backend/tests/platform-config.test.ts (20 tests: seeds, multi-type create/patch, enriched responses, validation failures, back-compat creation, Settings CRUD, built-in/used delete guards, audit events); frontend/tests/platform-config.test.tsx (4 tests: PlatformBadges, loading states).
+  - Verified: backend 73/73 tests PASS (9 files), frontend 26/26 tests PASS (6 files), both typechecks PASS, backend smoke extended to 204 checks — all PASS.
+  - Deliverable: docs/features/platform-configuration.md (FEAT-008).
+  - Recorded DEC-017 in memory/DECISIONS.md.
+- Prompt 14 (multi-project workspace) — completed 2026-08-16:
+  - Schema: additive `project_dependencies` table in backend/db/schema.sql (PDEP ids, FK cascade on both sides, kind CHECK in workflow_call/data/deploy/other, UNIQUE(project_id, depends_on_project_id, kind), CHECK no self-link) + 2 indexes (+ migration backend/db/migrations/007_multi_project_links.sql).
+  - Backend (backend/src/modules/links/routes.ts, registered in app.ts): dependency CRUD (GET/POST /projects/:id/dependencies, DELETE /projects/:id/dependencies/:depId, GET /projects/:id/dependents incl. depending_project_id alias), GET /projects/:id/reference-targets (linked projects first, then all others, each with its workflow graphs — powers the modeler picker), GET /projects/:id/workflow-calls (resolved caller→target rows).
+  - Backend (backend/src/modules/modeler.ts): new `workflow_call` node type (category system, color #7c3aed); exported CrossProjectRef, crossProjectRefOf, crossProjectRefStatus; validateGraph accepts options.crossProjectResolves and emits CROSS_PROJECT_REF_MISSING; assertNodeInputsValid rejects structurally-invalid refs with 400; loadGraph + /modeler/validate pass cross-project resolution.
+  - Backend diagrams (generator.ts + routes.ts): resolveCrossProjectCalls(db, nodes) → Map; generateWorkflow renders resolved calls as nestˢubgraph `subgraph xp_<node id>[<project name> (<project id>)]`; CROSS_PROJECT_REF_MISSING warning otherwise; generate + preview both resolve so stored/preview stay byte-identical.
+  - Backend docs (generators.ts + workspace.ts): genWorkflowsDoc adds "Cross-project Calls" section; new genProjectDependencies; WORKSPACE_FILES appends `00-meta/dependencies.md` at END so existing ART ids never shift (example export now 33 files, dependencies.md = ART-0033).
+  - Backend governance (routes.ts): TR-21 check for workflow_call targets; response shape {errors, warnings, infos, all} (tests read .data.all); violation labels name the caller node + broken target.
+  - Ontology docs: PDEP prefix row in id-convention.md; TR-21 added (21 rules, README count updated).
+  - Frontend: entities/project-link (types + api hooks + lib: dependencyKindLabel, DEPENDENCY_KINDS, buildCrossProjectMetadata, crossProjectRefOf); model-graph CrossProjectRef type; visual-modeler metadata passthrough (ModelerNodeData.metadata, serverNodeToRf, useModelerGraph drafts); InspectorPanel CrossProjectSection (target project dropdown, workflow dropdown for linked projects, manual GRPH id input, projectId prop); widgets/linked-projects/LinkedProjectsCard (add form, outgoing/incoming with kind labels + statuses, remove, empty states, hides already-linked targets) on ProjectDetailsPage; widgets/project-calls/CrossProjectCalls on WorkflowsPage.
+  - Tests: backend/tests/links.test.ts (11 tests: dep CRUD + 409/400 self-link, reference-targets linked-first + unlinked third project, workflow_call save/400/missing-ref warning/draft validate, workflow-calls resolution, generate-vs-preview byte-identical subgraph, TR-21 persistent-broken ref) — all PASS; frontend/tests/links.test.tsx (8 tests: lib helpers + LinkedProjectsCard + CrossProjectCalls static render) — all PASS. Fixed pre-existing type errors in backend/tests/platform-config.test.ts.
+  - Verified: backend 84/84 tests PASS (10 files), frontend 34/34 tests PASS (7 files), root tsc -b --noEmit clean, backend smoke extended to 226 checks (13 node types; dep CRUD, dependents with including project, cross-project save + resolved workflow-calls, subgraph render, shape-invalid 400, TR-21 clean after valid call, workflows.md Cross-project Calls section, dependencies.md in export, delete) — all PASS. Seed example regenerated (33 files).
+  - Deliverable: docs/features/multi-project-links.md (FEAT-009).
+  - Recorded DEC-018 in memory/DECISIONS.md.
 
 ## Pending Work
 
-Required phases pending (replaced the removed 13-deployment-and-final-audit per DEC-015):
-- 13-platform-configuration — dynamic project types, stacks, libraries; multi-type projects; creation form with stack/library selection; global Settings UI (DEC-016)
-- 14-multi-project-workspace — explicit linked projects (project_dependencies, PDEP); cross-project workflow calls via dropdown + manual ID (workflow_call node); diagram/docs rendering
+Required phases pending:
 - 15-custom-node-palette — DB-backed node categories/types (NCAT/NTYP) with custom fields; Settings editors; modeler reads palette from DB; generic custom-node rendering
 - 16-skills-and-final-audit — per-project Skills section (capability + tech, SKL); per-project docs integration (skills/platform config/dependencies); final audit of the 13–16 scope; fix stale Prompt-13 references in docs/guide.md + docs/tutorial-ecommerce.md
 
@@ -202,7 +225,7 @@ All future decisions must be recorded in:
 
 ## Next Action
 
-Execute Prompt 13 (platform-configuration) when the user says "continue" or otherwise approves. The new required scope is Prompts 13–16 (see STATE.json). The plans exist in prompts/13-platform-configuration.md, prompts/14-multi-project-workspace.md, prompts/15-custom-node-palette.md, prompts/16-skills-and-final-audit.md. No implementation has started (user chose "create plans only").
+Execute Prompt 15 (custom-node-palette) when the user says "continue". The remaining required scope is Prompts 15–16 (see STATE.json). Prompt 14 (multi-project workspace) is fully complete and verified (see Completed Work).
 
 ## Completion Policy
 
@@ -234,4 +257,6 @@ The agent must never start optional work without approval.
 - Freebuff preview commands: install `bun install`, dev `bun run dev` (port 5173), build `bun run build`. Root dev runs backend + frontend concurrently; preview is a real web app.
 - Preview is RUNNING and verified (2026-08-16, user deferred old Prompt 13): https://5173-7cda6598-6ac8-43d9-b39b-563aae04b353.daytonaproxy01.net — root 200, /api/healthz 200, /api/projects 200. Two fixes were required to make it work: (1) backend dev script pins `PORT=3000` because Freebuff injects PORT=5173 which collided with Vite (EADDRINUSE); (2) the Vite /api proxy now rewrites/strips the /api prefix because backend routes are unprefixed (was 404 on every API call). server.hmr: false preserved.
 - Frontend is a full FSD app; visual modeler (Prompt 07) at /projects/:id/modeler, diagrams (Prompt 08) at /projects/:id/diagrams, docs export (Prompt 09) at /projects/:id/docs, roadmap (Prompt 10) at /projects/:id/roadmap with generate + task-pack packaging, and governance (Prompt 11) at /projects/:id/governance with status/approvals/validation/traceability tabs. Testing and validation (Prompt 12) complete: 75/75 tests PASS, backend smoke 185/185.
-- SCOPE CHANGE (2026-08-16, DEC-015/DEC-016): old Prompt 13 (deployment-and-final-audit) was REMOVED from required scope by user request and replaced with new required Prompts 13–16 (platform configuration, multi-project workspace, custom node palette, skills + final audit). Plans created in prompts/ (files 13–16); prompts/README.md updated; no implementation started yet (user chose "create plans only"). Deployment deliverables moved to the optional backlog. Known stale references to fix during Prompt 16: docs/guide.md "14-prompt execution model" and docs/tutorial-ecommerce.md "deployment (pending)".
+- SCOPE CHANGE (2026-08-16, DEC-015/DEC-016): old Prompt 13 (deployment-and-final-audit) was REMOVED from required scope by user request and replaced with new required Prompts 13–16 (platform configuration, multi-project workspace, custom node palette, skills + final audit). Plans created in prompts/ (files 13–16); prompts/README.md updated. Deployment deliverables moved to the optional backlog. Known stale references to fix during Prompt 16: docs/guide.md "14-prompt execution model" and docs/tutorial-ecommerce.md "deployment (pending)".
+- PLATFORM CONFIGURATION COMPLETE (2026-08-16, DEC-017): Prompt 13 delivered DB-backed project types/stacks/libraries (migration 006), /platform-config CRUD with built-in/used delete guards, multi-type project creation with enriched types[] responses, legacy projects.type kept back-compatible, Settings > Platform configuration tab, multi-type CreateProjectForm, PlatformBadges, docs Platform Configuration table, PTYPE/STK/LIB prefixes. Verified: backend 73/73 tests, frontend 26/26 tests, both typechecks, backend smoke 204/204, seed-example regenerated.
+- MULTI-PROJECT WORKSPACE COMPLETE (2026-08-16, DEC-018): Prompt 14 delivered project_dependencies (PDEP, migration 007) with CRUD/dependents/reference-targets/workflow-calls APIs, workflow_call modeler node with cross-project metadata (validated 400 on malformed refs, CROSS_PROJECT_REF_MISSING on missing targets), nested-subgraph Mermaid rendering (byte-identical generate/preview), dependencies.md workspace file (ART-0033), TR-21 governance rule, InspectorPanel cross-project picker + manual GRPH id, LinkedProjectsCard + CrossProjectCalls widgets, links tests (backend 11, frontend 8). Verified: backend 84/84 tests, frontend 34/34 tests, root typecheck, smoke 226/226, seed-example 33 files. FEAT-009. Remaining required scope: Prompts 15–16.

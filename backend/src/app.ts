@@ -17,6 +17,9 @@ import { registerDocsGeneratorRoutes } from "./modules/docs-generator/routes";
 import { registerRoadmapRoutes } from "./modules/roadmap/routes";
 import { registerAgentTaskRoutes } from "./modules/agent-tasks/routes";
 import { registerGovernanceRoutes } from "./modules/governance/routes";
+import { seedPlatformConfiguration } from "./modules/platform-config/seed";
+import { registerPlatformConfigRoutes } from "./modules/platform-config/routes";
+import { registerLinkRoutes } from "./modules/links/routes";
 
 export interface BuildAppOptions {
   config?: Config;
@@ -26,6 +29,11 @@ export interface BuildAppOptions {
 export async function buildApp(options: BuildAppOptions = {}) {
   const config = options.config ?? loadConfig();
   const db = options.db ?? openDatabase(config.DATABASE_PATH);
+
+  // Prompt 13: idempotent built-in platform configuration (project types,
+  // stacks, libraries) so every database has usable defaults without any
+  // manual setup step.
+  seedPlatformConfiguration(db);
 
   const app = Fastify({ logger: { level: config.LOG_LEVEL } });
   registerErrorHandler(app);
@@ -37,6 +45,8 @@ export async function buildApp(options: BuildAppOptions = {}) {
 
   const deps = { db, config };
   registerProjectRoutes(app, deps);
+  registerPlatformConfigRoutes(app, deps);
+  registerLinkRoutes(app, deps);
   registerRequirementRoutes(app, deps);
   registerUseCaseRoutes(app, deps);
   registerWorkflowRoutes(app, deps);

@@ -7,7 +7,7 @@ This folder defines the entity model, ID system, relationships, traceability, an
 1. `entity-catalog.md` — every entity (purpose, fields, relationships, IDs, status, validation)
 2. `id-convention.md` — stable ID format and rules
 3. `relationships.md` — cardinality and ownership rules
-4. `traceability-rules.md` — the 20 rules (TR-01…TR-20) enforced by the system
+4. `traceability-rules.md` — the 21 rules (TR-01…TR-21) enforced by the system
 5. `status-lifecycle.md` — allowed state transitions per entity
 
 ## Status

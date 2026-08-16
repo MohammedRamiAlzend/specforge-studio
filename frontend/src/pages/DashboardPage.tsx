@@ -8,6 +8,7 @@ import { Card, CardHeader } from "../shared/ui/Card";
 import { PageHeader } from "../shared/ui/PageHeader";
 import { EmptyState, ErrorState } from "../shared/ui/States";
 import { formatDate } from "../shared/lib/format";
+import { PlatformBadges } from "../widgets/platform-badges/PlatformBadges";
 
 export function DashboardPage() {
   const { data: projects, isLoading, error } = useProjects();
@@ -56,11 +57,12 @@ export function DashboardPage() {
               <Card className="h-full transition-shadow group-hover:shadow-md">
                 <CardHeader
                   title={project.name}
-                  description={`${project.type.toUpperCase()} project`}
+                  description={project.types && project.types.length > 0 ? undefined : `${project.type.toUpperCase()} project`}
                   actions={<StatusBadge status={project.status} />}
                 />
                 <div className="px-5 py-4 text-xs text-slate-500">
-                  <p className="line-clamp-2 text-sm text-slate-600">
+                  {project.types && project.types.length > 0 ? <PlatformBadges types={project.types} /> : null}
+                  <p className={`line-clamp-2 text-sm text-slate-600 ${project.types && project.types.length > 0 ? "mt-2" : ""}`}>
                     {project.description ?? "No description yet."}
                   </p>
                   <p className="mt-3 font-mono text-slate-400">{project.id}</p>

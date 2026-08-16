@@ -132,6 +132,15 @@ export const NODE_TYPE_CATALOG: NodeTypeDefinition[] = [
     kinds: ["workflow", "architecture", "sequence"],
     defaultTitle: "AI agent",
   },
+  {
+    type: "workflow_call",
+    label: "Workflow Call",
+    category: "system",
+    description: "Calls a workflow from another project (multi-project workspace).",
+    color: "#7c3aed",
+    kinds: ["workflow"],
+    defaultTitle: "Workflow call",
+  },
 ];
 
 const NODE_TYPE_SET = new Set(NODE_TYPE_CATALOG.map((n) => n.type));
@@ -245,6 +254,48 @@ export type NodeInput = z.infer<typeof modelerNodeInputSchema>;
 export type EdgeInput = z.infer<typeof modelerEdgeInputSchema>;
 
 // ---------------------------------------------------------------------------
+// Cross-project references (Prompt 14: workflow_call nodes)
+// ---------------------------------------------------------------------------
+
+export interface CrossProjectRef {
+  projectId: string;
+  graphId: string;
+  nodeId?: string | null;
+}
+
+export type CrossProjectRefStatus = "ok" | "project_missing" | "graph_missing" | "kind_not_workflow";
+
+/** Parses a node's metadata.cross_project reference; null when structurally invalid. */
+export function crossProjectRefOf(node: { metadata?: Record<string, unknown> | null }): CrossProjectRef | null {
+  const raw = node.metadata?.cross_project;
+  if (!raw || typeof raw !== "object") return null;
+  const value = raw as Record<string, unknown>;
+  const projectId = typeof value.project_id === "string" ? value.project_id : "";
+  const graphId = typeof value.graph_id === "string" ? value.graph_id : "";
+  if (!/^PRJ-\d{4,}$/.test(projectId) || !/^GRPH-\d{4,}$/.test(graphId)) return null;
+  const nodeId = typeof value.node_id === "string" && value.node_id ? value.node_id : null;
+  return { projectId, graphId, nodeId };
+}
+
+/** Resolves a structurally-valid reference against the database. */
+export function crossProjectRefStatus(db: Database, ref: CrossProjectRef): CrossProjectRefStatus {
+  const project = db.query("SELECT 1 FROM projects WHERE id = ?").get(ref.projectId);
+  if (!project) return "project_missing";
+  const graph = db.query("SELECT kind FROM model_graphs WHERE id = ?").get(ref.graphId) as
+    | { kind: string }
+    | undefined;
+  if (!graph) return "graph_missing";
+  if (graph.kind !== "workflow") return "kind_not_workflow";
+  return "ok";
+}
+
+function crossProjectResolves(db: Database, node: NodeInput): boolean {
+  const ref = crossProjectRefOf(node);
+  if (!ref) return false;
+  return crossProjectRefStatus(db, ref) === "ok";
+}
+
+// ---------------------------------------------------------------------------
 // Validation warnings (TR rules + modeler rules)
 // ---------------------------------------------------------------------------
 
@@ -262,6 +313,7 @@ function validateGraph(
   kind: ModelKind,
   nodes: NodeInput[],
   edges: EdgeInput[],
+  options?: { crossProjectResolves?: (node: NodeInput) => boolean },
 ): ValidationWarning[] {
   const warnings: ValidationWarning[] = [];
   const nodeKeys = new Set(nodes.map((n) => n.key));
@@ -410,6 +462,24 @@ function validateGraph(
         nodeKey: node.key,
       });
     }
+    if (node.type === "workflow_call") {
+      const ref = crossProjectRefOf(node);
+      if (!ref) {
+        warnings.push({
+          code: "CROSS_PROJECT_REF_MISSING",
+          level: "error",
+          message: `Workflow-call "${node.title}" has an invalid cross-project reference — it must point at a workflow graph ID (GRPH-xxxx) of another project.`,
+          nodeKey: node.key,
+        });
+      } else if (options?.crossProjectResolves && !options.crossProjectResolves(node)) {
+        warnings.push({
+          code: "CROSS_PROJECT_REF_MISSING",
+          level: "warning",
+          message: `Workflow-call "${node.title}" references ${ref.projectId}/${ref.graphId} which does not exist or is not a workflow-kind graph.`,
+          nodeKey: node.key,
+        });
+      }
+    }
     const out = outgoing.get(node.key) ?? [];
     const inn = incoming.get(node.key) ?? [];
     if (out.length === 0 && inn.length === 0) {
@@ -526,6 +596,11 @@ function assertNodeInputsValid(input: NodeInput[]): void {
         validTypes: [...NODE_TYPE_SET],
       });
     }
+    if (node.type === "workflow_call" && !crossProjectRefOf(node)) {
+      throw badRequest(
+        `Workflow-call "${node.title}" needs a valid cross-project reference (metadata.cross_project.project_id = PRJ-xxxx and metadata.cross_project.graph_id = GRPH-xxxx of a workflow-kind graph).`,
+      );
+    }
   }
 }
 
@@ -588,6 +663,7 @@ export function loadGraph(db: Database, graphId: string) {
       type: n.node_type,
       title: n.title,
       position: n.position,
+      metadata: n.metadata ?? undefined,
     })),
     edges.map((e) => ({
       key: e.id,
@@ -597,6 +673,7 @@ export function loadGraph(db: Database, graphId: string) {
       label: e.label ?? undefined,
       condition: e.condition ?? undefined,
     })),
+    { crossProjectResolves: (n) => crossProjectResolves(db, n) },
   );
   return { graph, nodes, edges, warnings };
 }
@@ -758,6 +835,12 @@ export function registerModelerRoutes(app: FastifyInstance, deps: Deps): void {
 
   app.post("/modeler/validate", async (request) => {
     const body = validateGraphSchema.parse(request.body);
-    return { data: { warnings: validateGraph(body.kind, body.nodes, body.edges) } };
+    return {
+      data: {
+        warnings: validateGraph(body.kind, body.nodes, body.edges, {
+          crossProjectResolves: (n) => crossProjectResolves(db, n),
+        }),
+      },
+    };
   });
 }

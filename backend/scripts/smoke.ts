@@ -176,8 +176,8 @@ let projectId = "";
   const res = await request("GET", "/modeler/node-types");
   check("GET /modeler/node-types -> 200", res.statusCode === 200, res.body);
   const types = res.json().data as { type: string }[];
-  check("GET /modeler/node-types 12 types", types.length === 12, types.length);
-  const required = ["start", "end", "step", "decision", "screen", "api_call", "database", "external_system", "event", "wait", "approval", "ai_agent"];
+  check("GET /modeler/node-types 13 types", types.length === 13, types.length);
+  const required = ["start", "end", "step", "decision", "screen", "api_call", "database", "external_system", "event", "wait", "approval", "ai_agent", "workflow_call"];
   check(
     "GET /modeler/node-types covers all required types",
     required.every((t) => types.some((n) => n.type === t)),
@@ -741,6 +741,197 @@ let aprId = "";
   check("GET traceability has requirement coverage", (data?.requirements_coverage ?? []).some((c: { id: string }) => c.id === "REQ-0001"));
   check("GET traceability reports uncovered requirement", data?.summary?.uncovered_ids?.includes("REQ-0001"));
   check("GET traceability summary totals", data?.summary?.total_requirements >= 1 && data?.summary?.total_links >= 0);
+}
+
+// 38. platform-config: built-in seeds
+{
+  const res = await request("GET", "/platform-config");
+  check("GET /platform-config -> 200", res.statusCode === 200, res.body);
+  const types = res.json().data ?? [];
+  check("GET /platform-config 4 built-in types", types.length === 4, types.length);
+  const web = types.find((t: { key: string }) => t.key === "web");
+  check("GET platform-config web built_in enabled", web?.built_in === 1 && web?.enabled === 1);
+  const react = web?.stacks?.find((s: { name: string }) => s.name === "React");
+  check("GET platform-config React stack has libraries", (react?.libraries?.length ?? 0) > 0, react?.libraries?.length);
+}
+
+// 39. platform-config: multi-type project creation + validation + delete guards
+let configTypeId = "";
+{
+  const create = await request("POST", "/projects", {
+    name: "Full stack platform",
+    type: "web",
+    created_by: "tester@internal",
+    types: [
+      { type_id: "PTYPE-0001", stack_id: "STK-0004", library_ids: ["LIB-0011", "LIB-0012"] },
+      { type_id: "PTYPE-0003", stack_id: "STK-0003", library_ids: ["LIB-0008"] },
+    ],
+  });
+  check("POST /projects multi-type -> 201", create.statusCode === 201, create.body);
+  const data = create.json().data;
+  check("POST multi-type id PRJ-0002", data?.id === "PRJ-0002", data?.id);
+  check("POST multi-type 2 selections", (data?.types ?? []).length === 2, data?.types?.length);
+  const webSel = (data?.types ?? []).find((t: { type_id: string }) => t.type_id === "PTYPE-0001");
+  check("POST multi-type web stack React", webSel?.stack_name === "React", webSel?.stack_name);
+  check("POST multi-type web libraries", (webSel?.libraries ?? []).map((l: { name: string }) => l.name).includes("Zustand"), webSel?.libraries);
+
+  const mismatch = await request("POST", "/projects", {
+    name: "Bad stack",
+    type: "web",
+    created_by: "tester@internal",
+    types: [{ type_id: "PTYPE-0001", stack_id: "STK-0011" }],
+  });
+  check("POST /projects mismatched stack -> 400", mismatch.statusCode === 400, mismatch.body);
+
+  const custom = await request("POST", "/platform-config/types", {
+    key: "desktop",
+    label: "Desktop",
+    color: "#0ea5e9",
+  });
+  check("POST /platform-config/types -> 201", custom.statusCode === 201, custom.body);
+  configTypeId = custom.json().data?.id ?? "";
+  check("POST custom type id PTYPE-0005", configTypeId === "PTYPE-0005", configTypeId);
+
+  const disableBuiltIn = await request("PATCH", "/platform-config/types/PTYPE-0002", { enabled: false });
+  check("PATCH built-in disable -> 200 enabled 0", disableBuiltIn.statusCode === 200 && disableBuiltIn.json().data?.enabled === 0, disableBuiltIn.body);
+  const deleteBuiltIn = await request("DELETE", "/platform-config/types/PTYPE-0002");
+  check("DELETE built-in type -> 400", deleteBuiltIn.statusCode === 400, deleteBuiltIn.body);
+
+  const used = await request("DELETE", `/platform-config/types/${configTypeId}`);
+  check("DELETE unused custom type -> 204", used.statusCode === 204, used.body);
+
+  const audit = await request("GET", "/audit");
+  const events = audit.json().data ?? [];
+  check("audit has project_type created event", events.some((e: { entity_type: string; action: string }) => e.entity_type === "project_type" && e.action === "created"));
+  check("audit has project_type updated event", events.some((e: { entity_type: string; action: string }) => e.entity_type === "project_type" && e.action === "updated"));
+}
+
+// 40. multi-project links: dependency CRUD + cross-project workflow_call
+let depId = "";
+{
+  // Third project is the target of cross-project calls.
+  const createB = await request("POST", "/projects", {
+    name: "Orders backend",
+    type: "api",
+    created_by: "owner@internal",
+  });
+  check("POST links target project -> 201", createB.statusCode === 201, createB.body);
+  const targetProject = createB.json().data?.id ?? "";
+
+  const targetGraph = await request("POST", "/modeler/graphs", {
+    project_id: targetProject,
+    kind: "workflow",
+    name: "Create order",
+  });
+  const targetGraphId = targetGraph.json().data?.id ?? "";
+  check("POST links target graph id GRPH-0003", targetGraphId === "GRPH-0003", targetGraphId);
+
+  const link = await request("POST", `/projects/${projectId}/dependencies`, {
+    depends_on_project_id: targetProject,
+    kind: "workflow_call",
+    note: "Demo calls the orders backend",
+  });
+  check("POST /projects/:id/dependencies -> 201", link.statusCode === 201, link.body);
+  depId = link.json().data?.id ?? "";
+  check("POST dependency id PDEP-0001", depId === "PDEP-0001", depId);
+
+  const dup = await request("POST", `/projects/${projectId}/dependencies`, {
+    depends_on_project_id: targetProject,
+    kind: "workflow_call",
+  });
+  check("POST duplicate dependency -> 409", dup.statusCode === 409, dup.body);
+  const selfLink = await request("POST", `/projects/${projectId}/dependencies`, {
+    depends_on_project_id: projectId,
+    kind: "other",
+  });
+  check("POST self dependency -> 400", selfLink.statusCode === 400, selfLink.body);
+
+  const deps = await request("GET", `/projects/${projectId}/dependencies`);
+  check("GET /projects/:id/dependencies -> 200", deps.statusCode === 200, deps.body);
+  check("GET dependencies length 1", (deps.json().data ?? []).length === 1, deps.body);
+
+  const dependents = await request("GET", `/projects/${targetProject}/dependents`);
+  check("GET /projects/:id/dependents -> 200", dependents.statusCode === 200, dependents.body);
+  const depList = dependents.json().data ?? [];
+  check("GET dependents length 1", depList.length === 1, depList);
+  check("GET dependents including project id", depList[0]?.depending_project_id === projectId, depList[0]);
+
+  // Save a cross-project workflow_call on the existing Order flow (GRPH-0002).
+  const save = await request("PUT", `/modeler/graphs/${diagramGraphId}`, {
+    nodes: [
+      { key: "s", type: "start", title: "Start", position: { x: 0, y: 0 } },
+      { key: "a", type: "api_call", title: "Submit order", position: { x: 0, y: 120 } },
+      {
+        key: "wc",
+        type: "workflow_call",
+        title: "Create order in backend",
+        position: { x: 0, y: 240 },
+        metadata: { cross_project: { project_id: targetProject, graph_id: targetGraphId } },
+      },
+      { key: "e", type: "end", title: "End", position: { x: 0, y: 360 } },
+    ],
+    edges: [
+      { key: "e1", source: "s", target: "a", type: "next" },
+      { key: "e2", source: "a", target: "wc", type: "success", condition: "200 OK" },
+      { key: "e3", source: "wc", target: "e", type: "success" },
+    ],
+  });
+  check("PUT cross-project workflow_call -> 200", save.statusCode === 200, save.body);
+
+  const calls = await request("GET", `/projects/${projectId}/workflow-calls`);
+  check("GET /projects/:id/workflow-calls -> 200", calls.statusCode === 200, calls.body);
+  const callRows = (calls.json().data ?? []) as {
+    workflow_id: string;
+    node_id: string;
+    node_title: string;
+    target_project_id: string;
+    target_graph_id: string;
+    target_project_name: string;
+    target_graph_name: string;
+  }[];
+  check("GET workflow-calls resolves target", callRows.some(
+    (c) =>
+      c.target_project_id === targetProject && c.target_graph_id === targetGraphId &&
+      c.node_title === "Create order in backend" && c.target_project_name === "Orders backend" &&
+      c.target_graph_name === "Create order",
+  ), callRows);
+
+  // Diagram render shows the workflow_call inside a named subgraph.
+  const gen = await request("POST", "/diagrams/generate", {
+    project_id: projectId,
+    diagram_type: "workflow",
+    graph_id: diagramGraphId,
+  });
+  check("POST /diagrams/generate with xp call -> 201", gen.statusCode === 201, gen.body);
+  const mermaid = gen.json().data?.mermaid ?? "";
+  const callNodeId = callRows[0]?.node_id?.replace(/-/g, "_") ?? "";
+  check("POST xp mermaid has subgraph xp_", mermaid.includes(`subgraph xp_${callNodeId}`), mermaid);
+  check("POST xp mermaid nests target graph", mermaid.includes("Orders backend") && mermaid.includes(targetGraphId), mermaid);
+
+  // Shape-invalid refs are rejected at save time.
+  const badSave = await request("PUT", `/modeler/graphs/${diagramGraphId}`, {
+    nodes: [
+      { key: "wc", type: "workflow_call", title: "Ghost", position: { x: 240, y: 240 }, metadata: { cross_project: { project_id: targetProject } } },
+    ],
+    edges: [],
+  });
+  check("PUT xp call missing target graph -> 400", badSave.statusCode === 400, badSave.body);
+
+  const validation = await request("GET", `/governance/validation?project=${projectId}`);
+  const all = validation.json().data?.all ?? [];
+  check("GET validation has TR-21", all.some((w: { rule: string }) => w.rule === "TR-21"), all);
+  check("GET validation TR-21 no violations (call is valid)", all.find((w: { rule: string }) => w.rule === "TR-21")?.violations?.length === 0, all);
+
+  const docs = await request("POST", "/docs/generate", { project_id: projectId });
+  const paths = (docs.json().data?.files ?? []).map((f: { path: string }) => f.path);
+  check("POST docs includes 00-meta/dependencies.md", paths.includes("00-meta/dependencies.md"), paths);
+  const wfDoc = docs.json().data?.files?.find((f: { path: string }) => f.path === "03-design/workflows.md")?.content ?? "";
+  check("POST docs workflows has cross-project calls section", wfDoc.includes("Cross-project Calls"), wfDoc.slice(0, 200));
+
+  const del = await request("DELETE", `/projects/${projectId}/dependencies/${depId}`);
+  check("DELETE /projects/:id/dependencies/:depId -> 204", del.statusCode === 204, del.body);
+  const gone = await request("GET", `/projects/${projectId}/dependencies`);
+  check("GET dependencies after delete empty", (gone.json().data ?? []).length === 0, gone.body);
 }
 
 await app.close();

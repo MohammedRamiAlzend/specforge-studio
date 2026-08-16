@@ -99,6 +99,7 @@ export function CanvasPage() {
             edge={modeler.selectedEdge}
             kind={modeler.kind}
             catalog={catalog ?? []}
+            projectId={projectId}
             onUpdateNode={modeler.updateNode}
             onUpdateEdge={modeler.updateEdge}
             onDeleteNode={modeler.deleteNode}

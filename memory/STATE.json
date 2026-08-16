@@ -2,9 +2,9 @@
   "schema_version": "1.0",
   "project_name": "SpecForge Studio",
   "last_updated": "2026-08-16",
-  "current_prompt_id": "13",
-  "current_phase": "platform-configuration",
-  "status": "plans_created_awaiting_approval",
+  "current_prompt_id": "15",
+  "current_phase": "custom-node-palette",
+  "status": "in_progress",
   "execution_mode": "human_approved_automation",
   "required_scope": [
     "00-bootstrap-memory-and-rules",
@@ -38,16 +38,16 @@
     "09-document-generation",
     "10-roadmap-and-agent-tasks",
     "11-governance-and-approvals",
-    "12-testing-and-validation"
+    "12-testing-and-validation",
+    "13-platform-configuration",
+    "14-multi-project-workspace"
   ],
   "in_progress_phases": [],
   "pending_phases": [
-    "13-platform-configuration",
-    "14-multi-project-workspace",
     "15-custom-node-palette",
     "16-skills-and-final-audit"
   ],
-  "next_action": "Plans for the new required scope are created (prompts/13-platform-configuration.md, prompts/14-multi-project-workspace.md, prompts/15-custom-node-palette.md, prompts/16-skills-and-final-audit.md; old prompt 13 deleted; prompts/README.md updated). No implementation has started (user chose 'create plans only'). Next action: execute Prompt 13 (Dynamic Platform Configuration) when the user approves/continues.",
+  "next_action": "Prompt 14 (Multi-Project Workspace) is complete and verified: project_dependencies (PDEP, migration 007) with dependency CRUD/dependents/reference-targets/workflow-calls APIs, workflow_call modeler node with cross-project metadata (400 on malformed refs, CROSS_PROJECT_REF_MISSING warning on missing targets), nested-subgraph Mermaid rendering byte-identical across generate/preview, dependencies.md workspace file (ART-0033), governance TR-21 rule, InspectorPanel cross-project picker (dropdown + manual GRPH id), LinkedProjectsCard + CrossProjectCalls widgets, links suites (11 backend + 8 frontend tests). Verified: backend 84/84 tests (10 files), frontend 34/34 tests (7 files), root typecheck clean, backend smoke 226/226 PASS, seed-example regenerated (33 files). FEAT-009. Next action: execute Prompt 15 (Custom Node Palette) when the user says continue/approves.",
   "blockers": [],
   "awaiting_approval": [],
   "completion": {
@@ -55,8 +55,6 @@
     "completion_verified": false,
     "completion_reported_to_user": false,
     "remaining_required_tasks": [
-      "13-platform-configuration",
-      "14-multi-project-workspace",
       "15-custom-node-palette",
       "16-skills-and-final-audit"
     ],
@@ -99,7 +97,9 @@
     "DEC-013: Governance lifecycle (9 canonical statuses + transition map, 17-type artifact registry with domain sync, approval gates enforced structurally) + approvals (APR records, rejection requires reason, audit via event_log) + validation warnings (TR rules) + traceability coverage; artifact_governance overlay table (migration 005).",
     "DEC-014: artifact_links ON DELETE CASCADE in canonical schema (rebuild migration for live DBs deferred, needs APR) + test approach: bun:test with in-memory apps (backend) and react-dom/server static rendering (frontend), zero new deps; TEST prefix + missing DOCS prefix added to id-convention.",
     "DEC-015: Removed required Prompt 13 (deployment-and-final-audit); replaced with new required Prompts 13–16 (platform configuration, multi-project workspace, custom node palette, skills + final audit). Deployment moved to optional backlog.",
-    "DEC-016: Confirmed design decisions for Prompts 13–16 from user's clarifying answers: multi-type projects, global Settings page, editable+pre-seeded stacks/libs, cross-project refs via dropdown AND manual ID, explicit linked projects, capability + tech skills, custom node fields, create-plans-only execution."
+    "DEC-016: Confirmed design decisions for Prompts 13–16 from user's clarifying answers: multi-type projects, global Settings page, editable+pre-seeded stacks/libs, cross-project refs via dropdown AND manual ID, explicit linked projects, capability + tech skills, custom node fields, create-plans-only execution.",
+    "DEC-017: Prompt 13 (platform configuration) implementation: five additive tables (project_types/stacks/libraries/project_type_assignments/project_type_config/project_libraries, migration 006), 4 built-in types + 12 stacks + 32 libraries seeded on boot (idempotent), /platform-config CRUD APIs with built-in/used-row delete guards (400/409), multi-type project creation via types[] on create/patch with enriched types[] responses, legacy projects.type column DEPRECATED but back-compatible, Settings > Platform configuration tab + multi-type CreateProjectForm + PlatformBadges widget, genProjectMeta Platform Configuration table, PTYPE/STK/LIB prefixes (id-convention), demo seed web+React+libraries, backend suite (20 tests) + frontend suite (4 tests), smoke 204 checks.",
+    "DEC-018: Prompt 14 (multi-project workspace) implementation: project_dependencies table (PDEP ids, FK cascade both sides, kind CHECK workflow_call/data/deploy/other, UNIQUE(project_id, target, kind), no self-links; migration 007), links module APIs (dependency CRUD, dependents, reference-targets linked-first, resolved workflow-calls), workflow_call modeler node with metadata.cross_project validated at save (400 malformed) + CROSS_PROJECT_REF_MISSING warning for valid-but-missing targets, nested-subgraph Mermaid rendering from resolveCrossProjectCalls (byte-identical generate/preview), Dependencies section file appended to WORKSPACE_FILES (00-meta/dependencies.md, ART-0033, 33-file example), governance TR-21 (21 rules), InspectorPanel cross-project picker (dropdown + manual GRPH id) + LinkedProjectsCard + CrossProjectCalls widgets, PDEP/TR-21 ontology updates, links suites (11 backend + 8 frontend tests; fixed pre-existing platform-config.test.ts type errors), smoke 226 checks, FEAT-009."
   ],
   "rejected_options_summary": []
 }

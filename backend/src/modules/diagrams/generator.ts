@@ -4,6 +4,9 @@
 // edges, entities, and components stored in the database (Prompt 08).
 // ---------------------------------------------------------------------------
 
+import type { Database } from "bun:sqlite";
+import { crossProjectRefOf, crossProjectRefStatus } from "../modeler";
+
 export type DiagramType = "workflow" | "sequence" | "erd" | "architecture";
 export type WarningLevel = "error" | "warning" | "info";
 
@@ -65,6 +68,14 @@ export interface ArchComponent {
   name: string;
   layer: string | null;
   technologies?: string[] | null;
+}
+
+/** A resolved cross-project workflow call (Prompt 14: workflow_call nodes). */
+export interface CrossProjectCall {
+  projectId: string;
+  projectName: string;
+  graphId: string;
+  graphName: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -131,14 +142,51 @@ function danglingEdgeWarnings(edges: DiagramEdge[], nodeIds: Set<string>): Diagr
   return warnings;
 }
 
+/**
+ * Resolves workflow_call nodes against the database into their target project
+ * and workflow metadata. Keyed by the node id the caller passes (canonical
+ * model-node ids for stored graphs, client keys for previews) so stored and
+ * preview rendering stay deterministic and byte-identical for the same input.
+ */
+export function resolveCrossProjectCalls(
+  db: Database,
+  nodes: { id: string; metadata?: Record<string, unknown> | null }[],
+): Map<string, CrossProjectCall> {
+  const calls = new Map<string, CrossProjectCall>();
+  for (const node of nodes) {
+    const ref = crossProjectRefOf({ metadata: node.metadata ?? null });
+    if (!ref) continue;
+    if (crossProjectRefStatus(db, ref) !== "ok") continue;
+    const project = db.query("SELECT name FROM projects WHERE id = ?").get(ref.projectId) as
+      | { name: string }
+      | undefined;
+    const graph = db.query("SELECT name FROM model_graphs WHERE id = ?").get(ref.graphId) as
+      | { name: string }
+      | undefined;
+    if (!project || !graph) continue;
+    calls.set(node.id, {
+      projectId: ref.projectId,
+      projectName: project.name,
+      graphId: ref.graphId,
+      graphName: graph.name,
+    });
+  }
+  return calls;
+}
+
 // ---------------------------------------------------------------------------
 // Workflow (flowchart)
 // ---------------------------------------------------------------------------
 
-export function generateWorkflow(nodes: DiagramNode[], edges: DiagramEdge[]): GenerateResult {
+export function generateWorkflow(
+  nodes: DiagramNode[],
+  edges: DiagramEdge[],
+  crossProject?: Map<string, CrossProjectCall>,
+): GenerateResult {
   const warnings: DiagramWarning[] = [];
   const sourceArtifacts: string[] = [];
   const sorted = [...nodes].sort(byPosition);
+  const calls = crossProject ?? new Map<string, CrossProjectCall>();
 
   if (sorted.length === 0) {
     warnings.push({ code: "EMPTY_GRAPH", level: "info", message: "No nodes to render in the workflow diagram." });
@@ -165,7 +213,19 @@ export function generateWorkflow(nodes: DiagramNode[], edges: DiagramEdge[]): Ge
       lines.push(`  ${id}([${label}])`);
     } else if (node.type === "decision") {
       lines.push(`  ${id}{${label}}`);
+    } else if (node.type === "workflow_call" && calls.has(node.id)) {
+      const call = calls.get(node.id)!;
+      lines.push(`  subgraph ${sanitizeId(`xp_${node.id}`)}[${mermaidLabel(`${call.projectName} (${call.projectId})`)}]`);
+      lines.push(`    ${id}[${mermaidLabel(`${call.graphName} (${call.graphId})`)}]`);
+      lines.push("  end");
     } else {
+      if (node.type === "workflow_call") {
+        warnings.push({
+          code: "CROSS_PROJECT_REF_MISSING",
+          level: "warning",
+          message: `Workflow call "${node.title}" references a target that does not exist or is not a workflow-kind graph.`,
+        });
+      }
       lines.push(`  ${id}[${label}]`);
     }
   }
@@ -461,10 +521,11 @@ export function generateDiagram(
   nodes: DiagramNode[],
   edges: DiagramEdge[],
   graphKind?: "sequence" | "workflow",
+  crossProject?: Map<string, CrossProjectCall>,
 ): GenerateResult {
   switch (diagramType) {
     case "workflow":
-      return generateWorkflow(nodes, edges);
+      return generateWorkflow(nodes, edges, crossProject);
     case "sequence":
       return generateSequence(nodes, edges, graphKind ?? "sequence");
     case "architecture":

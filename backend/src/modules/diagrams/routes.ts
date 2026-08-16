@@ -11,6 +11,7 @@ import {
   generateArchitectureFromComponents,
   generateDiagram,
   generateErd,
+  resolveCrossProjectCalls,
   type DiagramEdge,
   type DiagramNode,
   type DiagramType,
@@ -320,8 +321,14 @@ function generateForProject(
     const sourceArtifacts = [graphId, ...payload.nodes.map((n) => n.id)];
 
     switch (diagramType) {
-      case "workflow":
-        return { diagramType, ...generateDiagram("workflow", nodes, edges), sourceArtifacts };
+      case "workflow": {
+        const crossProject = resolveCrossProjectCalls(db, payload.nodes);
+        return {
+          diagramType,
+          ...generateDiagram("workflow", nodes, edges, undefined, crossProject),
+          sourceArtifacts,
+        };
+      }
       case "sequence":
         return {
           diagramType,
@@ -459,7 +466,11 @@ export function registerDiagramRoutes(app: FastifyInstance, deps: Deps): void {
     switch (kind) {
       case "workflow":
         diagramType = "workflow";
-        outcome = { diagramType, ...generateDiagram("workflow", nodes, edges), sourceArtifacts: [] };
+        outcome = {
+          diagramType,
+          ...generateDiagram("workflow", nodes, edges, undefined, resolveCrossProjectCalls(db, nodes)),
+          sourceArtifacts: [],
+        };
         break;
       case "sequence":
         diagramType = "sequence";

@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import { Button } from "../../shared/ui/Button";
 import type { ModelKind, ModelNodeType } from "../../entities/model-graph/types";
+import { useReferenceTargets } from "../../entities/project-link/api";
+import { buildCrossProjectMetadata, crossProjectRefOf } from "../../entities/project-link/lib";
 import {
   EDGE_TYPES,
   metaForType,
@@ -47,10 +49,91 @@ export interface InspectorPanelProps {
   edge: ModelerEdge | null;
   kind: ModelKind | null;
   catalog: ModelNodeType[];
+  projectId?: string;
   onUpdateNode: (key: string, patch: Partial<ModelerNode["data"]>) => void;
   onUpdateEdge: (id: string, patch: Partial<ModelerEdgeData>) => void;
   onDeleteNode: (key: string) => void;
   onDeleteEdge: (id: string) => void;
+}
+
+function CrossProjectSection({
+  metadata,
+  projectId,
+  onChange,
+}: {
+  metadata?: Record<string, unknown> | null;
+  projectId?: string;
+  onChange: (metadata: Record<string, unknown>) => void;
+}) {
+  const { data: targets, isLoading } = useReferenceTargets(projectId);
+  const ref = crossProjectRefOf(metadata);
+  const selectedProject = targets?.find((t) => t.project_id === ref?.project_id);
+  const workflows = selectedProject?.workflows ?? [];
+
+  const update = (patch: { project_id?: string; graph_id?: string }) => {
+    onChange(
+      buildCrossProjectMetadata(metadata, {
+        project_id: patch.project_id ?? ref?.project_id ?? "",
+        graph_id: patch.graph_id ?? ref?.graph_id ?? "",
+      }),
+    );
+  };
+
+  return (
+    <div className="rounded-md border border-violet-200 bg-violet-50 p-3">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-violet-600">
+        Cross-project call
+      </p>
+      <div className="mt-2 space-y-3">
+        <Field label="Target project">
+          <select
+            className={inputClass}
+            value={ref?.project_id ?? ""}
+            onChange={(e) => update({ project_id: e.target.value, graph_id: "" })}
+          >
+            <option value="">Select a project…</option>
+            {(targets ?? []).map((t) => (
+              <option key={t.project_id} value={t.project_id}>
+                {t.is_linked ? "● " : ""}
+                {t.project_name} ({t.project_id})
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Target workflow">
+          <select
+            className={inputClass}
+            value={ref?.graph_id ?? ""}
+            disabled={!ref?.project_id}
+            onChange={(e) => update({ graph_id: e.target.value })}
+          >
+            <option value="">Select a workflow…</option>
+            {workflows.map((w) => (
+              <option key={w.graph_id} value={w.graph_id}>
+                {w.name} ({w.graph_id})
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Workflow ID (manual)">
+          <input
+            className={inputClass}
+            value={ref?.graph_id ?? ""}
+            placeholder="e.g. GRPH-0002"
+            onChange={(e) => update({ graph_id: e.target.value })}
+          />
+        </Field>
+        {isLoading ? (
+          <p className="text-[11px] text-slate-400">Loading projects…</p>
+        ) : (
+          <p className="text-[11px] leading-relaxed text-violet-500">
+            Pick the target project and workflow, or type a GRPH id directly. The target must exist and
+            be a workflow-kind graph (TR-21).
+          </p>
+        )}
+      </div>
+    </div>
+  );
 }
 
 export function InspectorPanel({
@@ -58,6 +141,7 @@ export function InspectorPanel({
   edge,
   kind,
   catalog,
+  projectId,
   onUpdateNode,
   onUpdateEdge,
   onDeleteNode,
@@ -221,6 +305,14 @@ export function InspectorPanel({
             placeholder="Canonical IDs, e.g. REQ-0001"
           />
         </Field>
+
+        {data.type === "workflow_call" ? (
+          <CrossProjectSection
+            metadata={data.metadata}
+            projectId={projectId}
+            onChange={(metadata) => onUpdateNode(node.id, { metadata })}
+          />
+        ) : null}
 
         <Button variant="danger" size="sm" onClick={() => onDeleteNode(node.id)}>
           Delete node

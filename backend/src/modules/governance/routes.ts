@@ -15,6 +15,7 @@ import { allocateId } from "../../utils/ids";
 import { logEvent } from "../../utils/events";
 import { assertProjectExists } from "../../utils/exists";
 import { badRequest, notFound } from "../../utils/errors";
+import { crossProjectRefOf, crossProjectRefStatus } from "../modeler";
 import {
   ARTIFACTS,
   APPROVAL_GATED,
@@ -267,6 +268,38 @@ function collectValidationWarnings(db: Database, projectId: string): ValidationW
     level: approvedNoTask.length > 0 ? "warning" : "info",
     message: "Approved requirements without a referencing task",
     violations: approvedNoTask.map((r) => r.id),
+  });
+
+  // TR-21: every cross-project workflow call (workflow_call) resolves to an
+  // existing workflow-kind graph of another project.
+  const callRows = db
+    .query(
+      `SELECT g.id AS graph_id, n.id AS node_id, n.metadata
+       FROM model_nodes n
+       JOIN model_graphs g ON g.id = n.graph_id
+       WHERE g.project_id = ? AND n.node_type = 'workflow_call'`,
+    )
+    .all(projectId) as { graph_id: string; node_id: string; metadata: string | null }[];
+  const brokenCalls: string[] = [];
+  for (const call of callRows) {
+    let metadata: Record<string, unknown> | null = null;
+    try {
+      metadata = call.metadata ? (JSON.parse(call.metadata) as Record<string, unknown>) : null;
+    } catch {
+      metadata = null;
+    }
+    const ref = crossProjectRefOf({ metadata });
+    if (!ref) {
+      brokenCalls.push(`${call.graph_id}:${call.node_id} (no cross-project reference)`);
+    } else if (crossProjectRefStatus(db, ref) !== "ok") {
+      brokenCalls.push(`${call.graph_id}:${call.node_id} → ${ref.projectId}/${ref.graphId}`);
+    }
+  }
+  warnings.push({
+    rule: "TR-21",
+    level: brokenCalls.length > 0 ? "warning" : "info",
+    message: "Cross-project workflow calls with a missing or invalid target",
+    violations: brokenCalls,
   });
 
   return warnings;

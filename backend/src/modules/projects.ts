@@ -9,12 +9,21 @@ import { badRequest, notFound } from "../utils/errors";
 const projectTypeSchema = z.enum(["web", "mobile", "api", "ai"]);
 const projectStatusSchema = z.enum(["draft", "active", "completed", "archived"]);
 
+// Prompt 13: a project may declare multiple types, each with an optional
+// chosen stack and selected libraries of that stack.
+const projectTypeDraftSchema = z.object({
+  type_id: z.string().min(1),
+  stack_id: z.string().min(1).nullable().optional(),
+  library_ids: z.array(z.string().min(1)).optional(),
+});
+
 const createProjectSchema = z.object({
   name: z.string().min(1).max(200),
   type: projectTypeSchema,
   description: z.string().max(2000).optional(),
   repository_url: z.string().url().optional(),
   created_by: z.string().min(1).max(200),
+  types: z.array(projectTypeDraftSchema).min(1).optional(),
 });
 
 const updateProjectSchema = z
@@ -24,6 +33,7 @@ const updateProjectSchema = z
     description: z.string().max(2000).nullable().optional(),
     repository_url: z.string().url().nullable().optional(),
     status: projectStatusSchema.optional(),
+    types: z.array(projectTypeDraftSchema).min(1).optional(),
   })
   .strict();
 
@@ -39,6 +49,52 @@ interface ProjectRow {
   created_by: string;
   created_at: string;
   updated_at: string;
+}
+
+interface ProjectTypeRow {
+  id: string;
+  key: string;
+  label: string;
+  color: string | null;
+  icon: string | null;
+  enabled: number;
+}
+
+interface StackRow {
+  id: string;
+  type_id: string;
+  name: string;
+  language: string | null;
+  enabled: number;
+}
+
+interface LibraryRow {
+  id: string;
+  stack_id: string;
+  name: string;
+  purpose: string | null;
+  category: string | null;
+  enabled: number;
+}
+
+/** A resolved per-type selection stored on a project. */
+interface SelectionItem {
+  type_id: string;
+  stack_id: string | null;
+  library_ids: string[];
+}
+
+/** Enriched type selection attached to project API payloads. */
+export interface ProjectTypeSelection {
+  type_id: string;
+  key: string;
+  label: string;
+  color: string | null;
+  icon: string | null;
+  stack_id: string | null;
+  stack_name: string | null;
+  stack_language: string | null;
+  libraries: { id: string; name: string; purpose: string | null; category: string | null }[];
 }
 
 // ---------------------------------------------------------------------------
@@ -91,12 +147,149 @@ function updateProject(
 }
 
 // ---------------------------------------------------------------------------
+// Platform selection persistence (Prompt 13)
+// ---------------------------------------------------------------------------
+
+function getTypeRow(db: Database, id: string): ProjectTypeRow | undefined {
+  return db.query("SELECT id, key, label, color, icon, enabled FROM project_types WHERE id = ?").get(id) as
+    | ProjectTypeRow
+    | undefined;
+}
+
+function getTypeByKey(db: Database, key: string): ProjectTypeRow | undefined {
+  return db.query("SELECT id, key, label, color, icon, enabled FROM project_types WHERE key = ?").get(key) as
+    | ProjectTypeRow
+    | undefined;
+}
+
+function getStackById(db: Database, id: string): StackRow | undefined {
+  return db.query("SELECT id, type_id, name, language, enabled FROM stacks WHERE id = ?").get(id) as
+    | StackRow
+    | undefined;
+}
+
+function getLibraryById(db: Database, id: string): LibraryRow | undefined {
+  return db.query("SELECT id, stack_id, name, purpose, category, enabled FROM libraries WHERE id = ?").get(id) as
+    | LibraryRow
+    | undefined;
+}
+
+/**
+ * Resolves the raw creation input into validated selection items.
+ * When `types` is omitted the legacy `type` key is mapped to its (seeded)
+ * project type row so existing single-type callers keep working unchanged.
+ */
+function resolveProjectSelection(
+  db: Database,
+  legacyType: string,
+  types?: z.infer<typeof createProjectSchema>["types"],
+): SelectionItem[] {
+  if (types) {
+    return types.map((draft) => {
+      const type = getTypeRow(db, draft.type_id);
+      if (!type) throw badRequest(`Project type ${draft.type_id} not found`);
+      if (!type.enabled) throw badRequest(`Project type "${type.label}" is disabled`);
+      let stack: StackRow | null | undefined = null;
+      if (draft.stack_id) {
+        stack = getStackById(db, draft.stack_id);
+        if (!stack) throw badRequest(`Stack ${draft.stack_id} not found`);
+        if (stack.type_id !== draft.type_id) {
+          throw badRequest(`Stack "${stack.name}" does not belong to project type "${type.label}"`);
+        }
+        if (!stack.enabled) throw badRequest(`Stack "${stack.name}" is disabled`);
+      }
+      const libraryIds: string[] = [];
+      if (draft.library_ids && draft.library_ids.length > 0) {
+        if (!stack) throw badRequest(`Libraries require a chosen stack for type "${type.label}"`);
+        for (const libraryId of draft.library_ids) {
+          const library = getLibraryById(db, libraryId);
+          if (!library) throw badRequest(`Library ${libraryId} not found`);
+          if (library.stack_id !== stack.id) {
+            throw badRequest(`Library "${library.name}" does not belong to stack "${stack.name}"`);
+          }
+          if (!library.enabled) throw badRequest(`Library "${library.name}" is disabled`);
+          libraryIds.push(libraryId);
+        }
+      }
+      return { type_id: draft.type_id, stack_id: draft.stack_id ?? null, library_ids: libraryIds };
+    });
+  }
+
+  const type = getTypeByKey(db, legacyType);
+  if (!type) throw badRequest(`Unknown project type "${legacyType}"`);
+  return [{ type_id: type.id, stack_id: null, library_ids: [] }];
+}
+
+/** Stores the resolved selection (assignments + per-type stack + libraries). */
+function storeProjectSelection(db: Database, projectId: string, selections: SelectionItem[]): void {
+  db.query("DELETE FROM project_type_assignments WHERE project_id = ?").run(projectId);
+  db.query("DELETE FROM project_type_config WHERE project_id = ?").run(projectId);
+  db.query("DELETE FROM project_libraries WHERE project_id = ?").run(projectId);
+  const insertAssignment = db.query("INSERT INTO project_type_assignments (project_id, type_id) VALUES (?, ?)");
+  const insertConfig = db.query("INSERT INTO project_type_config (project_id, type_id, stack_id) VALUES (?, ?, ?)");
+  const insertLibrary = db.query("INSERT INTO project_libraries (project_id, type_id, library_id) VALUES (?, ?, ?)");
+  for (const selection of selections) {
+    insertAssignment.run(projectId, selection.type_id);
+    insertConfig.run(projectId, selection.type_id, selection.stack_id);
+    for (const libraryId of selection.library_ids) {
+      insertLibrary.run(projectId, selection.type_id, libraryId);
+    }
+  }
+}
+
+/** Loads the enriched type selection for a project (types + stack + libraries). */
+function loadProjectTypes(db: Database, projectId: string): ProjectTypeSelection[] {
+  const rows = db
+    .query(
+      `SELECT pt.id AS type_id, pt.key, pt.label, pt.color, pt.icon,
+              ptc.stack_id AS stack_id, st.name AS stack_name, st.language AS stack_language
+       FROM project_type_assignments pta
+       JOIN project_types pt ON pt.id = pta.type_id
+       LEFT JOIN project_type_config ptc ON ptc.project_id = pta.project_id AND ptc.type_id = pta.type_id
+       LEFT JOIN stacks st ON st.id = ptc.stack_id
+       WHERE pta.project_id = ?
+       ORDER BY pt.sort_order, pt.id`,
+    )
+    .all(projectId) as {
+    type_id: string;
+    key: string;
+    label: string;
+    color: string | null;
+    icon: string | null;
+    stack_id: string | null;
+    stack_name: string | null;
+    stack_language: string | null;
+  }[];
+
+  const libraryQuery = db.query(
+    `SELECT lib.id, lib.name, lib.purpose, lib.category
+     FROM project_libraries pl
+     JOIN libraries lib ON lib.id = pl.library_id
+     WHERE pl.project_id = ? AND pl.type_id = ?
+     ORDER BY lib.name`,
+  );
+  return rows.map((row) => ({
+    ...row,
+    libraries: libraryQuery.all(projectId, row.type_id) as { id: string; name: string; purpose: string | null; category: string | null }[],
+  }));
+}
+
+function legacyValueFor(key: string): string | null {
+  return ["web", "mobile", "api", "ai"].includes(key) ? key : null;
+}
+
+// ---------------------------------------------------------------------------
 // Service layer (domain logic)
 // ---------------------------------------------------------------------------
 
-function createProject(db: Database, input: z.infer<typeof createProjectSchema>): ProjectRow {
+function createProject(
+  db: Database,
+  input: z.infer<typeof createProjectSchema>,
+): ProjectRow & { types: ProjectTypeSelection[] } {
   const id = allocateId(db, "PRJ");
   insertProject(db, { id, ...input });
+  const selections = resolveProjectSelection(db, input.type, input.types);
+  storeProjectSelection(db, id, selections);
   logEvent(db, {
     projectId: id,
     entityType: "project",
@@ -105,32 +298,46 @@ function createProject(db: Database, input: z.infer<typeof createProjectSchema>)
     toStatus: "draft",
     actor: input.created_by,
     actorType: "human",
+    payload: { types: selections.length },
   });
   const row = getProjectById(db, id);
   if (!row) throw new Error("Project insert failed");
-  return row;
+  return { ...row, types: loadProjectTypes(db, id) };
 }
 
-function getProject(db: Database, id: string): ProjectRow {
+function getProject(db: Database, id: string): ProjectRow & { types: ProjectTypeSelection[] } {
   const row = getProjectById(db, id);
   if (!row) throw notFound(`Project ${id} not found`);
-  return row;
+  return { ...row, types: loadProjectTypes(db, id) };
 }
 
-function listProjectRows(db: Database): ProjectRow[] {
-  return listProjects(db);
+function listProjectRows(db: Database): (ProjectRow & { types: ProjectTypeSelection[] })[] {
+  return listProjects(db).map((row) => ({ ...row, types: loadProjectTypes(db, row.id) }));
 }
 
 function updateProjectRow(
   db: Database,
   id: string,
   patch: z.infer<typeof updateProjectSchema>,
-): ProjectRow {
-  const existing = getProject(db, id);
+): ProjectRow & { types: ProjectTypeSelection[] } {
+  const existing = getProjectById(db, id);
+  if (!existing) throw notFound(`Project ${id} not found`);
   if (patch.status && existing.status === "archived" && patch.status !== "archived") {
     throw badRequest("Archived projects cannot be reactivated");
   }
   updateProject(db, id, patch);
+  if (patch.types) {
+    const selections = resolveProjectSelection(db, patch.type ?? existing.type, patch.types);
+    storeProjectSelection(db, id, selections);
+    // Keep the legacy `type` column pointing at the first type where possible.
+    const primaryKey = legacyValueFor(typeKeyForSelection(db, selections[0]!) ?? "");
+    if (primaryKey) {
+      db.query("UPDATE projects SET type = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?").run(
+        primaryKey,
+        id,
+      );
+    }
+  }
   const updated = getProjectById(db, id);
   if (!updated) throw notFound(`Project ${id} not found`);
   if (patch.status && patch.status !== existing.status) {
@@ -143,7 +350,13 @@ function updateProjectRow(
       toStatus: patch.status,
     });
   }
-  return updated;
+  return { ...updated, types: loadProjectTypes(db, id) };
+}
+
+// Small helper so the patch path can read the first selected type's key.
+function typeKeyForSelection(db: Database, selection: SelectionItem): string | null {
+  const type = getTypeRow(db, selection.type_id);
+  return type?.key ?? null;
 }
 
 // ---------------------------------------------------------------------------

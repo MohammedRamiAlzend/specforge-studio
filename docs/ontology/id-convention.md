@@ -81,6 +81,10 @@ Extended prefixes (added by this ontology, DEC-002):
 | RMP | Roadmap (generated plan snapshot, Prompt 10) |
 | TEST | TestingDocs (testing/validation documentation, e.g. docs/testing/) |
 | GUIDE | ProjectGuide (project-level documentation, e.g. docs/guide.md) |
+| PTYPE | ProjectType (platform configuration, Prompt 13) |
+| STK | Stack (platform configuration, Prompt 13) |
+| LIB | Library (platform configuration, Prompt 13) |
+| PDEP | ProjectDependency (multi-project workspace link, Prompt 14) |
 
 Child codes:
 

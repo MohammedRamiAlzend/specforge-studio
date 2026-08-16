@@ -27,6 +27,11 @@ updated: "2026-08-16"
 
 A modern e-commerce platform: catalog browsing, shopping cart, checkout, order management, and admin analytics. Built with an engineering-first process — visual models drive documentation, diagrams, and executable task packs.
 
+## Platform Configuration
+
+| Type ID | Type | Key | Stack | Libraries |
+| --- | --- | --- | --- | --- |
+| PTYPE-0001 | Web | `web` | React | React Router, Tailwind CSS, Zustand |
 ## Modules
 
 | ID | Module | Owner | Status |

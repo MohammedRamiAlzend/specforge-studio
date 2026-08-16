@@ -95,6 +95,7 @@ export function useModelerGraph({ graphId, catalog }: UseModelerGraphOptions) {
         preconditions: n.data.preconditions,
         postconditions: n.data.postconditions,
         related_artifacts: n.data.relatedArtifacts,
+        metadata: n.data.metadata ?? undefined,
         position: n.position,
       })),
       edges: edges.map((e) => ({
