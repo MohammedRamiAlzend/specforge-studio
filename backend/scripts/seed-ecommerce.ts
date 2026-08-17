@@ -684,5 +684,62 @@ export function seedEcommerceProject(db: Database, opts: SeedOptions = {}): Seed
       `${skills.length} skills, ${testCases.length} test cases.`,
   );
 
+  // -------------------------------------------------------------------------
+  // Execution + delivery (Prompt 20) — team, issues, releases, assignment
+  // -------------------------------------------------------------------------
+
+  const team: [string, string, string, string][] = [
+    ["MEM-0101", "Grace Hopper", "grace@storesphere.internal", "Engineering lead"],
+    ["MEM-0102", "Margaret Hamilton", "margaret@storesphere.internal", "Backend engineer"],
+    ["MEM-0103", "Linus Torvalds", "linus@storesphere.internal", "Frontend engineer"],
+    ["MEM-0104", "Ada Lovelace", "ada@storesphere.internal", "Product owner"],
+  ];
+  for (const [id, name, email, role] of team) {
+    db.query("INSERT INTO team_members (id, project_id, name, email, role) VALUES (?, ?, ?, ?, ?)").run(id, projectId, name, email, role);
+    logEvent(db, { projectId, entityType: "team_member", entityId: id, action: "created", payload: { name, role } });
+  }
+  db.query(
+    "INSERT INTO id_sequences (prefix, next_value, project_id) VALUES ('MEM', 5, ?) ON CONFLICT(prefix) DO UPDATE SET next_value = excluded.next_value, project_id = excluded.project_id",
+  ).run(projectId);
+
+  // Assign the first packaged task to the backend engineer for demo purposes.
+  const assigneeTask = pack.task_ids[0];
+  if (assigneeTask) {
+    db.query("UPDATE tasks SET assignee_id = 'MEM-0102', updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?").run(assigneeTask);
+  }
+
+  const issues: [string, string, string, string, string, string][] = [
+    ["ISS-0101", "bug", "high", "open", "Cart totals desync when quantity updated rapidly", "Two concurrent quantity updates produce a stale total on the client.", "linus@storesphere.internal"],
+    ["ISS-0102", "tech_debt", "medium", "open", "Consolidate order pricing into a server-side service", "Pricing logic is split across checkout handlers (REQ-0109).", "margaret@storesphere.internal"],
+    ["ISS-0103", "enhancement", "low", "resolved", "Add product review photo uploads", "Resolved for v1; storage hardening deferred.", "ada@storesphere.internal"],
+  ];
+  for (const [id, kind, severity, status, title, description, createdBy] of issues) {
+    db.query(
+      `INSERT INTO issues (id, project_id, kind, severity, status, title, description, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(id, projectId, kind, severity, status, title, description, createdBy);
+    logEvent(db, { projectId, entityType: "issue", entityId: id, action: "created", payload: { kind, severity } });
+  }
+  db.query(
+    "INSERT INTO id_sequences (prefix, next_value, project_id) VALUES ('ISS', 4, ?) ON CONFLICT(prefix) DO UPDATE SET next_value = excluded.next_value, project_id = excluded.project_id",
+  ).run(projectId);
+
+  const releases: [string, string, string, string, string][] = [
+    ["RLS-0101", "0.1.0", "Alpha: catalog + cart", "released", "Internal alpha with catalog browsing and cart management."],
+    ["RLS-0102", "0.2.0", "Beta: checkout + orders", "released", "Checkout with payments, order history, and confirmation."],
+    ["RLS-0103", "1.0.0", "MVP launch", "planned", "Public launch with inventory reservation, refunds, and admin analytics."],
+  ];
+  for (const [id, version, name, status, notes] of releases) {
+    db.query(
+      `INSERT INTO releases (id, project_id, version, name, status, notes, released_at)
+       VALUES (?, ?, ?, ?, ?, ?, CASE WHEN ? = 'released' THEN strftime('%Y-%m-%dT%H:%M:%fZ', 'now') ELSE NULL END)`,
+    ).run(id, projectId, version, name, status, notes, status);
+    logEvent(db, { projectId, entityType: "release", entityId: id, action: "created", payload: { version } });
+  }
+  db.query(
+    "INSERT INTO id_sequences (prefix, next_value, project_id) VALUES ('RLS', 4, ?) ON CONFLICT(prefix) DO UPDATE SET next_value = excluded.next_value, project_id = excluded.project_id",
+  ).run(projectId);
+  console.log(`Execution + delivery seeded: team (${team.length}), issues (${issues.length}), releases (${releases.length}), assignee on first task.`);
+
   return { projectId, roadmapId, taskCount: pack.created };
 }

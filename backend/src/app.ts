@@ -23,6 +23,12 @@ import { registerLinkRoutes } from "./modules/links/routes";
 import { seedNodePalette } from "./modules/palette/seed";
 import { registerPaletteRoutes } from "./modules/palette/routes";
 import { registerSkillRoutes } from "./modules/skills";
+import { registerTeamRoutes } from "./modules/team";
+import { registerIssueRoutes } from "./modules/issues";
+import { registerReleaseRoutes } from "./modules/releases";
+import { registerHealthRoutes } from "./modules/health";
+import { registerSearchRoutes } from "./modules/search";
+import { registerActivityRoutes } from "./modules/activity";
 
 export interface BuildAppOptions {
   config?: Config;
@@ -68,6 +74,12 @@ export async function buildApp(options: BuildAppOptions = {}) {
   registerRoadmapRoutes(app, deps);
   registerAgentTaskRoutes(app, deps);
   registerGovernanceRoutes(app, deps);
+  registerTeamRoutes(app, deps);
+  registerIssueRoutes(app, deps);
+  registerReleaseRoutes(app, deps);
+  registerHealthRoutes(app, deps);
+  registerSearchRoutes(app, deps);
+  registerActivityRoutes(app, deps);
 
   return app;
 }

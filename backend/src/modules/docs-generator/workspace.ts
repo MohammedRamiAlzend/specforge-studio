@@ -36,6 +36,8 @@ import {
   genVision,
   genWorkflowsDoc,
   genSkillsDoc,
+  genIssuesDoc,
+  genReleasesDoc,
 } from "./generators";
 
 export interface WorkspaceFile {
@@ -93,6 +95,9 @@ export const WORKSPACE_FILES: WorkspaceFileSpec[] = [
   { path: "00-meta/dependencies.md", type: "index", title: "Project Dependencies", generate: genProjectDependencies },
   // Prompt 16: per-project Skills section; appended at the end so ART ids stay stable.
   { path: "07-guides/skills.md", type: "index", title: "Skills", generate: genSkillsDoc },
+  // Prompt 20: execution and delivery; appended at the end so ART ids stay stable.
+  { path: "05-testing/issues.md", type: "index", title: "Issues", generate: genIssuesDoc },
+  { path: "06-ops/releases.md", type: "index", title: "Releases", generate: genReleasesDoc },
 ];
 
 /**

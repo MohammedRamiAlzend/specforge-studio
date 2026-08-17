@@ -118,14 +118,14 @@ function syncDomainStatus(db: Database, artifactType: string, artifactId: string
 // Validation warnings (traceability rules checked from project data)
 // ---------------------------------------------------------------------------
 
-interface ValidationWarning {
+export interface ValidationWarning {
   rule: string;
   level: "error" | "warning" | "info";
   message: string;
   violations: string[];
 }
 
-function collectValidationWarnings(db: Database, projectId: string): ValidationWarning[] {
+export function collectValidationWarnings(db: Database, projectId: string): ValidationWarning[] {
   const warnings: ValidationWarning[] = [];
 
   // TR-01: every requirement links to at least one use case or workflow.

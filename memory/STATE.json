@@ -2,8 +2,8 @@
   "schema_version": "1.0",
   "project_name": "SpecForge Studio",
   "last_updated": "2026-08-17",
-  "current_prompt_id": "19",
-  "current_phase": "docs-zip-download",
+  "current_prompt_id": "20",
+  "current_phase": "dev-lifecycle-management",
   "status": "in_progress",
   "execution_mode": "human_approved_automation",
   "required_scope": [
