@@ -415,5 +415,55 @@ export function seedDemoProject(db: Database, opts: SeedOptions = {}): SeedResul
   }
   console.log(`Skills seeded: ${skills.length} (acme project).`);
 
+  // -------------------------------------------------------------------------
+  // Execution + delivery (Prompt 20) — team, issues, releases, assignment
+  // -------------------------------------------------------------------------
+
+  db.query(
+    `INSERT INTO team_members (id, project_id, name, email, role)
+     VALUES (?, ?, ?, ?, ?)`,
+  ).run("MEM-0001", projectId, "Ada Lovelace", "ada@acme.internal", "Product owner");
+  db.query(
+    `INSERT INTO team_members (id, project_id, name, email, role)
+     VALUES (?, ?, ?, ?, ?)`,
+  ).run("MEM-0002", projectId, "Alan Turing", "alan@acme.internal", "Engineering lead");
+  db.query(
+    "INSERT INTO id_sequences (prefix, next_value, project_id) VALUES ('MEM', 3, ?) ON CONFLICT(prefix) DO UPDATE SET next_value = excluded.next_value, project_id = excluded.project_id",
+  ).run(projectId);
+  logEvent(db, { projectId, entityType: "team_member", entityId: "MEM-0001", action: "created", payload: { name: "Ada Lovelace", role: "Product owner" } });
+  logEvent(db, { projectId, entityType: "team_member", entityId: "MEM-0002", action: "created", payload: { name: "Alan Turing", role: "Engineering lead" } });
+
+  // Assign TASK-0001 (created manually above) to the engineering lead.
+  db.query("UPDATE tasks SET assignee_id = 'MEM-0002', updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = 'TASK-0001'").run();
+
+  db.query(
+    `INSERT INTO issues (id, project_id, kind, severity, status, title, description, created_by)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run("ISS-0001", projectId, "tech_debt", "medium", "open", "Replace ad-hoc cart totals with a server-side pricing service", "Consolidate the pricing logic currently spread across checkout handlers (REQ-0003).", "alan@acme.internal");
+  db.query(
+    `INSERT INTO issues (id, project_id, kind, severity, status, title, description, created_by)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run("ISS-0002", projectId, "enhancement", "low", "resolved", "Add catalog search autocomplete", "Delivered with the catalog module; keyboard navigation pending.", "ada@acme.internal");
+  db.query(
+    "INSERT INTO id_sequences (prefix, next_value, project_id) VALUES ('ISS', 3, ?) ON CONFLICT(prefix) DO UPDATE SET next_value = excluded.next_value, project_id = excluded.project_id",
+  ).run(projectId);
+  logEvent(db, { projectId, entityType: "issue", entityId: "ISS-0001", action: "created", payload: { kind: "tech_debt", severity: "medium" } });
+  logEvent(db, { projectId, entityType: "issue", entityId: "ISS-0002", action: "created", payload: { kind: "enhancement", severity: "low" } });
+
+  db.query(
+    `INSERT INTO releases (id, project_id, version, name, status, notes, released_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  ).run("RLS-0001", projectId, "0.1.0", "Alpha: catalog + checkout", "released", "Internal alpha with catalog browsing and a working checkout flow.", "2026-08-01T00:00:00Z");
+  db.query(
+    `INSERT INTO releases (id, project_id, version, name, status, notes)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+  ).run("RLS-0002", projectId, "1.0.0", "MVP launch", "planned", "Public launch: payments, order management, and admin analytics.");
+  db.query(
+    "INSERT INTO id_sequences (prefix, next_value, project_id) VALUES ('RLS', 3, ?) ON CONFLICT(prefix) DO UPDATE SET next_value = excluded.next_value, project_id = excluded.project_id",
+  ).run(projectId);
+  logEvent(db, { projectId, entityType: "release", entityId: "RLS-0001", action: "created", payload: { version: "0.1.0" } });
+  logEvent(db, { projectId, entityType: "release", entityId: "RLS-0002", action: "created", payload: { version: "1.0.0" } });
+  console.log(`Execution + delivery seeded: team (2), issues (2), releases (2), assignee on TASK-0001.`);
+
   return { projectId, roadmapId, taskCount: pack.created };
 }

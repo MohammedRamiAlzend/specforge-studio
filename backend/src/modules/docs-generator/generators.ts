@@ -30,6 +30,8 @@ import {
 import { erdFromTables } from "../diagrams/routes";
 import { listProjectDependencies, listProjectDependents, workflowCallsForProject } from "../links/routes";
 import { listSkills } from "../skills";
+import { listIssues } from "../issues";
+import { listReleases } from "../releases";
 
 // ---------------------------------------------------------------------------
 // Row shapes
@@ -988,6 +990,68 @@ export function genSkillsDoc(ctx: GeneratorContext): string {
       : p(`Agents executing this project's task packs should be competent in: ${[...capability.map((s) => s.name), ...tech.map((s) => s.name)].join(", ")}.`));
 
   return frontmatterFor(ctx, "Skills", "index") + body;
+}
+
+export function genIssuesDoc(ctx: GeneratorContext): string {
+  const issues = listIssues(ctx.db, ctx.projectId);
+  const open = issues.filter((i) => i.status === "open" || i.status === "in_progress");
+  const resolved = issues.filter((i) => i.status === "resolved");
+
+  const body =
+    p("# Issues") +
+    section("Purpose", p("Structured issue tracking for the project (Prompt 20). Issues cover bugs, enhancements, technical debt, and questions, and can be linked to requirements, tasks, or test cases for traceability.")) +
+    section("Summary", issues.length === 0
+      ? p("No issues recorded yet.")
+      : ul([
+          `Total issues: ${issues.length}`,
+          `Open / in progress: ${open.length}`,
+          `Resolved: ${resolved.length}`,
+        ])) +
+    section(
+      "Open Issues",
+      open.length === 0
+        ? p("No open issues.")
+        : table(
+            ["ID", "Kind", "Severity", "Title", "Status"],
+            open.map((i) => [i.id, `\`${i.kind}\``, `\`${i.severity}\``, i.title, statusBadge(i.status)]),
+          ),
+    ) +
+    section(
+      "All Issues",
+      issues.length === 0
+        ? p("No issues recorded yet.")
+        : table(
+            ["ID", "Kind", "Severity", "Title", "Status"],
+            issues.map((i) => [i.id, `\`${i.kind}\``, `\`${i.severity}\``, i.title, statusBadge(i.status)]),
+          ),
+    );
+
+  return frontmatterFor(ctx, "Issues", "index") + body;
+}
+
+export function genReleasesDoc(ctx: GeneratorContext): string {
+  const releases = listReleases(ctx.db, ctx.projectId);
+
+  const body =
+    p("# Releases") +
+    section("Purpose", p("Release planning and changelog tracking (Prompt 20). Every release records a version, a name, a status, and notes used as the changelog entry.")) +
+    section(
+      "Releases",
+      releases.length === 0
+        ? p("No releases defined yet.")
+        : table(
+            ["ID", "Version", "Name", "Status", "Released", "Notes"],
+            releases.map((r) => [r.id, `\`${r.version}\``, r.name, statusBadge(r.status), r.released_at ?? "—", r.notes ?? "—"]),
+          ),
+    ) +
+    section("Changelog", releases.filter((r) => r.status === "released").length === 0
+      ? p("No released versions yet.")
+      : releases
+          .filter((r) => r.status === "released")
+          .map((r) => h(3, `${r.version} — ${r.name}`) + p(r.notes ?? "No release notes."))
+          .join("\n"));
+
+  return frontmatterFor(ctx, "Releases", "index") + body;
 }
 
 export function genErdDoc(ctx: GeneratorContext): string {

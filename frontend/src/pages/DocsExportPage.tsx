@@ -4,6 +4,7 @@ import {
   useDeleteDocsExport,
   useDocsExport,
   useDocsExports,
+  useDownloadDocsExport,
   useGenerateDocs,
 } from "../entities/docs/api";
 import type { DocsExport } from "../entities/docs/types";
@@ -23,10 +24,12 @@ export function DocsExportPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
 
   const { data: exports, isLoading, error, refetch } = useDocsExports(projectId);
   const generate = useGenerateDocs();
   const deleteExport = useDeleteDocsExport();
+  const download = useDownloadDocsExport();
 
   const selectedDetail = useDocsExport(expandedId ?? undefined);
 
@@ -36,6 +39,15 @@ export function DocsExportPage() {
     const detail = await generate.mutateAsync({ project_id: projectId });
     setExpandedId(detail.id);
     setSelectedPath(detail.files[0]?.path ?? null);
+  };
+
+  const handleDownload = async (id: string) => {
+    setDownloadError(null);
+    try {
+      await download.mutateAsync(id);
+    } catch (err) {
+      setDownloadError(err instanceof Error ? err.message : "Download failed");
+    }
   };
 
   const handleExpand = (exp: DocsExport) => {
@@ -66,6 +78,12 @@ export function DocsExportPage() {
       </div>
 
       {error ? <ErrorState message={error.message} onRetry={() => void refetch()} /> : null}
+
+      {downloadError ? (
+        <div className="rounded-md border border-rose-200 bg-rose-50 px-4 py-3 text-xs text-rose-700">
+          Download failed: {downloadError}
+        </div>
+      ) : null}
 
       {isLoading || !exports ? (
         <div className="flex items-center justify-center rounded-lg border border-slate-200 bg-white py-14">
@@ -101,6 +119,14 @@ export function DocsExportPage() {
                       {exp.file_count} files · generated {formatDate(exp.generated_at)}
                     </p>
                   </button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    loading={download.isPending}
+                    onClick={() => void handleDownload(exp.id)}
+                  >
+                    Download ZIP
+                  </Button>
                   <Button
                     size="sm"
                     variant="ghost"

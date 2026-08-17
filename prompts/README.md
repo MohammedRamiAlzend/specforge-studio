@@ -34,6 +34,8 @@ This folder contains the scheduled prompt sequence for building SpecForge Studio
 16. Skills section, per-project docs integration, and final audit
 17. UI polish and motion (smooth navigation, micro-interactions, reduced-motion)
 18. Full-detail e-commerce seeder (.NET backend + React frontend demo example)
+19. Download generated docs as ZIP (per-export download button + on-demand ZIP endpoint)
+20. Project execution & delivery management (team + assignees, Kanban board, issues, releases, health analytics, search, activity feed)
 
 Note: the original Prompt 13 (Deployment and Final Audit) was removed from the
 required scope by user request (2026-08-16) and replaced by Prompts 13–16
@@ -52,3 +54,16 @@ ecommerce project with full details ... using dotnet for back and using react
 for front with skills") — a full-detail demo e-commerce seeder (ASP.NET Core +
 React) seeded as PRJ-0003 (live) / PRJ-0004 (committed example) alongside the
 existing Acme example.
+
+Prompt 19 (2026-08-17) was added by user request ("add prompt ... for adding
+download as zip button for generated docs") — a Downloads scope: an on-demand
+ZIP endpoint for stored docs exports plus a "Download ZIP" button on the Docs
+Export page.
+
+Prompt 20 (2026-08-17) was added by user request (product-owner gap analysis of
+the development lifecycle; "create plan and implement it in new branch then
+push changes and generate pull request but u r not allowed to merge it") — an
+execution & delivery management layer (team + assignees, Kanban board, issues,
+releases, health analytics, global search, activity feed). Implemented on a
+dedicated branch and delivered as a pull request; merging to main is
+forbidden by the user.
