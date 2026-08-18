@@ -88,6 +88,13 @@ Extended prefixes (added by this ontology, DEC-002):
 | NCAT | NodeCategory (modeler node palette, Prompt 15) |
 | NTYP | NodeType (modeler node palette, Prompt 15) |
 | SKL | Skill (per-project skills, Prompt 16) |
+| MEM | TeamMember (execution & delivery, Prompt 20) |
+| ISS | Issue (execution & delivery, Prompt 20) |
+| RLS | Release (execution & delivery, Prompt 20) |
+| TCAT | TemplateCategory (template library, Prompt 21) |
+| TMPL | ProjectTemplate (template library, Prompt 21) |
+| TCMP | TemplateComponent (template library, Prompt 21) |
+| UTMPL | UserTemplate (template library, Prompt 21) |
 
 Child codes:
 

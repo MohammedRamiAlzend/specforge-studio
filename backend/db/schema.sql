@@ -963,3 +963,104 @@ CREATE TABLE IF NOT EXISTS releases (
 );
 CREATE INDEX IF NOT EXISTS idx_releases_project ON releases(project_id);
 CREATE INDEX IF NOT EXISTS idx_releases_status ON releases(project_id, status);
+
+-- ---------------------------------------------------------------------------
+-- Template Library (Prompt 21)
+-- ---------------------------------------------------------------------------
+-- Template system for project blueprints and reusable components.
+-- Users can start projects from templates, add components to existing projects,
+-- and export their projects as templates for reuse.
+
+-- Template categories (e.g., "E-commerce", "SaaS", "Mobile")
+CREATE TABLE IF NOT EXISTS template_categories (
+  id          TEXT PRIMARY KEY,              -- TCAT-0001
+  key         TEXT NOT NULL UNIQUE,          -- ecommerce, saas, mobile
+  label       TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  icon        TEXT,                          -- emoji or icon name
+  sort_order  INTEGER NOT NULL DEFAULT 0,
+  enabled     INTEGER NOT NULL DEFAULT 1,
+  created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_template_categories_enabled ON template_categories(enabled);
+
+-- Project templates (complete project blueprints)
+CREATE TABLE IF NOT EXISTS project_templates (
+  id              TEXT PRIMARY KEY,         -- TMPL-0001
+  category_id     TEXT REFERENCES template_categories(id) ON DELETE SET NULL,
+  key             TEXT NOT NULL UNIQUE,     -- ecommerce-basic, saas-mvp
+  name            TEXT NOT NULL,
+  description     TEXT NOT NULL,
+  readme_content  TEXT,                     -- Markdown description
+  thumbnail       TEXT,                     -- URL or base64
+  version         TEXT NOT NULL DEFAULT '1.0.0',
+  
+  -- Configuration (JSON blobs containing pre-defined artifacts)
+  default_modules JSON,                     -- Pre-defined modules
+  default_entities JSON,                    -- Pre-defined entities
+  default_workflows JSON,                   -- Pre-defined workflows
+  default_tasks   JSON,                     -- Pre-defined task packs
+  default_skills  JSON,                     -- Recommended team skills
+  
+  -- Metadata
+  complexity      TEXT CHECK (complexity IN ('beginner','intermediate','advanced')),
+  estimated_time  TEXT,                     -- e.g., "4-6 weeks"
+  team_size       TEXT,                     -- e.g., "3-5 developers"
+  tech_stack      JSON,                     -- Recommended technologies
+  
+  -- Stats
+  usage_count     INTEGER NOT NULL DEFAULT 0,
+  rating_avg      REAL DEFAULT 0,
+  rating_count    INTEGER DEFAULT 0,
+  
+  -- Control
+  is_builtin      INTEGER NOT NULL DEFAULT 0,
+  is_featured     INTEGER NOT NULL DEFAULT 0,
+  enabled         INTEGER NOT NULL DEFAULT 1,
+  created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_project_templates_category ON project_templates(category_id);
+CREATE INDEX IF NOT EXISTS idx_project_templates_enabled ON project_templates(enabled);
+CREATE INDEX IF NOT EXISTS idx_project_templates_featured ON project_templates(is_featured);
+
+-- Template components (reusable building blocks)
+CREATE TABLE IF NOT EXISTS template_components (
+  id              TEXT PRIMARY KEY,         -- TCMP-0001
+  key             TEXT NOT NULL UNIQUE,     -- auth-oauth, payment-stripe
+  name            TEXT NOT NULL,
+  description     TEXT NOT NULL,
+  component_type  TEXT CHECK (component_type IN ('workflow','entity','api','task','skill')),
+  
+  -- Content (JSON blobs containing component definition)
+  workflow_graph  JSON,                     -- For workflow components
+  entity_def      JSON,                     -- For entity components
+  api_def         JSON,                     -- For API components
+  task_def        JSON,                     -- For task components
+  
+  -- Dependencies
+  requires        JSON,                     -- Other component keys required
+  compatible_with JSON,                     -- Template categories
+  
+  -- Metadata
+  tags            JSON,
+  usage_count     INTEGER NOT NULL DEFAULT 0,
+  enabled         INTEGER NOT NULL DEFAULT 1,
+  created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_template_components_type ON template_components(component_type);
+CREATE INDEX IF NOT EXISTS idx_template_components_enabled ON template_components(enabled);
+
+-- User's saved template configurations
+CREATE TABLE IF NOT EXISTS user_templates (
+  id              TEXT PRIMARY KEY,         -- UTMPL-0001
+  user_id         TEXT,                     -- Future: for multi-user
+  project_id      TEXT REFERENCES projects(id) ON DELETE CASCADE,
+  template_id     TEXT REFERENCES project_templates(id) ON DELETE SET NULL,
+  name            TEXT NOT NULL,
+  configuration   JSON NOT NULL,            -- Customizations applied
+  created_from    TEXT CHECK (created_from IN ('builtin', 'community', 'custom')),
+  created_at      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_user_templates_project ON user_templates(project_id);
+CREATE INDEX IF NOT EXISTS idx_user_templates_template ON user_templates(template_id);

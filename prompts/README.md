@@ -36,6 +36,7 @@ This folder contains the scheduled prompt sequence for building SpecForge Studio
 18. Full-detail e-commerce seeder (.NET backend + React frontend demo example)
 19. Download generated docs as ZIP (per-export download button + on-demand ZIP endpoint)
 20. Project execution & delivery management (team + assignees, Kanban board, issues, releases, health analytics, search, activity feed)
+21. Template library system (built-in project templates, reusable components, apply/export templates)
 
 Note: the original Prompt 13 (Deployment and Final Audit) was removed from the
 required scope by user request (2026-08-16) and replaced by Prompts 13–16
@@ -67,3 +68,11 @@ execution & delivery management layer (team + assignees, Kanban board, issues,
 releases, health analytics, global search, activity feed). Implemented on a
 dedicated branch and delivered as a pull request; merging to main is
 forbidden by the user.
+
+Prompt 21 (2026-08-18) was added by user request ("add Template library prompt" /
+"focus on adding Template library") — a Template Library system: built-in project
+templates (5 templates: e-commerce, SaaS, REST API, mobile app, blog CMS), reusable
+components (10 components: auth, payments, email, SMS, search, cache, deploy, CI),
+template application to new/existing projects, component integration with dependency
+resolution, and export project as template wizard. Implemented on a dedicated branch
+and delivered as a pull request; merging to main is forbidden by the user.

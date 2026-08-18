@@ -1,9 +1,48 @@
-node_modules/
-dist/
-*.db
-*.db-journal
-*.db-wal
-*.db-shm
-data/
+```
+# Environment files
 .env
 .env.local
+*.env.*
+
+# Logs and temporary files
+*.log
+*.tmp
+
+# Editor/IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build artifacts and dependencies
+dist/
+build/
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.class
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.a
+*.out
+
+# Coverage and testing
+.coverage
+coverage/
+htmlcov/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Cache directories
+.mypy_cache/
+.pytest_cache/
+.gradle/
+target/
+```
