@@ -4,7 +4,7 @@ title: Bug Report Template
 type: guide
 status: generated
 project: PRJ-0001
-updated: "2026-08-16"
+updated: "2026-08-18"
 ---
 
 # Bug Report Template

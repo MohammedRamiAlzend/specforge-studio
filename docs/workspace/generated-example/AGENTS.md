@@ -6,7 +6,7 @@ status: generated
 project: PRJ-0001
 related:
   - AGENTS.md
-updated: "2026-08-16"
+updated: "2026-08-18"
 ---
 
 # AGENTS.md — Workspace Agent Guide

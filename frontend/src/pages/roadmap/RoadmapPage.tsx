@@ -14,6 +14,7 @@ import { PageHeader } from "../../shared/ui/PageHeader";
 import { EmptyState, ErrorState } from "../../shared/ui/States";
 import { Spinner } from "../../shared/ui/Spinner";
 import { formatDate } from "../../shared/lib/format";
+import { RoadmapAggregateCard } from "../../widgets/roadmap-aggregate/RoadmapAggregateCard";
 
 const inputClass =
   "w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 focus:border-forge-500 focus:outline-none focus:ring-1 focus:ring-forge-500";
@@ -245,6 +246,8 @@ export function RoadmapPage() {
           </Button>
         </div>
       </Card>
+
+      <RoadmapAggregateCard projectId={projectId} />
 
       {packMessage ? (
         <div className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs text-emerald-700">{packMessage}</div>

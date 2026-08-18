@@ -6,6 +6,7 @@ export interface Task {
   project_id: string;
   module_id: string | null;
   milestone_id: string | null;
+  assignee_id: string | null;
   title: string;
   type: TaskType;
   priority: "high" | "medium" | "low";
@@ -19,6 +20,14 @@ export interface Task {
   definition_of_done: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface UpdateTaskInput {
+  title?: string;
+  priority?: "high" | "medium" | "low";
+  objective?: string;
+  status?: TaskStatus;
+  assignee_id?: string | null;
 }
 
 export interface CreateTaskInput {

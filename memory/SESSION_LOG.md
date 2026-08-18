@@ -698,3 +698,84 @@ Memory files updated:
 
 Next action:
 - Wait for the user to approve implementation of Prompt 19 (Download generated docs as ZIP). On approval, execute prompts/19-docs-zip-download.md: zip util, download endpoint, frontend button + hook, tests; verify typecheck + backend tests + build; update PROJECT_MEMORY.md + NEXT_ACTION.md + DECISIONS (DEC-023 → implemented); then completion report per AGENTS.md.
+
+## Session — 2026-08-18 — Re-connect repo to Freebuff + reconfigure preview commands
+
+User request:
+- "I just connected the GitHub repo MohammedRamiAlzend/specforge-studio. Inspect the project to understand what it is, then configure (but do NOT start) the install, dev/preview, and build commands using the freebuff-preview tooling so I can start the preview myself from the UI. Finally, summarize what the project does and what env vars or setup it needs." — re-issue of the 2026-08-16 request already recorded in memory/USER_REQUESTS.md.
+
+Work completed:
+- Read AGENTS.md + all memory files; inspected the repo: Bun workspaces monorepo (root, backend/, frontend/); branch main clean and tracking origin/main; bun.lock present; no .env files.
+- Confirmed the application is fully built and on main: Fastify 5 + Zod + bun:sqlite backend (modeler, diagrams, docs-generator, roadmap, agent-tasks, governance, platform-config, links, palette, skills, plus execution & delivery: team, issues, releases, search, activity; migrations 001–010) and React 18 + Vite 6 + Tailwind 3 + Feature-Sliced Design frontend.
+- Configured (did NOT start) the Freebuff preview via freebuff-preview tooling (each command set individually; chaining caused the CLI to capture the whole line as one argument):
+  - install: bun install
+  - dev/preview: bun run dev (port 5173)
+  - build: bun run build
+- Verified via `freebuff-preview status`: installCommand / previewCommand (5173) / buildCommand all saved; running: false, listening: false.
+- Noted memory staleness: memory/STATE.json, NEXT_ACTION.md, and PROJECT_MEMORY.md still describe Prompt 19 as plan-created/awaiting approval and omit Prompt 19/20 implementation, but main already contains Prompt 19 (backend/src/utils/zip.ts, docs-zip tests, /docs/exports/:id/download) and Prompt 20 (migration 010_execution_and_delivery.sql, team/issues/releases/search/activity modules, execution tests). Memory reconciliation is a follow-up, not part of this request.
+
+Work partially completed: none.
+
+Blockers: none.
+
+Memory files updated:
+- memory/SESSION_LOG.md, memory/USER_REQUESTS.md (follow-up note on the 2026-08-16 entry), memory/PROJECT_MEMORY.md (operational note)
+
+Next action:
+- User starts the preview from the Freebuff UI (commands configured; nothing started). Optional follow-up: reconcile memory state (STATE.json / NEXT_ACTION / PROJECT_MEMORY / DECISIONS) with the actual repo state before the next AGENTS.md-driven continue.
+
+
+## Session — 2026-08-18 — Continue: finish Prompt 20 frontend + reconcile memory (completion session)
+
+User request:
+- "continue" — per AGENTS.md, resume from stored memory. Memory was stale (described Prompt 19 as plan-awaiting-approval and Prompt 20 backend as merged with a missing frontend layer); verified the actual repo state and reconciled memory from evidence before continuing.
+
+Work completed:
+- Re-established the true state: Prompt 19 fully implemented on main (zip util + /docs/exports/:id/download + Download ZIP button on DocsExportPage + docs-zip tests); Prompt 20 BACKEND merged to main via PR #4 (migration 010, team/issues/releases/health/search/activity modules, tasks PATCH + assignee filter, issues.md/releases.md generators appended at END of WORKSPACE_FILES, execution.test.ts) but the FRONTEND deliverables were missing (no entities/pages/widgets, no FEAT-013, no MEM/ISS/RLS prefixes, examples still 34 files). Per AGENTS.md, Prompt 20's definition of done was unsatisfied, so continue = finish it.
+- Baseline: fixed a pre-existing tuple type bug in backend/scripts/seed-ecommerce.ts (issues rows annotated as 6-tuples while carrying 7 elements) so root typecheck passes; installed deps; confirmed 190 tests green.
+- Implemented the Prompt 20 frontend layer on main:
+  - Entities + hooks: entities/team-member, entities/issue (+lib), entities/release (+lib), entities/health, entities/search, entities/activity; entities/task extended (assignee_id, UpdateTaskInput, useUpdateTask, useTasks assignee filter).
+  - Pages: IssuesPage (status/kind filters, create form, advance/delete), ReleasesPage (create form, planned → in_progress → released advance, delete).
+  - TasksPage: Kanban board view (5 status columns, per-card status + assignee selects, assignee filter dropdown, board/table toggle) while keeping the table view.
+  - Widgets: HealthCards + HealthMiniCard (Definition/Execution/Delivery metric cards with progress bars + chips), ActivityFeed (project-scoped + dashboard), TeamSection (roster CRUD), SearchBox (AppShell top bar with results dropdown; project-scoped when inside a project).
+  - Integration: App.tsx routes (/issues, /releases); AppShell nav links + SearchBox; DashboardPage (HealthMiniCard per project + Recent activity + execution tips); ProjectDetailsPage (HealthCards, TeamSection, ActivityFeed, Issues/Releases section cards).
+  - Docs: docs/features/execution-delivery.md (FEAT-013); MEM/ISS/RLS rows added to docs/ontology/id-convention.md.
+  - Tests: frontend/tests/execution.test.tsx (11 tests: issue/release/search/activity lib helpers, buildHealthCards, static renders of IssuesPage/ReleasesPage/TasksPage/TeamSection/ActivityFeed).
+  - Seeds/examples: both demo seeds already carried team/issues/releases/assignees; regenerated docs/workspace/generated-example/ + docs/workspace/generated-example-ecommerce/ to 36 files each (issues.md ART-0035, releases.md ART-0036 appended at end; existing ART ids stable).
+- Verified: root `bun run typecheck` clean; `bun test backend/tests frontend/tests` → 201 pass / 0 fail (26 files, 926 expects); `bun run --cwd backend smoke` → SMOKE TEST OK; seed-example + seed-ecommerce-example both write 36 files.
+- Reconciled memory: STATE.json (status completed; required_scope/completed_phases now include 17–20; completion flags set; DEC-023/024 summaries), NEXT_ACTION.md (all scope complete; next = completion report + await user direction), DECISIONS.md (DEC-023 → implemented; new DEC-024 for Prompt 20), PROJECT_MEMORY.md (current state, Prompt 19/20 completed sections, pending work, operational context), USER_REQUESTS.md (Prompt 20 follow-up), OPTIONAL_BACKLOG.md (refreshed candidates), SESSION_LOG.md (this entry).
+
+Work partially completed: none.
+
+Blockers: none.
+
+Memory files updated:
+- memory/STATE.json, memory/NEXT_ACTION.md, memory/DECISIONS.md, memory/PROJECT_MEMORY.md, memory/USER_REQUESTS.md, memory/OPTIONAL_BACKLOG.md, memory/SESSION_LOG.md
+
+Next action:
+- Deliver the AGENTS.md completion report (STATUS: ALL_REQUIRED_TASKS_COMPLETED) and await user direction: approve an optional task from memory/OPTIONAL_BACKLOG.md, provide a new requirement, or close the project.
+
+
+## Session — 2026-08-18 — Approved optional task OPT-003: multi-project roadmap aggregation
+
+User request:
+- Approved OPT-003 (Multi-project roadmap aggregation across linked projects) from the completion report / optional backlog.
+
+Work completed:
+- Recorded the approval: OPTIONAL_BACKLOG.md (OPT-003 approval status → approved), DECISIONS.md (new DEC-025), STATE.json (decisions summary + next_action).
+- Backend: new GET /roadmaps/aggregate?project=:id in backend/src/modules/roadmap/routes.ts (aggregateWorkspaceRoadmaps). Read-only aggregation over the root project plus every directly linked project (PDEP dependencies via listProjectDependencies + dependents via listProjectDependents; self = link_kind "self"). Per project: latest roadmap (created_at DESC), phases/epics/milestones counts, task-draft total, packaged count (materialized_task_id IS NOT NULL), canonical done count (tasks joined on materialized ids, status = done), completion %. Workspace totals (projects, roadmaps, phases, milestones, tasks_total, tasks_packaged, tasks_done, completion). Deterministic ordering (root first, then project name/id); unknown project → 404. No schema changes.
+- Backend tests: backend/tests/roadmap-aggregate.test.ts (5 tests — linked deps + dependents included, unrelated excluded, root first, per-project + totals math, packaged/done progress reflected, 404, single-project no-links case).
+- Frontend: entities/roadmap-aggregate (types.ts + api.ts with useRoadmapAggregate + linkKindLabel); widgets/roadmap-aggregate/RoadmapAggregateCard.tsx (per-project rows: link to project/roadmap, link-kind badge, roadmap status badge, progress bar with done/total, stat chips; workspace totals row; loading/error/empty states); integrated into pages/roadmap/RoadmapPage.tsx below the generate card.
+- Frontend tests: frontend/tests/roadmap-aggregate.test.tsx (3 tests — linkKindLabel, RoadmapAggregateCard static shell, project-row model).
+- Docs: docs/features/roadmap-engine.md (FEAT-004) section 7 "Workspace aggregation (OPT-003)".
+- Verified: root bun run typecheck clean; bun test backend/tests frontend/tests → 209 pass / 0 fail (28 files, 977 expects); bun run --cwd backend smoke → SMOKE TEST OK.
+
+Work partially completed: none.
+
+Blockers: none.
+
+Memory files updated:
+- memory/OPTIONAL_BACKLOG.md, memory/DECISIONS.md, memory/STATE.json, memory/PROJECT_MEMORY.md, memory/SESSION_LOG.md
+
+Next action:
+- Report completion of OPT-003 to the user; await direction: approve another optional task, provide a new requirement, or close the project.

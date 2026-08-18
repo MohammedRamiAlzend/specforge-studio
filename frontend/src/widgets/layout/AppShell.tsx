@@ -2,6 +2,7 @@ import { NavLink, Outlet, useLocation, useParams } from "react-router-dom";
 import { useEffect } from "react";
 import { useAppStore } from "../../app/store";
 import { useProjects } from "../../entities/project/api";
+import { SearchBox } from "../search/SearchBox";
 
 function navLinkClass(isActive: boolean): string {
   return `flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm transition-all duration-200 ${
@@ -77,6 +78,12 @@ export function AppShell() {
               <NavLink to={`/projects/${project.id}/tasks`} className={({ isActive }) => navLinkClass(isActive)}>
                 Tasks
               </NavLink>
+              <NavLink to={`/projects/${project.id}/issues`} className={({ isActive }) => navLinkClass(isActive)}>
+                Issues
+              </NavLink>
+              <NavLink to={`/projects/${project.id}/releases`} className={({ isActive }) => navLinkClass(isActive)}>
+                Releases
+              </NavLink>
               <NavLink to={`/projects/${project.id}/skills`} className={({ isActive }) => navLinkClass(isActive)}>
                 Skills
               </NavLink>
@@ -97,11 +104,22 @@ export function AppShell() {
       </aside>
 
       <main className="min-w-0 flex-1 overflow-y-auto">
-        <div className={isCanvasRoute ? "h-full overflow-hidden" : "mx-auto max-w-6xl px-6 py-8"}>
-          <div key={location.pathname} className={isCanvasRoute ? "sf-page-enter h-full" : "sf-page-enter"}>
-            <Outlet />
+        {isCanvasRoute ? (
+          <div className="h-full overflow-hidden">
+            <div key={location.pathname} className="sf-page-enter h-full">
+              <Outlet />
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="mx-auto max-w-6xl px-6 py-8">
+            <div className="mb-6">
+              <SearchBox projectId={params.projectId} />
+            </div>
+            <div key={location.pathname} className="sf-page-enter">
+              <Outlet />
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
