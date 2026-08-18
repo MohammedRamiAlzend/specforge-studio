@@ -708,7 +708,7 @@ export function seedEcommerceProject(db: Database, opts: SeedOptions = {}): Seed
     db.query("UPDATE tasks SET assignee_id = 'MEM-0102', updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?").run(assigneeTask);
   }
 
-  const issues: [string, string, string, string, string, string][] = [
+  const issues: [string, string, string, string, string, string, string][] = [
     ["ISS-0101", "bug", "high", "open", "Cart totals desync when quantity updated rapidly", "Two concurrent quantity updates produce a stale total on the client.", "linus@storesphere.internal"],
     ["ISS-0102", "tech_debt", "medium", "open", "Consolidate order pricing into a server-side service", "Pricing logic is split across checkout handlers (REQ-0109).", "margaret@storesphere.internal"],
     ["ISS-0103", "enhancement", "low", "resolved", "Add product review photo uploads", "Resolved for v1; storage hardening deferred.", "ada@storesphere.internal"],

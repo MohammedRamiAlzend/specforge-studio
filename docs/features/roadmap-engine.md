@@ -76,10 +76,30 @@ draft). `RMP` was added to `docs/ontology/id-convention.md`.
   pack** (materializes via `/api/agent-tasks/generate`). Route
   `/projects/:projectId/roadmap` + nav link.
 
-## 7. Definition of Done
+## 7. Workspace aggregation (OPT-003, approved optional task 2026-08-18)
+
+Linked projects (PDEP, Prompt 14) get a combined roadmap view for portfolio
+planning:
+
+- `GET /api/roadmaps/aggregate?project=:id` — read-only aggregation over the
+  root project plus every directly linked project (dependencies + dependents).
+  Per project: latest roadmap summary, phase/epic/milestone counts, task-draft
+  total, packaged count (`materialized_task_id`), and execution progress
+  (canonical tasks done among packaged drafts). Workspace totals include
+  projects, roadmaps, tasks, packaged, done, and completion %. Ordering is
+  deterministic (root first, then project name/id); unrelated projects are
+  excluded.
+- Frontend: `entities/roadmap-aggregate/` (types + `useRoadmapAggregate`) and
+  `widgets/roadmap-aggregate/RoadmapAggregateCard` on the Roadmap page —
+  per-project rows with link-kind badges, roadmap status, progress bars, and
+  totals, linking into each project's own roadmap page.
+- No schema changes; the database stays the source of truth.
+
+## 8. Definition of Done
 
 - Roadmap generated automatically from project artifacts. ✔
 - Phases, milestones, epics, tasks, dependencies, priorities, approval gates present. ✔
 - Task drafts reference source artifacts (no invented work). ✔
 - Deterministic, stored snapshot with provenance. ✔
+- Workspace aggregation endpoint + widget + tests (OPT-003). ✔
 - Memory updated; next action points to Prompt 11. ✔

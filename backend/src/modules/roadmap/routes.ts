@@ -13,6 +13,7 @@ import { allocateId } from "../../utils/ids";
 import { logEvent } from "../../utils/events";
 import { assertProjectExists } from "../../utils/exists";
 import { notFound } from "../../utils/errors";
+import { listProjectDependencies, listProjectDependents } from "../links/routes";
 import { deriveRoadmapPlan, type ChecklistItem } from "./engine";
 
 const roadmapIdSchema = /^RMP-\d{4,}$/;
@@ -257,8 +258,165 @@ function getRoadmapDetail(db: Database, id: string) {
   return { roadmap: getRoadmapRow(db, id), phases, epics, milestones, tasks, dependencies };
 }
 
+// ---------------------------------------------------------------------------
+// Workspace roadmap aggregation (OPT-003)
+//
+// Read-only view of the roadmap surface across a project and every project it
+// is directly linked to (PDEP dependencies + dependents). For each project the
+// latest roadmap's phase/epic/milestone counts, task-draft total, packaged
+// count (materialized task packs), and execution progress (canonical tasks
+// done among packaged drafts) are computed from the database. Deterministic
+// ordering: the root project first, then projects by name/id.
+// ---------------------------------------------------------------------------
+
+export interface RoadmapAggregateProject {
+  project_id: string;
+  project_name: string;
+  project_type: string;
+  link_kind: string; // "self" | PDEP dependency kind | "dependent"
+  roadmap_id: string | null;
+  roadmap_name: string | null;
+  roadmap_status: string | null;
+  phases: number;
+  epics: number;
+  milestones: number;
+  tasks_total: number;
+  tasks_packaged: number;
+  tasks_done: number;
+  completion: number;
+}
+
+export interface RoadmapAggregate {
+  root_project_id: string;
+  projects: RoadmapAggregateProject[];
+  totals: {
+    projects: number;
+    roadmaps: number;
+    phases: number;
+    milestones: number;
+    tasks_total: number;
+    tasks_packaged: number;
+    tasks_done: number;
+    completion: number;
+  };
+}
+
+function pct(numerator: number, denominator: number): number {
+  if (denominator === 0) return 0;
+  return Math.round((numerator / denominator) * 100);
+}
+
+export function aggregateWorkspaceRoadmaps(db: Database, projectId: string): RoadmapAggregate {
+  const root = db.query("SELECT id, name, type FROM projects WHERE id = ?").get(projectId) as
+    | { id: string; name: string; type: string }
+    | undefined;
+  if (!root) throw notFound(`Project ${projectId} not found`);
+
+  // Directly linked projects: dependencies (this project -> target) and
+  // dependents (target -> this project). Self always wins the map entry.
+  const linkKind = new Map<string, string>();
+  linkKind.set(projectId, "self");
+  for (const dep of listProjectDependencies(db, projectId)) {
+    if (!linkKind.has(dep.depends_on_project_id)) {
+      linkKind.set(dep.depends_on_project_id, dep.kind);
+    }
+  }
+  for (const dep of listProjectDependents(db, projectId)) {
+    if (!linkKind.has(dep.depending_project_id)) {
+      linkKind.set(dep.depending_project_id, "dependent");
+    }
+  }
+
+  const ids = [...linkKind.keys()].sort((a, b) => {
+    if (a === projectId) return -1;
+    if (b === projectId) return 1;
+    return a.localeCompare(b);
+  });
+
+  const projects: RoadmapAggregateProject[] = [];
+  for (const id of ids) {
+    const project = db.query("SELECT id, name, type FROM projects WHERE id = ?").get(id) as
+      | { id: string; name: string; type: string }
+      | undefined;
+    if (!project) continue;
+
+    const roadmap = db
+      .query("SELECT id, name, status FROM roadmaps WHERE project_id = ? ORDER BY created_at DESC, id DESC LIMIT 1")
+      .get(id) as { id: string; name: string; status: string } | undefined;
+
+    let phases = 0;
+    let epics = 0;
+    let milestones = 0;
+    let tasksTotal = 0;
+    let tasksPackaged = 0;
+    let tasksDone = 0;
+    if (roadmap) {
+      const count = (table: string): number =>
+        (db.query(`SELECT COUNT(*) AS n FROM ${table} WHERE roadmap_id = ?`).get(roadmap.id) as { n: number }).n;
+      phases = count("roadmap_phases");
+      epics = count("roadmap_epics");
+      milestones = count("roadmap_milestones");
+      const stats = db
+        .query(
+          `SELECT COUNT(*) AS total,
+                  SUM(CASE WHEN materialized_task_id IS NOT NULL THEN 1 ELSE 0 END) AS packaged
+           FROM roadmap_tasks WHERE roadmap_id = ?`,
+        )
+        .get(roadmap.id) as { total: number; packaged: number | null };
+      tasksTotal = stats.total;
+      tasksPackaged = stats.packaged ?? 0;
+      tasksDone = (db
+        .query(
+          `SELECT COUNT(*) AS n FROM tasks
+           WHERE id IN (SELECT materialized_task_id FROM roadmap_tasks
+                        WHERE roadmap_id = ? AND materialized_task_id IS NOT NULL)
+             AND status = 'done'`,
+        )
+        .get(roadmap.id) as { n: number }).n;
+    }
+
+    projects.push({
+      project_id: project.id,
+      project_name: project.name,
+      project_type: project.type,
+      link_kind: linkKind.get(id) ?? "other",
+      roadmap_id: roadmap?.id ?? null,
+      roadmap_name: roadmap?.name ?? null,
+      roadmap_status: roadmap?.status ?? null,
+      phases,
+      epics,
+      milestones,
+      tasks_total: tasksTotal,
+      tasks_packaged: tasksPackaged,
+      tasks_done: tasksDone,
+      completion: pct(tasksDone, tasksTotal),
+    });
+  }
+
+  const sum = (key: "phases" | "milestones" | "tasks_total" | "tasks_packaged" | "tasks_done"): number =>
+    projects.reduce((acc, p) => acc + p[key], 0);
+
+  const totals = {
+    projects: projects.length,
+    roadmaps: projects.filter((p) => p.roadmap_id).length,
+    phases: sum("phases"),
+    milestones: sum("milestones"),
+    tasks_total: sum("tasks_total"),
+    tasks_packaged: sum("tasks_packaged"),
+    tasks_done: sum("tasks_done"),
+    completion: pct(sum("tasks_done"), sum("tasks_total")),
+  };
+
+  return { root_project_id: projectId, projects, totals };
+}
+
 export function registerRoadmapRoutes(app: FastifyInstance, deps: Deps): void {
   const { db } = deps;
+
+  app.get("/roadmaps/aggregate", async (request) => {
+    const query = projectQuerySchema.parse(request.query);
+    return { data: aggregateWorkspaceRoadmaps(db, query.project) };
+  });
 
   app.post("/roadmaps/generate", async (request, reply) => {
     const body = generateSchema.parse(request.body);

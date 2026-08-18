@@ -14,6 +14,9 @@ import { ErrorState } from "../shared/ui/States";
 import { formatDate } from "../shared/lib/format";
 import { PlatformBadges } from "../widgets/platform-badges/PlatformBadges";
 import { LinkedProjectsCard } from "../widgets/linked-projects/LinkedProjectsCard";
+import { HealthCards } from "../widgets/health/HealthCards";
+import { TeamSection } from "../widgets/team/TeamSection";
+import { ActivityFeed } from "../widgets/activity/ActivityFeed";
 import { errorMessage } from "../shared/api/client";
 
 const SECTIONS = [
@@ -21,7 +24,9 @@ const SECTIONS = [
   { to: "data-model", title: "Data Model", blurb: "Entities, fields, and relations behind the product." },
   { to: "architecture", title: "Architecture", blurb: "Components, layers, and system boundaries." },
   { to: "docs", title: "Docs Export", blurb: "Generated Markdown workspace for the project." },
-  { to: "tasks", title: "Tasks", blurb: "Executable work items with checklists and definitions of done." },
+  { to: "tasks", title: "Tasks", blurb: "Kanban board and executable work items with checklists." },
+  { to: "issues", title: "Issues", blurb: "Bugs, enhancements, tech debt, and questions." },
+  { to: "releases", title: "Releases", blurb: "Versioned releases with status and release notes." },
   { to: "skills", title: "Skills", blurb: "Capabilities and technologies this project relies on." },
 ] as const;
 
@@ -90,6 +95,13 @@ export function ProjectDetailsPage() {
         ))}
       </div>
 
+      <div className="space-y-6">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">Health</h2>
+        <HealthCards projectId={project.id} />
+      </div>
+
+      <TeamSection projectId={project.id} />
+
       <LinkedProjectsCard
         outgoing={outgoing ?? []}
         incoming={incoming ?? []}
@@ -98,6 +110,8 @@ export function ProjectDetailsPage() {
         onAdd={(input) => createDependency.mutate(input)}
         onRemove={(depId) => deleteDependency.mutate(depId)}
       />
+
+      <ActivityFeed projectId={project.id} />
 
       {createDependency.isError ? (
         <p className="text-xs text-rose-600">{errorMessage(createDependency.error)}</p>

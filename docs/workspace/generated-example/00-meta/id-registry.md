@@ -4,7 +4,7 @@ title: ID Registry
 type: index
 status: generated
 project: PRJ-0001
-updated: "2026-08-16"
+updated: "2026-08-18"
 ---
 
 # ID Registry
@@ -17,10 +17,13 @@ Stable, immutable public IDs are the traceability backbone (docs/ontology/id-con
 
 | Prefix | Next value |
 | --- | --- |
+| ISS | 3 |
 | LIB | 33 |
+| MEM | 3 |
 | NCAT | 5 |
 | NTYP | 15 |
 | PTYPE | 5 |
+| RLS | 3 |
 | RMP | 2 |
 | STK | 13 |
 | TASK | 15 |

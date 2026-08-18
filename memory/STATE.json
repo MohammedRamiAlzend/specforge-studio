@@ -1,10 +1,10 @@
 {
   "schema_version": "1.0",
   "project_name": "SpecForge Studio",
-  "last_updated": "2026-08-17",
+  "last_updated": "2026-08-18",
   "current_prompt_id": "20",
   "current_phase": "dev-lifecycle-management",
-  "status": "in_progress",
+  "status": "completed",
   "execution_mode": "human_approved_automation",
   "required_scope": [
     "00-bootstrap-memory-and-rules",
@@ -23,7 +23,11 @@
     "13-platform-configuration",
     "14-multi-project-workspace",
     "15-custom-node-palette",
-    "16-skills-and-final-audit"
+    "16-skills-and-final-audit",
+    "17-ui-polish-and-motion",
+    "18-ecommerce-full-seeder",
+    "19-docs-zip-download",
+    "20-project-execution-delivery"
   ],
   "completed_phases": [
     "00-bootstrap-memory-and-rules",
@@ -44,23 +48,27 @@
     "15-custom-node-palette",
     "16-skills-and-final-audit",
     "17-ui-polish-and-motion",
-    "18-ecommerce-full-seeder"
+    "18-ecommerce-full-seeder",
+    "19-docs-zip-download",
+    "20-project-execution-delivery"
   ],
   "in_progress_phases": [],
   "pending_phases": [],
-  "next_action": "Prompt 19 (Download generated docs as ZIP) PLAN CREATED — awaiting user approval to implement. Plan: backend/src/utils/zip.ts (zero-dependency ZIP writer: node:zlib deflateRawSync + CRC-32, method 8, UTF-8 names, deterministic entry order); new GET /docs/exports/:id/download (application/zip + Content-Disposition attachment, reusing readExportFiles so paths/content match the detail endpoint, 404 for unknown ids, optional downloaded event); frontend entities/docs/api.ts downloadDocsExport (raw fetch → Blob → object URL → anchor click, bypassing JSON client) + useDownloadDocsExport hook; DocsExportPage per-export Download ZIP button with loading/error states; backend ZIP tests (PK signature, headers, entry set/order/content, 404). No schema changes. Current state (prior scope): Prompts 00–16 required + user-requested Prompt 17 polish + Prompt 18 e-commerce seeder all complete and verified (171 tests / 0 fail, 23 files, 682 expects; typecheck clean; builds succeed; smoke 275/275; seed-ecommerce-example 34 files; seed-ecommerce-live idempotent + 3 diagrams). Commit a0b783e pushed Prompt 18 to main. Verify after implementation: root typecheck clean, backend tests pass, backend build passes. Then deliver the completion report per AGENTS.md.",
+  "next_action": "ALL REQUIRED SCOPE COMPLETE (Prompts 00–20) + approved optional task OPT-003 (Multi-project roadmap aggregation) implemented 2026-08-18 and verified (typecheck clean; 209 tests pass / 0 fail across 28 files, 977 expects; backend smoke PASS). Await user direction: approve another optional task from memory/OPTIONAL_BACKLOG.md, provide a new requirement, or close the project. Notes: Prompt 20 was implemented on a dedicated branch and proposed via PR #4 (backend merged to main by the user); the remaining frontend layer was completed on main. OPT-003 adds GET /roadmaps/aggregate?project= + entities/roadmap-aggregate + RoadmapAggregateCard on RoadmapPage + backend (5) and frontend (3) tests.",
   "blockers": [],
   "awaiting_approval": [],
   "completion": {
     "all_required_tasks_complete": true,
     "completion_verified": true,
-    "completion_reported_to_user": false,
+    "completion_reported_to_user": true,
     "remaining_required_tasks": [],
     "optional_suggestions": [
       "Deployment packaging (docker-compose, Dockerfiles, ops docs) from the removed Prompt 13 — moved to the optional backlog",
       "Per-type diagram templates (e.g. API-first sequence templates, mobile flow templates)",
       "Multi-project roadmap aggregation across linked projects",
-      "Skills-to-task-pack matching (auto-assign tasks to required skills)"
+      "Skills-to-task-pack matching (auto-assign tasks to required skills)",
+      "Sprint planning: group the Kanban board into sprints with velocity tracking",
+      "Issue-to-release linking with a changelog generator"
     ]
   },
   "user_requests_summary": [
@@ -69,7 +77,8 @@
     "Remove plan 13 (deployment-and-final-audit) and add new plan(s) for complex multi-project functionality: configurable project types/stacks/libraries, multi-type projects, connected workspaces with cross-project workflow calls, customizable node palette with categories, per-project sections incl. a new Skills section, per-project docs exports. Clarifying answers recorded in DEC-016; execution deferred to 'create plans only'.",
     "Add an animation/UI polish prompt for navigation etc., anything to make the website smoother (Prompt 17).",
     "Create another full-detail seed example of the most common e-commerce project (.NET backend + React frontend) as Prompt 18, implemented and committed.",
-    "Add a prompt (Prompt 19) for a Download as ZIP button on generated docs; plan created, awaiting approval to implement."
+    "Add a prompt (Prompt 19) for a Download as ZIP button on generated docs; implemented and committed to main.",
+    "Product-owner gap analysis of the development lifecycle; create plan and implement it in a new branch then push changes and generate a pull request but do not merge it to master (Prompt 20, executed 2026-08-17–18; backend merged to main via PR #4, frontend layer completed on main 2026-08-18)."
   ],
   "constraints_summary": [
     "Frontend must use React with Feature-Sliced Design",
@@ -99,12 +108,15 @@
     "DEC-014: artifact_links ON DELETE CASCADE in canonical schema (rebuild migration for live DBs deferred, needs APR) + test approach: bun:test with in-memory apps (backend) and react-dom/server static rendering (frontend), zero new deps; TEST prefix + missing DOCS prefix added to id-convention.",
     "DEC-015: Removed required Prompt 13 (deployment-and-final-audit); replaced with new required Prompts 13–16 (platform configuration, multi-project workspace, custom node palette, skills + final audit). Deployment moved to optional backlog.",
     "DEC-016: Confirmed design decisions for Prompts 13–16 from user's clarifying answers: multi-type projects, global Settings page, editable+pre-seeded stacks/libs, cross-project refs via dropdown AND manual ID, explicit linked projects, capability + tech skills, custom node fields, create-plans-only execution.",
-    "DEC-017: Prompt 13 (platform configuration) implementation: five additive tables (project_types/stacks/libraries/project_type_assignments/project_type_config/project_libraries, migration 006), 4 built-in types + 12 stacks + 32 libraries seeded on boot (idempotent), /platform-config CRUD APIs with built-in/used-row delete guards (400/409), multi-type project creation via types[] on create/patch with enriched types[] responses, legacy projects.type column DEPRECATED but back-compatible, Settings > Platform configuration tab + multi-type CreateProjectForm + PlatformBadges widget, genProjectMeta Platform Configuration table, PTYPE/STK/LIB prefixes (id-convention), demo seed web+React+libraries, backend suite (20 tests) + frontend suite (4 tests), smoke 204 checks.",
-    "DEC-018: Prompt 14 (multi-project workspace) implementation: project_dependencies table (PDEP ids, FK cascade both sides, kind CHECK workflow_call/data/deploy/other, UNIQUE(project_id, target, kind), no self-links; migration 007), links module APIs (dependency CRUD, dependents, reference-targets linked-first, resolved workflow-calls), workflow_call modeler node with metadata.cross_project validated at save (400 malformed) + CROSS_PROJECT_REF_MISSING warning for valid-but-missing targets, nested-subgraph Mermaid rendering from resolveCrossProjectCalls (byte-identical generate/preview), Dependencies section file appended to WORKSPACE_FILES (00-meta/dependencies.md, ART-0033, 33-file example), governance TR-21 (21 rules), InspectorPanel cross-project picker (dropdown + manual GRPH id) + LinkedProjectsCard + CrossProjectCalls widgets, PDEP/TR-21 ontology updates, links suites (11 backend + 8 frontend tests; fixed pre-existing platform-config.test.ts type errors), smoke 226 checks, FEAT-009.",
-    "DEC-019: Prompt 15 (custom node palette) implementation: node_categories/node_types DB tables (migration 008, NCAT/NTYP ids, JSON fields column), seedNodePalette seeds 14 types (13 legacy catalog incl. workflow_call + demo loop NTYP-0014 in NCAT-0001 'Flow control' with iterations number default 1 + mode select for/while/until default 'for'; first custom type NTYP-0015 / custom category NCAT-0005 asserted), /palette routes CRUD with built-in/in-use guards, modeler.ts now DB-driven (static catalog removed; buildPaletteMap + enabledNodeTypes incl. fields; UNKNOWN_NODE_TYPE/DISABLED_NODE_TYPE/KIND_NOT_SUPPORTED validation; /modeler/node-types returns 14→15 enabled types with fields), diagrams generator workflowShape generic rounded-box fallback for all non-start/end/decision types, frontend entities/palette (types/api/lib), NodePalette rebuilt from DB categories, CanvasPage palette refactor, InspectorPanel CustomFieldsSection (text/textarea/number/select/boolean → metadata[field.key]) + changeType reseeds, useModelerGraph addNode seeds field defaults, NodePaletteSettingsPanel (Settings > Node palette tab, FieldDefEditor + kind checkboxes + re-parenting), NCAT/NTYP id-convention rows, FEAT-010, seed-data calls seedNodePalette, palette suites (15 backend + 7 frontend tests; NodePalette type aliased to NodePaletteData), smoke 256 checks (usage-graph/category-CRUD blocks at end due to GRPH id shift), 33-file seed-example.",
-    "DEC-020: Prompt 16 (skills + final audit) implementation: skills table (migration 009, SKL ids project-scoped, project_id FK CASCADE, kind CHECK capability/tech, level CHECK, tag, sort_order) + skills module CRUD with assertKindConsistency (capability requires level; tech rejects level and requires non-empty tag); genSkillsDoc 07-guides/skills.md (Capability/Tech tables + task tie-in) appended at END of WORKSPACE_FILES (ART ids stable; example 34 files) + genReadme contents updated; 4 seeded demo skills; frontend entities/skill + SkillsPage (capability/tech cards, inline forms, level vs tag pills) + /projects/:projectId/skills route + AppShell nav + ProjectDetailsPage section; SKL id-convention row; FEAT-011 + docs/final-audit.md (AUDIT-001, Prompts 13–16 scope); stale references fixed in guide.md + tutorial-ecommerce.md; skills suites (14 backend + 5 frontend tests), smoke 275 checks, seed-example 34 files. ALL REQUIRED SCOPE (00–16) COMPLETE.",
-    "DEC-021: Prompt 17 (UI polish and motion) implementation: motion utilities in frontend/src/app/index.css (sf-page-enter/sf-rise/sf-scale-in keyframes with prefers-reduced-motion disable block + smooth scroll), AppShell page-transition wrapper keyed by location.pathname preserving canvas state + nav micro-interactions (transition-all duration-200, active scale-[1.03], hover:translate-x-0.5), Button press feedback (active:scale-[0.98], transition-all), Card base transition-all, EmptyState/ErrorState sf-rise entrance, Dashboard + ProjectDetails staggered sf-rise grid tiles (animationDelay index*40ms) with group-hover lift/shadow/border, frontend/tests/ui-polish.test.tsx (4 tests), docs/features/ui-polish.md (FEAT-012), prompts/17-ui-polish-and-motion.md + README note. No new runtime dependency (Tailwind + plain CSS keyframes only). Verified: 163 tests pass / 0 fail (620 expects, 22 files), root typecheck clean, build succeeds.",
-    "DEC-022: Prompt 18 (Full-detail e-commerce seeder) implementation: backend/scripts/seed-ecommerce.ts (seedEcommerceProject(db, {projectId?, graphId?}), defaults live PRJ-0003 / GRPH-0003; isEcommerceSeeded guard; seeds StoreSphere E-Commerce Platform — multi-type api→.NET stack STK-0001 + MailKit/Scalar/EF Core/Serilog + web→React stack STK-0004 + React Router/Zustand/Tailwind CSS via INSERT...SELECT from platform-config; 8 modules MOD-0101..0108, 14 requirements REQ-0101..0114, 5 use cases, 4 workflows + 4 model graphs (graph IDs derived from base via graphN so GRPH-0004 example never collides), 11 entities + 51 fields + 10 relations (1:1/1:N/N:M only), 13 API endpoints with per-endpoint auth, 8 screens, 7 components, 8 skills (capability→level, tech→tag), 4 risks, 3 ADRs, 3 milestones, 6 test cases, approvals APR-0101/APR-0102 with artifact_governance sync, 21 artifact_links, storeRoadmap + materializeTaskPack (60 tasks), governance demo (roadmap needs_review + first task in_progress)). New scripts generate-ecommerce-example.ts (seed-ecommerce-example → committed docs/workspace/generated-example-ecommerce/ PRJ-0004, 34 files) + seed-ecommerce-live.ts (seed-ecommerce-live → live DB PRJ-0003 + 3 diagrams via real routes); package.json scripts; backend/tests/seed-ecommerce.test.ts (8 tests). Child IDs 0100+ ranges. Verified: 171 tests pass / 0 fail (23 files, 682 expects), root typecheck clean, builds succeed, smoke 275/275, seed-example 34 files."
+    "DEC-017: Prompt 13 (platform configuration) implementation: five additive tables (migration 006), 4 built-in types + 12 stacks + 32 libraries seeded on boot (idempotent), /platform-config CRUD with built-in/used-row delete guards (400/409), multi-type project creation via types[] with enriched responses, legacy projects.type back-compatible, Settings > Platform configuration tab + multi-type CreateProjectForm + PlatformBadges, genProjectMeta Platform Configuration table, PTYPE/STK/LIB prefixes, demo seed web+React+libraries, backend suite (20 tests) + frontend suite (4 tests), smoke 204 checks.",
+    "DEC-018: Prompt 14 (multi-project workspace) implementation: project_dependencies table (PDEP, migration 007), links module APIs, workflow_call modeler node with cross-project metadata, nested-subgraph Mermaid rendering (byte-identical generate/preview), 00-meta/dependencies.md (ART-0033, 33-file example), TR-21 governance rule, InspectorPanel cross-project picker + manual GRPH id, LinkedProjectsCard + CrossProjectCalls widgets, links suites (11 backend + 8 frontend tests), smoke 226 checks, FEAT-009.",
+    "DEC-019: Prompt 15 (custom node palette) implementation: node_categories/node_types DB tables (migration 008, NCAT/NTYP), seedNodePalette 14 types incl. loop demo NTYP-0014 with custom fields, /palette CRUD with built-in/in-use guards, modeler DB-driven (static catalog removed; UNKNOWN/DISABLED/KIND validation; /modeler/node-types with fields), generic workflowShape rendering, NodePalette rebuilt by DB categories, InspectorPanel CustomFieldsSection + changeType reseeds, NodePaletteSettingsPanel, NCAT/NTYP + FEAT-010 docs, palette suites (15 backend + 7 frontend tests), smoke 256 checks.",
+    "DEC-020: Prompt 16 (skills + final audit) implementation: skills table (migration 009, SKL ids), skills module CRUD with assertKindConsistency, 07-guides/skills.md appended at END of WORKSPACE_FILES (ART-0034, example 34 files), 4 seeded demo skills, entities/skill + SkillsPage + route/nav/section, SKL id-convention row, FEAT-011 + docs/final-audit.md (AUDIT-001), stale references fixed, skills suites (14 backend + 5 frontend tests), smoke 275 checks. ALL REQUIRED SCOPE (00–16) COMPLETE.",
+    "DEC-021: Prompt 17 (UI polish and motion) implementation: sf-page-enter/sf-rise/sf-scale-in keyframes + prefers-reduced-motion block, AppShell page-transition wrapper + nav micro-interactions, Button/Card/States polish, staggered dashboard/overview entrances, ui-polish tests (4), FEAT-012. No new runtime dependency.",
+    "DEC-022: Prompt 18 (Full-detail e-commerce seeder) implementation: seed-ecommerce.ts (StoreSphere, PRJ-0003 live / PRJ-0004 example, 8 modules/14 reqs/11 entities/13 APIs/8 skills/60 tasks, APR-0101/0102 governance), generate-ecommerce-example.ts + seed-ecommerce-live.ts scripts, seed-ecommerce tests (8), committed 34-file example. Verified: 171 tests / 0 fail, smoke 275/275.",
+    "DEC-023: Prompt 19 (Download generated docs as ZIP) — user approved implementation (2026-08-17). IMPLEMENTED: backend/src/utils/zip.ts (zero-dependency ZIP writer: deflateRawSync method 8 + CRC-32, deterministic entry order), GET /docs/exports/:id/download (application/zip + Content-Disposition, reuses readExportFiles, 404 unknown ids), frontend useDownloadDocsExport + per-export Download ZIP button on DocsExportPage, backend/tests/docs-zip.test.ts (PK signature, headers, entry set/order/content, 404). Committed to main.",
+    "DEC-025: OPT-003 (Multi-project roadmap aggregation) — approved optional task (2026-08-18), implemented: GET /roadmaps/aggregate?project= endpoint + entities/roadmap-aggregate + RoadmapAggregateCard on RoadmapPage + backend/frontend tests.",
+    "DEC-024: Prompt 20 (Project Execution & Delivery) — implemented on a dedicated branch and delivered as PR #4 (backend merged to main by the user). Migration 010 (team_members, issues, releases, tasks.assignee_id, milestones.assignee_id), modules team/issues/releases/health/search/activity + tasks PATCH/assignee filter, genIssuesDoc + genReleasesDoc appended at END of WORKSPACE_FILES (ART-0035/ART-0036, examples grow to 36 files), backend/tests/execution.test.ts. Frontend layer completed on main 2026-08-18: entities team-member/issue/release/health/search/activity + task entity assignee_id/useUpdateTask; IssuesPage + ReleasesPage; TasksPage Kanban board (status columns, per-card status/assignee selects, assignee filter, board/table toggle); widgets HealthCards (+HealthMiniCard) / ActivityFeed / TeamSection / SearchBox (AppShell top bar); routes + nav; Dashboard + ProjectDetails integrations; FEAT-013 + MEM/ISS/RLS prefixes; frontend/tests/execution.test.tsx (11 tests). Demo seeds (Acme + StoreSphere) gained team/issues/releases/assignees; example workspaces regenerated to 36 files. Verified: typecheck clean, 201 tests pass / 0 fail (26 files, 926 expects), backend smoke PASS."
   ],
   "rejected_options_summary": []
 }

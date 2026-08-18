@@ -54,13 +54,13 @@ Agent behavior:
 ## Current State
 
 Current phase:
-- docs-zip-download (PLAN CREATED — awaiting approval to implement; Prompts 00–16 required scope + user-requested Prompt 17 polish + Prompt 18 e-commerce seeder done and verified)
+- project-execution-delivery (Prompt 20) — COMPLETE (2026-08-18)
 
 Current prompt:
-- 19-docs-zip-download (plan created 2026-08-17, not yet implemented)
+- 20-project-execution-delivery (backend merged to main via PR #4; frontend layer completed on main 2026-08-18)
 
 Status:
-- plan_created_awaiting_approval (all completed scope 00–16 + 17 + 18 remains complete and verified; Prompt 19 plan awaits user go-ahead)
+- completed — ALL REQUIRED SCOPE (Prompts 00–20) implemented and verified: root typecheck clean; 201 tests pass / 0 fail (26 files, 926 expects); backend smoke PASS; seed-example + seed-ecommerce-example both regenerate 36 files (ART-0035 issues.md, ART-0036 releases.md). Completion report per AGENTS.md delivered; awaiting user direction (optional task approval, new requirement, or close).
 
 ## Completed Work
 
@@ -236,26 +236,32 @@ Status:
   - backend/tests/seed-ecommerce.test.ts (8 tests: content counts, .NET+React type/library assignment, skill rules, roadmap + task pack, approvals/governance/traceability, workflow/ERD/architecture diagrams, docs workspace, coexistence with the Acme demo in one DB).
   - Verified: root typecheck clean, 171 tests pass / 0 fail (23 files, 682 expects), frontend + backend builds succeed, backend smoke 275/275 PASS, seed-ecommerce-example 34 files, seed-ecommerce-live idempotent + 3 diagrams stored.
   - Recorded DEC-022 in memory/DECISIONS.md.
-- Prompt 19 (download generated docs as ZIP) — PLAN CREATED 2026-08-17, not yet implemented:
+- Prompt 19 (download generated docs as ZIP) — IMPLEMENTED 2026-08-18 (approved by user 2026-08-17, DEC-023):
   - prompts/19-docs-zip-download.md created; prompts/README.md sequence updated to 19 + note.
-  - Plan scope (create-plans-only, DEC-023): backend/src/utils/zip.ts (zero-dependency ZIP writer: node:zlib deflateRawSync method 8 + table-based CRC-32, local file headers + central directory + EOCD, UTF-8 names, deterministic entry order); new GET /docs/exports/:id/download in backend/src/modules/docs-generator/routes.ts (application/zip + Content-Disposition attachment, reuses readExportFiles so paths/content exactly match the detail endpoint, 404 for unknown ids, optional downloaded event via logEvent); frontend/src/entities/docs/api.ts downloadDocsExport (raw fetch → Blob → object URL → anchor click, bypassing the JSON API client) + useDownloadDocsExport hook; frontend/src/pages/DocsExportPage.tsx per-export Download ZIP button with loading/error states; backend ZIP tests (PK\x03\x04 signature, Content-Type/Content-Disposition, entry names match files[].path in order, decompressed content matches, 404). No schema or docs_exports shape changes; archive generated on demand from files on disk.
-  - Awaiting user approval to implement (memory/STATE.json awaiting_approval).
+  - backend/src/utils/zip.ts — zero-dependency ZIP writer (node:zlib deflateRawSync method 8 + table-based CRC-32, local file headers + central directory + EOCD, UTF-8 names, deterministic entry order).
+  - backend/src/modules/docs-generator/routes.ts — GET /docs/exports/:id/download (application/zip + Content-Disposition attachment, reuses readExportFiles so paths/content exactly match the detail endpoint, 404 for unknown ids).
+  - frontend/src/entities/docs/api.ts — downloadDocsExport + useDownloadDocsExport (raw fetch → Blob → object URL → anchor click, bypassing the JSON API client); frontend/src/pages/DocsExportPage.tsx per-export Download ZIP button with loading/error states.
+  - backend/tests/docs-zip.test.ts — PK\x03\x04 signature, Content-Type/Content-Disposition, entry names match files[].path in order, decompressed content matches, 404. Committed to main.
+- Prompt 20 (project execution & delivery) — IMPLEMENTED (backend merged to main via PR #4; frontend completed on main 2026-08-18):
+  - Backend (merged via PR #4): migration 010 (team_members MEM, issues ISS, releases RLS, tasks.assignee_id, milestones.assignee_id); modules team.ts / issues.ts / releases.ts / health.ts / search.ts / activity.ts; tasks.ts PATCH /tasks/:id (status/assignee_id/priority/objective) + GET /tasks assignee filter; genIssuesDoc (05-testing/issues.md) + genReleasesDoc (06-ops/releases.md) appended at END of WORKSPACE_FILES (ART-0035/ART-0036; examples grow 34 → 36 files); backend/tests/execution.test.ts.
+  - Frontend (completed 2026-08-18): entities team-member/issue/release/health/search/activity + task entity assignee_id + useUpdateTask + useTasks assignee filter; pages IssuesPage (filters + create + advance/delete) + ReleasesPage (create + status advance + delete); TasksPage Kanban board (status columns, per-card status + assignee selects, assignee filter, board/table toggle) keeping the table view; widgets HealthCards + HealthMiniCard (Definition/Execution/Delivery metric cards), ActivityFeed (project + dashboard), TeamSection (roster CRUD), SearchBox (AppShell top bar with results dropdown); App.tsx routes + AppShell nav (Issues, Releases) + SearchBox; DashboardPage (HealthMiniCard per project + Recent activity + tips) + ProjectDetailsPage (HealthCards, TeamSection, ActivityFeed, Issues/Releases section cards); docs/features/execution-delivery.md (FEAT-013); MEM/ISS/RLS prefixes in id-convention.md; frontend/tests/execution.test.tsx (11 tests).
+  - Seeds: Acme (seed-data.ts) + StoreSphere (seed-ecommerce.ts) both gained team/issues/releases/assignees; example workspaces regenerated to 36 files each. Fixed pre-existing tuple type bug in seed-ecommerce.ts.
 
 ## Pending Work
 
 Required phases pending:
-- none — all required scope (Prompts 00–16) plus the user-requested Prompt 17 polish and Prompt 18 e-commerce seeder are complete.
+- none — ALL REQUIRED SCOPE (Prompts 00–20) is complete and verified.
 
 Awaiting user approval:
-- Implementation of Prompt 19 (Download generated docs as ZIP) — plan created at prompts/19-docs-zip-download.md (DEC-023); on approval, implement zip util + download endpoint + frontend button + tests, verify, update memory, deliver the completion report per AGENTS.md.
+- none — no required work remains and nothing is awaiting approval. Optional candidates live in memory/OPTIONAL_BACKLOG.md and require explicit approval.
 
-No optional task is in progress. Optional candidates live in memory/OPTIONAL_BACKLOG.md and require explicit approval.
-
-Optional backlog (already reviewed):
+Optional backlog (refreshed 2026-08-18):
 - Deployment packaging (docker-compose, Dockerfiles, docs/ops/) — moved from removed Prompt 13
 - Per-type diagram templates (e.g. API-first sequence templates, mobile flow templates)
 - Multi-project roadmap aggregation across linked projects
 - Skills-to-task-pack matching (auto-assign tasks to required skills)
+- Sprint planning: group the Kanban board into sprints with velocity tracking
+- Issue-to-release linking with an auto-generated changelog
 
 ## Blockers
 
@@ -325,4 +331,7 @@ The agent must never start optional work without approval.
 - SKILLS + FINAL AUDIT COMPLETE (2026-08-16, DEC-020): Prompt 16 delivered skills table (migration 009, SKL ids), skills module CRUD with kind-consistent validation (capability→level, tech→tag), 07-guides/skills.md appended at END of WORKSPACE_FILES (example export now 34 files, ART-0034), 4 seeded demo skills, SkillsPage + entities/skill + route/nav/section, SKL id-convention row, FEAT-011 + docs/final-audit.md (AUDIT-001), stale references fixed in guide.md + tutorial-ecommerce.md, skills suites (backend 14, frontend 5). Verified: backend 113/113 tests, frontend 46/46 tests (159 pass / 0 fail), root typecheck clean, bun run build succeeds, smoke 275/275, seed-example 34 files. ALL REQUIRED SCOPE (Prompts 00–16) COMPLETE.
 - UI POLISH AND MOTION COMPLETE (2026-08-16, DEC-021): Prompt 17 (user-requested) delivered sf-page-enter/sf-rise/sf-scale-in CSS keyframes + prefers-reduced-motion block in index.css, AppShell page-transition wrapper keyed by location.pathname + nav micro-interactions, Button/Card/States polish, staggered Dashboard + ProjectDetails grid entrance with hover lift, frontend/tests/ui-polish.test.tsx (4 tests), FEAT-012, prompts/17-ui-polish-and-motion.md. No new runtime dependency. Verified: 163 tests pass / 0 fail (620 expects, 22 files), root typecheck clean, build succeeds. All completed scope done.
 - E-COMMERCE SEEDER COMPLETE (2026-08-17, DEC-022): Prompt 18 (user-requested) delivered a second full-detail demo — StoreSphere E-Commerce Platform (ASP.NET Core .NET backend API + React TypeScript frontend storefront) — via backend/scripts/seed-ecommerce.ts (seedEcommerceProject/isEcommerceSeeded; multi-type api→.NET + web→React with libraries; 8 modules, 14 requirements, 5 use cases, 4 workflows + 4 model graphs with base-derived graph ids, 11 entities + 51 fields + 10 relations, 13 API endpoints, 8 screens, 7 components, 8 skills, 4 risks, 3 ADRs, 3 milestones, 6 test cases, APR-0101/APR-0102 governance demo, 21 artifact_links, roadmap + 60 packaged tasks), scripts generate-ecommerce-example.ts (committed docs/workspace/generated-example-ecommerce/, PRJ-0004, 34 files) + seed-ecommerce-live.ts (live PRJ-0003 + 3 diagrams via real routes, idempotent), package.json scripts, and backend/tests/seed-ecommerce.test.ts (8 tests). Child IDs use 0100+ ranges. Verified: 171 tests pass / 0 fail (23 files, 682 expects), root typecheck clean, builds succeed, smoke 275/275, seed-example 34 files. Committed to main as a0b783e.
-- DOCS ZIP DOWNLOAD PLAN (2026-08-17, DEC-023): Prompt 19 (user-requested) plan created at prompts/19-docs-zip-download.md — Download as ZIP for generated docs: zero-dependency ZIP writer (backend/src/utils/zip.ts), GET /docs/exports/:id/download endpoint, useDownloadDocsExport hook + per-export Download ZIP button on DocsExportPage, backend ZIP tests. Create-plans-only; awaiting user approval to implement.
+- DOCS ZIP DOWNLOAD COMPLETE (2026-08-18, DEC-023): Prompt 19 (user-requested) implemented and committed to main — zero-dependency ZIP writer (backend/src/utils/zip.ts), GET /docs/exports/:id/download endpoint, useDownloadDocsExport hook + per-export Download ZIP button on DocsExportPage, backend/tests/docs-zip.test.ts.
+- ROADMAP AGGREGATION COMPLETE (2026-08-18, DEC-025, OPT-003 approved optional task): GET /roadmaps/aggregate?project=:id in backend/src/modules/roadmap/routes.ts aggregates the root project + every directly linked project (PDEP dependencies + dependents) with per-project latest-roadmap summaries (phases/epics/milestones counts, task-draft total, packaged count, canonical done count, completion %) + workspace totals; deterministic ordering (root first, then name/id); 404 for unknown projects. Frontend: entities/roadmap-aggregate (types + useRoadmapAggregate + linkKindLabel) + widgets/roadmap-aggregate/RoadmapAggregateCard (per-project rows with link-kind badges, roadmap status, progress bars, totals) rendered on RoadmapPage; frontend/tests/roadmap-aggregate.test.tsx (3 tests). Backend/tests/roadmap-aggregate.test.ts (5 tests). Docs: roadmap-engine.md (FEAT-004) section 7. Verified: typecheck clean, 209 tests pass / 0 fail (28 files, 977 expects), backend smoke PASS.
+- EXECUTION & DELIVERY COMPLETE (2026-08-18, DEC-024): Prompt 20 implemented. Backend merged to main via PR #4 (migration 010: team_members/issues/releases + assignee columns; team/issues/releases/health/search/activity modules; tasks PATCH + assignee filter; issues.md/releases.md workspace files ART-0035/ART-0036; execution.test.ts). Frontend layer completed on main this session: entities + IssuesPage/ReleasesPage + TasksPage Kanban board + HealthCards/ActivityFeed/TeamSection/SearchBox widgets + routes/nav/dashboard/overview integrations + FEAT-013 + MEM/ISS/RLS prefixes + execution.test.tsx. Demo seeds (Acme + StoreSphere) carry team/issues/releases/assignees; example workspaces regenerated to 36 files each. Verified: typecheck clean, 201 tests / 0 fail (26 files, 926 expects), backend smoke PASS. ALL REQUIRED SCOPE (Prompts 00–20) COMPLETE.
+- PREVIEW RECONFIGURED (2026-08-18): repo re-connected to Freebuff (MohammedRamiAlzend/specforge-studio). freebuff-preview commands re-saved — install `bun install`, dev `bun run dev` (port 5173), build `bun run build` — configured but NOT started; user starts the preview from the UI. NOTE (memory staleness): main already contains implemented Prompt 19 (backend/src/utils/zip.ts, /docs/exports/:id/download, docs-zip tests) and Prompt 20 (execution & delivery: migration 010, team/issues/releases/search/activity modules, execution tests); STATE.json/NEXT_ACTION/PROJECT_MEMORY above still describe Prompt 19 as plan-only. Reconcile memory with the repo state in a follow-up session.
