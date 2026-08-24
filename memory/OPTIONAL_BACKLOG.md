@@ -49,7 +49,7 @@ Each optional task must include:
 - expected benefit: Smarter task assignment for executing agents.
 - estimated effort: Medium
 - risk: Low
-- approval status: not approved
+- approval status: IMPLEMENTED (2026-08-24, DEC-027)
 
 ### OPT-005 — Sprint planning on the Kanban board
 - task ID: OPT-005

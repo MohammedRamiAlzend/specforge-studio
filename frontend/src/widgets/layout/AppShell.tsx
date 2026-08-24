@@ -1,8 +1,10 @@
 import { NavLink, Outlet, useLocation, useParams } from "react-router-dom";
-import { useEffect } from "react";
+import { useEffect, type ReactNode } from "react";
 import { useAppStore } from "../../app/store";
+import { Logo } from "../../shared/ui/Logo";
 import { useProjects } from "../../entities/project/api";
 import { SearchBox } from "../search/SearchBox";
+import { AccountChip } from "./AccountChip";
 
 function navLinkClass(isActive: boolean): string {
   return `flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm transition-all duration-200 ${
@@ -12,7 +14,7 @@ function navLinkClass(isActive: boolean): string {
   }`;
 }
 
-export function AppShell() {
+export function AppShell({ children }: { children?: ReactNode }) {
   const params = useParams<{ projectId: string }>();
   const location = useLocation();
   const activeProjectId = useAppStore((s) => s.activeProjectId);
@@ -32,9 +34,7 @@ export function AppShell() {
     <div className="flex h-full min-h-screen bg-slate-50">
       <aside className="flex w-60 shrink-0 flex-col border-r border-slate-800 bg-slate-950">
         <div className="flex items-center gap-2.5 px-4 py-4">
-          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-forge-600 text-sm font-bold text-white">
-            SF
-          </div>
+          <Logo size={32} />
           <div>
             <p className="text-sm font-semibold text-white">SpecForge Studio</p>
             <p className="text-[11px] text-slate-500">Spec → docs → tasks</p>
@@ -98,8 +98,8 @@ export function AppShell() {
           </NavLink>
         </nav>
 
-        <div className="border-t border-slate-800/80 px-4 py-3 text-[11px] text-slate-600">
-          v0.1 · internal platform
+        <div className="border-t border-slate-800/80 px-4 py-3">
+          <AccountChip />
         </div>
       </aside>
 
@@ -116,7 +116,7 @@ export function AppShell() {
               <SearchBox projectId={params.projectId} />
             </div>
             <div key={location.pathname} className="sf-page-enter">
-              <Outlet />
+              {children ?? <Outlet />}
             </div>
           </div>
         )}

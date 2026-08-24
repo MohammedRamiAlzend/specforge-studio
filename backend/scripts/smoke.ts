@@ -14,7 +14,19 @@ const config: Config = {
 };
 
 const db = openDatabase(":memory:");
-const app = await buildApp({ config, db });
+
+// Auth hardening: emails are captured instead of delivered so the OTP flow
+// can be exercised end-to-end without network access.
+const sentEmails: Array<{ to: string; subject: string }> = [];
+const app = await buildApp({
+  config,
+  db,
+  mailer: {
+    async send(input) {
+      sentEmails.push({ to: input.to, subject: input.subject });
+    },
+  },
+});
 
 let failures = 0;
 function check(name: string, ok: boolean, detail?: unknown) {
@@ -1168,6 +1180,222 @@ let depId = "";
   check("DELETE /skills/:id -> 204", delTech.statusCode === 204, delTech.body);
   const delGone = await request("DELETE", `/skills/${techId}`);
   check("DELETE /skills/:id again -> 404", delGone.statusCode === 404, delGone.body);
+}
+
+// 21. auth & billing (Prompt 21)
+{
+  const inject = async (
+    method: "GET" | "POST" | "DELETE",
+    url: string,
+    payload?: unknown,
+    cookie?: string,
+  ) =>
+    app.inject({
+      method,
+      url,
+      payload: payload as undefined,
+      headers: cookie ? { cookie } : undefined,
+    });
+
+  // Plans seed + public list.
+  const plans = await request("GET", "/plans");
+  check("GET /plans -> 200 with 3 seeded plans", plans.statusCode === 200 && (plans.json().data ?? []).length === 3, plans.body);
+  const plus = (plans.json().data ?? []).find((p: { key: string }) => p.key === "plus");
+  check("GET /plans plus pricing $19/$190 popular", plus?.monthlyPriceCents === 1900 && plus?.yearlyPriceCents === 19000 && plus?.popular === true, plans.body);
+
+  // Register (auth hardening: no session yet — verification required first).
+  const register = await inject("POST", "/auth/register", {
+    name: "Smoke User",
+    email: "smoke@example.com",
+    password: "smoke-password-1",
+  });
+  check("POST /auth/register -> 201", register.statusCode === 201, register.body);
+  check("register does NOT set a session cookie", register.headers["set-cookie"] === undefined);
+
+  // Duplicate email rejected.
+  const dup = await inject("POST", "/auth/register", {
+    name: "Dup",
+    email: "smoke@example.com",
+    password: "smoke-password-1",
+  });
+  check("POST /auth/register duplicate email -> 409", dup.statusCode === 409, dup.body);
+
+  // Login is blocked until the emailed code is verified.
+  const blockedLogin = await inject("POST", "/auth/login", {
+    email: "smoke@example.com",
+    password: "smoke-password-1",
+  });
+  check("login before verify -> 403 EMAIL_NOT_VERIFIED", blockedLogin.statusCode === 403 && blockedLogin.json().error?.code === "EMAIL_NOT_VERIFIED", blockedLogin.body);
+  const verifyCode = /(\d{6})/.exec(sentEmails[sentEmails.length - 1]?.subject ?? "")?.[1] ?? "";
+  const verified = await app.inject({
+    method: "POST",
+    url: "/auth/verify-email",
+    payload: { email: "smoke@example.com", code: verifyCode },
+  });
+  check("verify-email opens the session", verified.statusCode === 200, verified.body);
+  const setCookie = (verified.headers["set-cookie"] as string | undefined) ?? "";
+  const token = /sf_session=([^;]+)/.exec(setCookie)?.[1] ?? "";
+  check("verify-email sets sf_session cookie", token.length > 0, setCookie);
+
+  // Me with/without session.
+  const anonMe = await request("GET", "/auth/me");
+  check("GET /auth/me without session -> 401", anonMe.statusCode === 401, anonMe.body);
+  const me = await inject("GET", "/auth/me", undefined, `sf_session=${token}`);
+  check("GET /auth/me resolves session user", me.statusCode === 200 && me.json().data?.user?.email === "smoke@example.com", me.body);
+
+  // Checkout guards + validation.
+  const anonCheckout = await request("POST", "/billing/checkout", { plan_key: "plus", cycle: "monthly", card: {} });
+  check("POST /billing/checkout without session -> 401", anonCheckout.statusCode === 401, anonCheckout.body);
+
+  const badCard = await inject(
+    "POST",
+    "/billing/checkout",
+    {
+      plan_key: "plus",
+      cycle: "yearly",
+      card: { name: "S", number: "4242424242424241", exp_month: 12, exp_year: 2099, cvc: "123" },
+    },
+    `sf_session=${token}`,
+  );
+  check("checkout Luhn-invalid card -> 400", badCard.statusCode === 400, badCard.body);
+
+  const paidCheckout = await inject(
+    "POST",
+    "/billing/checkout",
+    {
+      plan_key: "plus",
+      cycle: "yearly",
+      card: { name: "Smoke User", number: "4242 4242 4242 4242", exp_month: 12, exp_year: 2099, cvc: "123" },
+    },
+    `sf_session=${token}`,
+  );
+  check("checkout valid card -> 200 active subscription", paidCheckout.statusCode === 200 && paidCheckout.json().data?.status === "active", paidCheckout.body);
+  check("checkout stores last4 + period end", paidCheckout.json().data?.cardLast4 === "4242" && typeof paidCheckout.json().data?.currentPeriodEnd === "string", paidCheckout.body);
+
+  const sub = await inject("GET", "/billing/subscription/me", undefined, `sf_session=${token}`);
+  check("GET /billing/subscription/me returns active plus plan", sub.json().data?.plan?.key === "plus", sub.body);
+
+  // Switch to premium replaces the plus subscription.
+  const premium = await inject(
+    "POST",
+    "/billing/checkout",
+    {
+      plan_key: "premium",
+      cycle: "monthly",
+      card: { name: "Smoke User", number: "4242424242424242", exp_month: 1, exp_year: 2099, cvc: "1234" },
+    },
+    `sf_session=${token}`,
+  );
+  check("checkout switch to premium -> 200", premium.statusCode === 200 && premium.json().data?.plan?.key === "premium", premium.body);
+
+  // Cancel.
+  const cancel = await inject("DELETE", "/billing/subscription/me", undefined, `sf_session=${token}`);
+  check("DELETE /billing/subscription/me -> 200", cancel.statusCode === 200, cancel.body);
+  const subAfter = await inject("GET", "/billing/subscription/me", undefined, `sf_session=${token}`);
+  check("subscription null after cancel", subAfter.statusCode === 200 && subAfter.json().data === null, subAfter.body);
+
+  // Logout invalidates the session server-side.
+  const logout = await inject("POST", "/auth/logout", undefined, `sf_session=${token}`);
+  check("POST /auth/logout -> 200", logout.statusCode === 200, logout.body);
+  const meAfter = await inject("GET", "/auth/me", undefined, `sf_session=${token}`);
+  check("GET /auth/me after logout -> 401", meAfter.statusCode === 401, meAfter.body);
+}
+
+// 22. skill matching (OPT-004)
+{
+  const skillRes = await app.inject({
+    method: "POST",
+    url: "/skills",
+    payload: { project_id: projectId, kind: "tech", name: "React", tag: "frontend" },
+  });
+  check("POST /skills (matching fixture) -> 201", skillRes.statusCode === 201, skillRes.body);
+  const opsTask = await app.inject({
+    method: "POST",
+    url: "/tasks",
+    payload: {
+      project_id: projectId,
+      title: "Write the operations handover runbook",
+      objective: "Document ops procedures for the release.",
+      type: "ops",
+      definition_of_done: "Runbook reviewed by the team.",
+    },
+  });
+  check("POST /tasks (unmatched fixture) -> 201", opsTask.statusCode === 201, opsTask.body);
+
+  const matchRes = await app.inject({ method: "GET", url: `/skill-matches?project=${projectId}` });
+  check("GET /skill-matches -> 200", matchRes.statusCode === 200, matchRes.body);
+  const report = matchRes.json().data;
+  check(
+    "skill-matches returns ranked per-task skills",
+    Array.isArray(report.matches) &&
+      report.matches.every(
+        (m: { task_id: string; skills: unknown[] }) => typeof m.task_id === "string" && Array.isArray(m.skills),
+      ),
+    JSON.stringify(report).slice(0, 200),
+  );
+  check(
+    "coverage gaps list every project skill with open/total counts",
+    Array.isArray(report.coverage_gaps) &&
+      report.coverage_gaps.every(
+        (g: { skill_id: string; open_matches: number; total_matches: number }) =>
+          typeof g.skill_id === "string" && Number.isInteger(g.open_matches) && Number.isInteger(g.total_matches),
+      ),
+    JSON.stringify(report.coverage_gaps ?? []).slice(0, 200),
+  );
+  const repeat = await app.inject({ method: "GET", url: `/skill-matches?project=${projectId}` });
+  check("repeat call identical", JSON.stringify(repeat.json()) === JSON.stringify(matchRes.json()), repeat.body);
+}
+
+// 23. auth hardening: email verification OTP + password recovery
+{
+  const inject = async (method: string, url: string, payload?: unknown, cookie?: string) =>
+    app.inject({
+      method: method as "GET",
+      url,
+      payload: payload as undefined,
+      ...(cookie ? { headers: { cookie } } : {}),
+    });
+
+  const email = "smoke-user@specforge.local";
+
+  const reg = await request("POST", "/auth/register", {
+    name: "Smoke User",
+    email,
+    password: "smoke-password-1",
+  });
+  check("register -> 201 with otp_sent, no session cookie", reg.statusCode === 201 && reg.json().data?.otp_sent === true && reg.headers["set-cookie"] === undefined, reg.body);
+
+  const blocked = await request("POST", "/auth/login", { email, password: "smoke-password-1" });
+  check("login before verify -> 403 EMAIL_NOT_VERIFIED", blocked.statusCode === 403 && blocked.json().error?.code === "EMAIL_NOT_VERIFIED", blocked.body);
+
+  const codeMatch = /(\d{6})/.exec(sentEmails[sentEmails.length - 1]?.subject ?? "");
+  const code = codeMatch?.[1] ?? "";
+  check("verification email contains a 6-digit code", /^\d{6}$/.test(code), sentEmails.map((m) => m.subject).join(" | "));
+
+  const wrong = await request("POST", "/auth/verify-email", { email, code: "000000" });
+  check("verify-email wrong code -> 400", wrong.statusCode === 400, wrong.body);
+
+  const good = await app.inject({ method: "POST", url: "/auth/verify-email", payload: { email, code } });
+  const token = /sf_session=([^;]+)/.exec((good.headers["set-cookie"] as string) ?? "")?.[1] ?? "";
+  check("verify-email correct code -> 200 + session cookie", good.statusCode === 200 && token !== "", good.body);
+
+  const me = await inject("GET", "/auth/me", undefined, `sf_session=${token}`);
+  check("me reports email_verified true", me.statusCode === 200 && me.json().data?.user?.email_verified === true, me.body);
+
+  await request("POST", "/auth/forgot-password", { email });
+  const resetCode = /(\d{6})/.exec(sentEmails[sentEmails.length - 1]?.subject ?? "")?.[1] ?? "";
+  check("forgot-password emails a reset code", /^\d{6}$/.test(resetCode));
+
+  const reset = await request("POST", "/auth/reset-password", { email, code: resetCode, new_password: "smoke-new-pass-9" });
+  check("reset-password -> 200", reset.statusCode === 200, reset.body);
+  const staleMe = await inject("GET", "/auth/me", undefined, `sf_session=${token}`);
+  check("reset revoked the old session", staleMe.statusCode === 401, staleMe.body);
+
+  const relogin = await request("POST", "/auth/login", { email, password: "smoke-new-pass-9" });
+  check("login works with the new password", relogin.statusCode === 200, relogin.body);
+
+  const ghost = await request("POST", "/auth/forgot-password", { email: "ghost@specforge.local" });
+  check("forgot-password for unknown address is still 200 (anti-enumeration)", ghost.statusCode === 200, ghost.body);
 }
 
 await app.close();

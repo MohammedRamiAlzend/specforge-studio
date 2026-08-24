@@ -779,3 +779,109 @@ Memory files updated:
 
 Next action:
 - Report completion of OPT-003 to the user; await direction: approve another optional task, provide a new requirement, or close the project.
+
+### Session 2026-08-24 — Full project analysis (read-only)
+
+Work completed:
+- Read all mandatory memory files per the startup protocol.
+- Performed a full project analysis: backend (44 src files / 9,452 lines, 24 route modules), frontend FSD (107 files / 9,034 lines across app/entities/features/pages/widgets/shared), schema (54 tables + 10 additive migrations), docs (116 files incl. two 36-file generated examples), prompts (26 files), tests inventory (28 files / 209 cases).
+- Re-verified current health claims: root typecheck clean; bun test → 209 pass / 0 fail (28 files, 977 expects); backend smoke → SMOKE TEST OK.
+- Key findings reported to user: no lint/format tooling, no auth layer, several oversized files, agent_runs table has no writer, some tables read-only via seeds only, runtime artifacts in git tree (data/, tsconfig.tsbuildinfo).
+- No code modified.
+
+Work partially completed: none.
+
+Blockers: none.
+
+Memory files updated:
+- memory/SESSION_LOG.md
+
+Next action:
+- Await user direction (optional task approval from OPTIONAL_BACKLOG.md, new requirement, or close).
+
+### Session 2026-08-24 — Prompt 21: Landing page, pricing & subscribe flow
+
+User request:
+- Modern landing page with animated AI-style background (waves + blocks), plans Free/Plus/Premium, subscribe flow (register/sign-in then pay). Constraint: "dont edit the engine". Pricing // approved by user via question.
+
+Work completed:
+- Protocol: prompts/21-landing-pricing-auth.md + README sequence; USER_REQUESTS entry; DEC-026.
+- Backend (additive only — no engine/core edits): migration 011_auth_and_billing.sql mirrored in schema.sql (users USR, sessions SES sha256 token hashes, plans PLAN, subscriptions SUB); seedBillingPlans boot seed (// monthly, / yearly); modules/auth.ts (register/login/logout/me, Bun.password argon2id, httpOnly sf_session cookie 30d, requireUser guard; UNAUTHORIZED code added to utils/errors.ts); modules/billing.ts (GET /plans public; POST /billing/checkout with Luhn/expiry/CVC mock-card validation, card optional for Free plan, plan switch cancels previous sub; GET+DELETE /billing/subscription/me); both registered in app.ts.
+- Frontend: entities user/plan/subscription hooks; widgets/background/WaveCanvas (rAF grid blocks + forge wave ribbons, DPR-aware, hidden-tab pause, static under reduced motion); widgets/layout/PublicShell; pages/landing/LandingPage (+PricingSection live from GET /plans, cycle toggle, glowing Plus card; bento features; how-it-works; FAQ accordion; final CTA); pages/auth/AuthPage (signin/register split-screen, ?return=); pages/billing/CheckoutPage (order summary, card form, success screen); app/guards HomeGate + GuestOnly (index route = landing for guests / dashboard for users; internal paths untouched); AppShell children support + AccountChip footer (email + plan badge + sign out); motion CSS sf-float/sf-glow-pulse/sf-word/sf-reveal + shared/ui/Reveal.
+- Tests: backend/tests/auth-billing.test.ts (14) incl. cookie-header login/logout/me round-trips, Luhn/expired rejections, switch/cancel; frontend/tests/landing.test.tsx (10); smoke block 21 (17 checks → 292 total).
+- Docs: docs/features/landing-billing.md (FEAT-014); USR/SES/PLAN/SUB prefixes in id-convention.md.
+- Fixed during work: STATE.json decisions array corruption (restored DEC-025 order, removed accidental duplicate line).
+- Verified: root typecheck clean; bun run build OK; 233 tests pass / 0 fail (30 files, 1062 expects); smoke 292/292 PASS.
+
+Work partially completed: none.
+
+Blockers: none.
+
+Memory files updated:
+- memory/USER_REQUESTS.md, memory/DECISIONS.md, memory/STATE.json, memory/PROJECT_MEMORY.md, memory/NEXT_ACTION.md, memory/SESSION_LOG.md
+
+Next action:
+- Await user direction: approve an optional task from OPTIONAL_BACKLOG.md, provide a new requirement, or close the project.
+
+### Session 2026-08-24 (cont.) — OPT-004: Skills-to-task matching
+
+User approval:
+- Selected OPT-004 from the optional backlog via question prompt. Recorded as DEC-027.
+
+Work completed:
+- backend/src/modules/skill-match.ts (new, additive): deterministic keyword-overlap matcher — skill vocabulary = name + tech tag + description tokens; per-term weights title +3 / objective +2 / context+constraints+DoD +1 / task.type match +3 flat; MATCH_THRESHOLD = 3; tokenize() with stopword + length filtering. GET /skill-matches?project=PRJ-#### → { task_count, skill_count, matches[] (ranked skills w/ reasons), unmatched_tasks[], coverage_gaps[] (open_matches/total_matches, zero-open first) }; 404 for unknown projects. Registered in app.ts after registerSkillRoutes.
+- frontend: entities/skill-match/{types,api} (useSkillMatches); widgets/skill-match/SkillMatchPanel on TasksPage — ranked skill chips per matched task (score badge, hover reasons, top-4 + overflow count), amber coverage-gaps strip (skills with zero open matched work), unmatched-task counter, loading/error-retry/empty states.
+- Tests: backend/tests/skill-match.test.ts (5: unknown project 404, empty report, ranking + coverage gaps, done-vs-open counting, determinism) and frontend/tests/skill-match.test.tsx (4: gap helper, ordering helper, TasksPage shell incl. panel, panel render). Fixes during work: project create payload shape, capability-skill level requirement, QueryClientProvider wrapper, TS indexed-access guards.
+- Smoke: appended block "22. skill matching" (6 checks) before app.close().
+- Docs: docs/features/skill-matching.md (FEAT-015) with algorithm weights, API contract, UI description.
+- Memory: OPTIONAL_BACKLOG OPT-004 -> IMPLEMENTED; STATE.json (phase opt-004-skill-matching, next_action, DEC-027); PROJECT_MEMORY current state + bullet; NEXT_ACTION refresh.
+
+Verification:
+- Root typecheck EXIT=0; bun run build OK; bun test backend/tests frontend/tests -> 242 pass / 0 fail (32 files, 1095 expects); bun run --cwd backend smoke -> SMOKE TEST OK.
+
+Blockers: none.
+
+Next action:
+- Await user direction: approve another optional task (OPT-001/002/005/006), provide a new requirement, or close the project.
+
+### Session 2026-08-24 (cont. 2) — Landing polish batch
+
+User requests (see USER_REQUESTS 2026-08-24): real logo (not "SF"), nav active states, empty Features/How-it-works fix, modern footer, /#anchor navigation from any route, auth working? question, summary.
+
+Work completed:
+- Logo: frontend/src/shared/ui/Logo.tsx — pure-SVG anvil+spark mark on forge-gradient tile (useId gradient, size prop, data-testid brand-logo). Replaced the "SF" text boxes in PublicShell navbar/footer and AppShell sidebar. Added frontend/public/logo.svg favicon + link in index.html.
+- Nav active states: scroll-spy IntersectionObserver in PublicShell (-30%/-60% rootMargin) highlights the section in view; active link = white text + forge underline bar (opacity/scale transition), aria-current set.
+- Empty sections ROOT CAUSE: sections.tsx applied raw .sf-reveal class (starts opacity:0) to feature articles and step <li>s but nothing ever attached an observer to add .is-visible — content stayed invisible. FIX: new useAutoReveal(dep) hook in shared/ui/Reveal.tsx; PublicShell calls it with location.key so all .sf-reveal elements on any public page reveal on scroll.
+- Footer: rebuilt as modern 4-column layout — Brand (logo, tagline, Local-first/SQLite + v0.1 chips) | Product anchors | Get started links | Plans mini-table (/ popular/) + Compare plans; top glow line, bottom bar © year + tagline + Back-to-top button.
+- Anchor routing: navbar/footer/hero/FinalCtA links now use react-router Link to "/#features" etc.; PublicShell effect smooth-scrolls to location.hash target and scrolls to top when no hash. Verified no raw href="#…" remains.
+- Tests: landing.test.tsx +3 (logo present w/o SF letters; footer columns/plans/back-to-top; nav hrefs are /#anchors not #anchors). All existing assertions still green.
+- Verified: root typecheck EXIT=0; bun run build OK; bun test backend/tests frontend/tests -> 245 pass / 0 fail (32 files).
+
+Auth answer recorded: create account / sign in WORK for real — POST /auth/register|login against SQLite users table, Bun.password argon2id hashes, httpOnly sf_session cookie (30d), GET /auth/me, logout invalidates server-side; 14 backend tests + smoke block 21 cover them. Only card payments are simulated (DEC-026).
+
+Memory files updated: USER_REQUESTS.md, STATE.json (next_action), PROJECT_MEMORY.md, SESSION_LOG.md, NEXT_ACTION.md.
+
+Next action: await user direction.
+
+### Session 2026-08-25 — Auth hardening batch (email OTP + password recovery)
+
+User request (2026-08-24/25, recorded in USER_REQUESTS + DEC-028): add email verification (OTP) before login, forgot-password via the user's own Gmail SMTP, and fix the sign-out stuck-on-dashboard bug. User answered clarifying questions: Block until verified; hand-rolled SMTP client; SMTP config HARD-required.
+
+Work completed:
+- Migration 012_auth_otp.sql: users.email_verified INTEGER NOT NULL DEFAULT 0 + otp_codes table (OTP ids, SHA-256 code_hash, purpose verify_email|password_reset, attempts, expires_at, consumed_at). schema.sql updated; db/index.ts gained migrate0012EmailVerified ensureColumn/backfill patch so legacy dev DBs get the column exactly once with existing users grandfathered as verified.
+- config: optional SMTP_HOST/PORT(465)/USER/PASS/FROM env vars + resolveSmtpConfig helper.
+- utils/mailer.ts (NEW): zero-dependency SmtpMailer over node:net/node:tls — port 465 implicit TLS, else EHLO+STARTTLS upgrade; AUTH LOGIN base64; MAIL FROM/RCPT TO/DATA with dot-stuffing; multipart/alternative branded HTML templates; per-step assert() errors; requireSmtpMailer lists missing vars at startup; Mailer interface injectable via buildApp({ mailer }).
+- types.ts Deps += mailer; app.ts BuildAppOptions.mailer (default requireSmtpMailer(config)).
+- modules/auth.ts rewritten: register no longer sets a cookie, emails 6-digit crypto-random code (SHA-256 at rest, 10-min expiry, 5-attempt CODE_LOCKED, 60s resend cooldown RATE_LIMITED); POST /auth/verify-email consumes code, marks verified, SETS session cookie; POST /auth/resend-otp (anti-enumeration for unknown/verified addresses); login gates unverified users with 403 EMAIL_NOT_VERIFIED; POST /auth/forgot-password always 200; POST /auth/reset-password verifies code, rehashes argon2id, deletes ALL sessions. errors.ts ErrorCode += RATE_LIMITED | EMAIL_NOT_VERIFIED | CODE_LOCKED.
+- Frontend: entities/user/types.ts (+email_verified, RegisterResult, new inputs); api.ts (useRegister no longer caches me; NEW useVerifyEmail/useResendOtp/useForgotPassword/useResetPassword; useLogout onSettled = qc.clear()+setQueryData(null)+window.location.replace('/') — fixes stuck-on-dashboard bug); AuthPage state machine form/verify/forgot/reset (6-digit OTP input, 60s resend countdown honoring RATE_LIMITED, ?return= preserved through every step, EMAIL_NOT_VERIFIED routes to verify); AccountChip delegates to useLogout.mutate().
+- Tests: helpers.ts FakeMailer (sent[], lastCode()) + bootAppWithMailer + registerVerifiedUser; TEST_CONFIG gains SMTP vars. auth-billing.test.ts register test asserts otp_sent/no-cookie/email content; grace round-trip now verify->login; checkout sessionFor uses registerVerifiedUser. NEW auth-otp.test.ts (10 cases incl. lockout, DB-forced expiry, anti-enumeration, reset revoking sessions).
+- Smoke: boot injects capturing mailer; billing block updated (verify-email opens session); NEW block 23 (register->403 gate->code extraction->wrong code->verify->me verified->forgot->reset->session revoked->relogin->ghost forgot). Final result SMOKE TEST OK.
+- Docs: docs/features/auth-otp-recovery.md (FEAT-017) incl. Gmail App Password backend/.env guide.
+- Memory: STATE.json (phase auth-hardening-otp-recovery completed, DEC-028 entry), NEXT_ACTION.md refresh, SESSION_LOG entry, HANDOFF checkpoint.
+
+Verification:
+- bun run --cwd backend typecheck EXIT=0; root bun run typecheck EXIT=0 (fixed helpers lastCode noUncheckedIndexedAccess); bun run build OK; full suite 254 pass / 0 fail (33 files); smoke SMOKE TEST OK.
+
+Blockers: none. Operational note: server startup now requires SMTP_* in backend/.env.
+
+Next action: await user direction (optional tasks / parked analytics plan / new requirement / close).

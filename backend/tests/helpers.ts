@@ -9,6 +9,7 @@ import type { FastifyInstance } from "fastify";
 import { buildApp } from "../src/app";
 import type { Config } from "../src/config/index";
 import { openDatabase } from "../src/db/index";
+import type { MailInput, Mailer } from "../src/utils/mailer";
 
 export const TEST_CONFIG: Config = {
   PORT: 0,
@@ -17,7 +18,33 @@ export const TEST_CONFIG: Config = {
   EXPORT_DIR: "data/test-exports",
   LOG_LEVEL: "silent",
   NODE_ENV: "test",
+  SMTP_HOST: "smtp.test.local",
+  SMTP_PORT: 465,
+  SMTP_USER: "test@specforge.local",
+  SMTP_PASS: "test-password",
+  SMTP_FROM: "no-reply@specforge.local",
 };
+
+/**
+ * Records every outbound email instead of hitting the network. Tests read
+ * `mailer.sent` to extract OTP codes exactly as a real inbox would.
+ */
+export class FakeMailer implements Mailer {
+  readonly sent: MailInput[] = [];
+
+  async send(input: MailInput): Promise<void> {
+    this.sent.push(input);
+  }
+
+  /** Pulls the 6-digit code out of the most recent email's subject line. */
+  lastCode(): string {
+    const last = this.sent[this.sent.length - 1];
+    if (!last) throw new Error("FakeMailer: no emails sent");
+    const match = last.subject.match(/(\d{6})/);
+    if (!match?.[1]) throw new Error(`FakeMailer: no code in subject "${last.subject}"`);
+    return match[1];
+  }
+}
 
 export interface TestContext {
   db: Database;
@@ -33,6 +60,15 @@ export function createTestContext(): Omit<TestContext, "app"> {
 
 export async function bootApp(ctx: Pick<TestContext, "db" | "config">): Promise<FastifyInstance> {
   return buildApp({ config: ctx.config, db: ctx.db });
+}
+
+/** Boots an app wired to a captured FakeMailer; returns both. */
+export async function bootAppWithMailer(
+  ctx: Pick<TestContext, "db" | "config">,
+): Promise<{ app: FastifyInstance; mailer: FakeMailer }> {
+  const mailer = new FakeMailer();
+  const app = await buildApp({ config: ctx.config, db: ctx.db, mailer });
+  return { app, mailer };
 }
 
 /** Injects a request against the app (no server socket needed). */
@@ -66,6 +102,35 @@ export async function seedProject(app: FastifyInstance): Promise<string> {
     created_by: "tester@internal",
   });
   return res.json().data.id as string;
+}
+
+/**
+ * Registers a user AND completes email verification through the fake mailer,
+ * returning the session token (auth hardening: registration alone no longer
+ * signs anyone in).
+ */
+export async function registerVerifiedUser(
+  app: FastifyInstance,
+  mailer: FakeMailer,
+  email: string,
+  password = "test-password-1",
+): Promise<string> {
+  const reg = await app.inject({
+    method: "POST",
+    url: "/auth/register",
+    payload: { name: "Test User", email, password },
+  });
+  if (reg.statusCode !== 201) throw new Error(`register failed: ${reg.body}`);
+  const code = mailer.lastCode();
+  const verify = await app.inject({
+    method: "POST",
+    url: "/auth/verify-email",
+    payload: { email, code },
+  });
+  if (verify.statusCode !== 200) throw new Error(`verify failed: ${verify.body}`);
+  const token = /sf_session=([^;]+)/.exec((verify.headers["set-cookie"] as string) ?? "")?.[1];
+  if (!token) throw new Error("verify-email did not set a session cookie");
+  return token;
 }
 
 export async function seedRequirement(

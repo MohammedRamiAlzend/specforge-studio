@@ -226,3 +226,31 @@ Each decision must include:
 ## Rejected Options
 
 No rejected options recorded yet.
+### DEC-026 — Landing page, pricing & subscribe flow architecture (Prompt 21)
+- decision ID: DEC-026
+- date: 2026-08-24
+- decision: Implement the user-requested landing/pricing/subscribe scope as follows: (1) routing — / renders LandingPage for guests and DashboardPage for signed-in users (zero churn to existing internal paths/tests); guest-only routes /signin, /register, /checkout/:planKey; (2) auth — REAL backend cookie sessions: migration 011 adds users (USR), sessions (SES), plans (PLAN), subscriptions (SUB); password hashing via Bun.password argon2id (zero new deps); httpOnly sf_session cookie, 30-day expiry, SHA-256 token hashes in DB; (3) payments — SIMULATED in-app checkout (mock card validation, subscription recorded in DB) honoring the no-external-SaaS constraint; Stripe integration deferred pending explicit approval; (4) pricing — Free \ / Plus \/mo / Premium \/mo, yearly = 2 months free (\/\), approved by user via pricing question; (5) animations — canvas rAF waves/blocks background + IntersectionObserver scroll reveals + CSS keyframes, extending the sf-* motion system with ZERO new runtime dependencies; (6) engine freeze — per explicit user instruction ("dont edit the engine"), NO changes to existing module logic; backend work strictly additive (migration 011 + modules/auth.ts + modules/billing.ts + two registration lines in app.ts). Existing internal APIs remain unauthenticated (internal tool).
+- reason: Delivers the full requested guest→plan→auth→pay flow while respecting the standing constraints (no SaaS, DB source of truth, zero-dep convention since Prompt 17) and the user's do-not-touch-engine directive.
+- status: approved
+- impact: New public surface on the frontend; new USR/SES/PLAN/SUB prefixes; AppShell gains an account chip; smoke + test suites extended. No existing behavior changes.
+
+### DEC-027 — Approve OPT-004 (Skills-to-task-pack matching)
+
+- date: 2026-08-24
+- type: optional-task-approval
+- task: OPT-004 (memory/OPTIONAL_BACKLOG.md) — auto-match generated tasks to project-required skills to improve executing-agent assignment.
+- decision: APPROVED by the user via explicit selection.
+- scope guardrails: additive implementation preferred (new module/routes); do not modify roadmap-engine / modeler / diagram / docs-generator / governance logic; zero new runtime dependencies; DB remains source of truth.
+- execution: started 2026-08-24.
+
+### DEC-028 — Auth hardening: email OTP + password recovery via Gmail SMTP
+
+- date: 2026-08-24
+- type: feature-decision (user-requested scope)
+- decisions:
+  - Login blocked until email verified (403 EMAIL_NOT_VERIFIED); migration 012 grandfathers existing users as verified.
+  - Zero-dependency hand-rolled SMTP client (node:net/node:tls, AUTH LOGIN, 465 implicit TLS / 587 STARTTLS) targeting smtp.gmail.com with an App Password.
+  - SMTP env config hard-required at send time (SMTP_HOST/PORT/USER/PASS/FROM); injectable Mailer interface through buildApp for tests/smoke.
+  - Register no longer auto-signs-in; POST /auth/verify-email creates the session. Forgot/reset endpoints anti-enumeration; reset revokes all sessions.
+  - Sign-out fixed client-side: clear React Query cache + window.location.replace after logout settles.
+- status: implemented and verified 2026-08-25 (typecheck clean, build OK, 254 tests / 0 fail, smoke OK).

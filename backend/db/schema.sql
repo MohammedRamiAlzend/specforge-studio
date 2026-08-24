@@ -963,3 +963,85 @@ CREATE TABLE IF NOT EXISTS releases (
 );
 CREATE INDEX IF NOT EXISTS idx_releases_project ON releases(project_id);
 CREATE INDEX IF NOT EXISTS idx_releases_status ON releases(project_id, status);
+
+-- ---------------------------------------------------------------------------
+-- Users & sessions (Prompt 21)
+-- ---------------------------------------------------------------------------
+-- Accounts for the public landing + subscribe flow. Passwords are stored as
+-- argon2id hashes (Bun.password); sessions hold SHA-256 token hashes only.
+
+CREATE TABLE IF NOT EXISTS users (
+  id            TEXT PRIMARY KEY,                       -- USR-0001
+  email         TEXT NOT NULL UNIQUE,
+  name          TEXT NOT NULL,
+  password_hash TEXT NOT NULL,
+  email_verified INTEGER NOT NULL DEFAULT 0,          -- 0 until OTP verification (migration 012 grandfathers legacy rows)
+  created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email);
+
+CREATE TABLE IF NOT EXISTS sessions (
+  id         TEXT PRIMARY KEY,                          -- SES-0001
+  token_hash TEXT NOT NULL UNIQUE,                      -- sha256(token)
+  user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  expires_at TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_sessions_token ON sessions(token_hash);
+
+-- ---------------------------------------------------------------------------
+-- Plans & subscriptions (Prompt 21)
+-- ---------------------------------------------------------------------------
+-- Billing plans shown on the landing pricing section and the user's active
+-- subscription. Prices are integer cents; features is a JSON string[].
+
+CREATE TABLE IF NOT EXISTS plans (
+  id                  TEXT PRIMARY KEY,                  -- PLAN-0001
+  key                 TEXT NOT NULL UNIQUE,              -- free | plus | premium
+  name                TEXT NOT NULL,
+  tagline             TEXT NOT NULL DEFAULT '',
+  monthly_price_cents INTEGER NOT NULL,
+  yearly_price_cents  INTEGER NOT NULL,
+  features            TEXT NOT NULL DEFAULT '[]',        -- JSON string[]
+  popular             INTEGER NOT NULL DEFAULT 0,
+  active              INTEGER NOT NULL DEFAULT 1,
+  sort_order          INTEGER NOT NULL DEFAULT 0,
+  created_at          TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at          TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+
+CREATE TABLE IF NOT EXISTS subscriptions (
+  id                 TEXT PRIMARY KEY,                   -- SUB-0001
+  user_id            TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  plan_id            TEXT NOT NULL REFERENCES plans(id),
+  cycle              TEXT NOT NULL CHECK (cycle IN ('monthly','yearly')),
+  status             TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','canceled')),
+  card_last4         TEXT NOT NULL DEFAULT '',
+  started_at         TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  current_period_end TEXT NOT NULL,
+  canceled_at        TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON subscriptions(user_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_status ON subscriptions(user_id, status);
+
+
+-- ---------------------------------------------------------------------------
+-- OTP codes (Prompt: auth hardening)
+-- ---------------------------------------------------------------------------
+-- One-time codes for email verification and password reset. Only the SHA-256
+-- hash of the code is stored; codes expire after 10 minutes, allow at most
+-- 5 attempts, and are single-use (consumed_at).
+
+CREATE TABLE IF NOT EXISTS otp_codes (
+  id          TEXT PRIMARY KEY,                        -- OTP-0001
+  user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  purpose     TEXT NOT NULL CHECK (purpose IN ('verify_email','password_reset')),
+  code_hash   TEXT NOT NULL,                           -- sha256(code)
+  attempts    INTEGER NOT NULL DEFAULT 0,
+  expires_at  TEXT NOT NULL,
+  consumed_at TEXT,
+  created_at  TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_otp_codes_user ON otp_codes(user_id, purpose);

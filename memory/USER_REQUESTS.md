@@ -87,3 +87,38 @@ Each request must include:
 - mandatory or optional: mandatory (user-requested)
 - affected phase or artifact: prompts/20-project-execution-management.md, prompts/README.md, backend schema + modules + docs generator, frontend FSD pages, tests, docs, git new branch + PR (no merge to main)
 - follow-up (2026-08-18): Prompt 20 implementation COMPLETED. Backend was merged to main via PR #4 (migration 010, team/issues/releases/health/search/activity modules, tasks PATCH + assignee filter, issues.md/releases.md workspace files, execution.test.ts). The remaining FRONTEND layer was completed on main in the 2026-08-18 continuation session: entities team-member/issue/release/health/search/activity (+ task assignee_id/useUpdateTask), IssuesPage + ReleasesPage, TasksPage Kanban board (status columns, per-card status/assignee selects, assignee filter, board/table toggle), widgets HealthCards/HealthMiniCard/ActivityFeed/TeamSection/SearchBox, routes + nav + dashboard/overview integrations, FEAT-013 + MEM/ISS/RLS prefixes, frontend/tests/execution.test.tsx. Demo seeds (Acme + StoreSphere) carry team/issues/releases/assignees; example workspaces regenerated to 36 files each. Verified: typecheck clean, 201 tests / 0 fail (26 files, 926 expects), backend smoke PASS. ALL REQUIRED SCOPE (Prompts 00–20) COMPLETE.
+### 2026-08-24 — Modern landing page + plans + subscribe/auth/pay flow (Prompt 21)
+- request: "make a landing page modern one for our project design it and make modern with animated background waves blocks like a real ai and add plans free plus premuam and with subscribe and the user takes to auth session register then pay or sign in then pay ... use react and the components and all of react skills the landing page must be powerfull animated transtion"
+- implication: New public marketing layer at / (guests only; signed-in users keep the Dashboard), DB-backed plans Free/Plus/Premium (//, yearly = 2 months free — user-approved via pricing question), real backend cookie-session auth (users/sessions tables, Bun.password argon2id — zero new deps), simulated checkout (respects no-SaaS constraint; Stripe swap deferred). Animated canvas background + scroll reveals + transitions with ZERO new runtime dependencies.
+- execution constraint (user): "dont edit the engine" — all backend changes additive only: migration 011 + new auth/billing modules + registration lines in app.ts. No changes to roadmap engine/modeler/diagrams/docs-generator/governance/seeds.
+- mandatory or optional: mandatory (user-requested post-completion scope)
+- affected phase or artifact: prompts/21-landing-pricing-auth.md, backend migration 011 + schema.sql + modules/auth.ts + modules/billing.ts + app.ts registration, frontend entities user/plan/subscription + widgets WaveCanvas/PublicShell + pages Landing/Auth/Checkout + App.tsx gating + AppShell account chip, tests, docs/features/landing-billing.md (FEAT-014)
+
+### Request 2026-08-24 (post-OPT-004) — Landing page polish & fixes
+
+User requests (verbatim intent):
+1. Logo: create a real logo mark — NOT the letters 'SF' (user says that is wrong).
+2. Nav menu elements have no active/inactive state — add active-state styling.
+3. Features and How-it-works sections on the landing page appear EMPTY — fix content visibility.
+4. Make a very nice modern footer on the landing page.
+5. Anchor bug: while on /signin, clicking 'Features' produces /signin#features which scrolls nowhere; must be /#features (navigate home, then scroll).
+6. Question: does create account / sign in actually work? (answer clearly)
+7. Provide a summary of what we did.
+
+Status: accepted — implementation started same day.
+
+### Request 2026-08-24 (cont.) — Auth hardening: OTP + forgot password + sign-out bug
+
+User requests:
+1. Fix sign-out: user stays stuck on dashboard after clicking Sign out.
+2. Add email OTP verification for registration.
+3. Add forgot-password / password-reset flow.
+4. Email sending via the user's own Gmail account (SMTP).
+
+User decisions (via questions):
+- Login BLOCKED until email verified (existing account grandfathered as verified).
+- Hand-rolled zero-dependency SMTP client over node:net/node:tls (no nodemailer).
+- SMTP config HARD REQUIRED when running (no console fallback).
+- Analytics plan remains PARKED awaiting approval.
+
+Status: accepted — implementation started same day (DEC-028).

@@ -23,21 +23,32 @@ import { registerLinkRoutes } from "./modules/links/routes";
 import { seedNodePalette } from "./modules/palette/seed";
 import { registerPaletteRoutes } from "./modules/palette/routes";
 import { registerSkillRoutes } from "./modules/skills";
+import { registerSkillMatchRoutes } from "./modules/skill-match";
 import { registerTeamRoutes } from "./modules/team";
 import { registerIssueRoutes } from "./modules/issues";
 import { registerReleaseRoutes } from "./modules/releases";
 import { registerHealthRoutes } from "./modules/health";
 import { registerSearchRoutes } from "./modules/search";
 import { registerActivityRoutes } from "./modules/activity";
+import { registerAuthRoutes } from "./modules/auth";
+import { registerBillingRoutes, seedBillingPlans } from "./modules/billing";
+import { requireSmtpMailer } from "./utils/mailer";
+import type { Mailer } from "./utils/mailer";
 
 export interface BuildAppOptions {
   config?: Config;
   db?: Database;
+  /**
+   * Transactional-email transport. Defaults to the real SMTP client (which
+   * requires SMTP_* env config); tests and the smoke script inject fakes.
+   */
+  mailer?: Mailer;
 }
 
 export async function buildApp(options: BuildAppOptions = {}) {
   const config = options.config ?? loadConfig();
   const db = options.db ?? openDatabase(config.DATABASE_PATH);
+  const mailer = options.mailer ?? requireSmtpMailer(config);
 
   // Prompt 13: idempotent built-in platform configuration (project types,
   // stacks, libraries) so every database has usable defaults without any
@@ -46,6 +57,9 @@ export async function buildApp(options: BuildAppOptions = {}) {
   // Prompt 15: idempotent built-in node palette (categories + node types) so
   // the modeler has usable defaults that can be edited from Settings.
   seedNodePalette(db);
+  // Prompt 21: idempotent built-in billing plans (free / plus / premium) for
+  // the public landing pricing section and the subscribe flow.
+  seedBillingPlans(db);
 
   const app = Fastify({ logger: { level: config.LOG_LEVEL } });
   registerErrorHandler(app);
@@ -55,12 +69,15 @@ export async function buildApp(options: BuildAppOptions = {}) {
     return { status: "ok", db: "ok", time: new Date().toISOString() };
   });
 
-  const deps = { db, config };
+  const deps = { db, config, mailer };
+  registerAuthRoutes(app, deps);
+  registerBillingRoutes(app, deps);
   registerProjectRoutes(app, deps);
   registerPlatformConfigRoutes(app, deps);
   registerLinkRoutes(app, deps);
   registerPaletteRoutes(app, deps);
   registerSkillRoutes(app, deps);
+  registerSkillMatchRoutes(app, deps);
   registerRequirementRoutes(app, deps);
   registerUseCaseRoutes(app, deps);
   registerWorkflowRoutes(app, deps);

@@ -91,6 +91,10 @@ Extended prefixes (added by this ontology, DEC-002):
 | MEM | TeamMember (execution & delivery roster, Prompt 20) |
 | ISS | Issue (bug/enhancement/tech debt/question, Prompt 20) |
 | RLS | Release (versioned release artifact, Prompt 20) |
+| USR | User (auth account, Prompt 21) |
+| SES | Session (auth cookie session, Prompt 21) |
+| PLAN | Plan (billing plan free/plus/premium, Prompt 21) |
+| SUB | Subscription (user billing subscription, Prompt 21) |
 
 Child codes:
 

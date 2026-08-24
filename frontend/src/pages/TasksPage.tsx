@@ -9,6 +9,7 @@ import { PageHeader } from "../shared/ui/PageHeader";
 import { Card } from "../shared/ui/Card";
 import { EmptyState } from "../shared/ui/States";
 import { DataTable, type Column } from "../widgets/data-table/DataTable";
+import { SkillMatchPanel } from "../widgets/skill-match/SkillMatchPanel";
 import { formatDate } from "../shared/lib/format";
 import { errorMessage } from "../shared/api/client";
 
@@ -118,6 +119,8 @@ export function TasksPage() {
       />
 
       {updateTask.isError ? <p className="text-xs text-rose-600">{errorMessage(updateTask.error)}</p> : null}
+
+      {projectId ? <SkillMatchPanel projectId={projectId} /> : null}
 
       {isLoading || error ? (
         <DataTable

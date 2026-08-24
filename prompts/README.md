@@ -36,6 +36,7 @@ This folder contains the scheduled prompt sequence for building SpecForge Studio
 18. Full-detail e-commerce seeder (.NET backend + React frontend demo example)
 19. Download generated docs as ZIP (per-export download button + on-demand ZIP endpoint)
 20. Project execution & delivery management (team + assignees, Kanban board, issues, releases, health analytics, search, activity feed)
+21. Landing page, pricing & subscribe flow (public landing at `/`, Free/Plus/Premium plans, real auth sessions, simulated checkout)
 
 Note: the original Prompt 13 (Deployment and Final Audit) was removed from the
 required scope by user request (2026-08-16) and replaced by Prompts 13–16
@@ -67,3 +68,9 @@ execution & delivery management layer (team + assignees, Kanban board, issues,
 releases, health analytics, global search, activity feed). Implemented on a
 dedicated branch and delivered as a pull request; merging to main is
 forbidden by the user.
+Prompt 21 (2026-08-24) was added by user request ("make a landing page modern one ... with animated
+background waves blocks like a real ai and add plans free plus premuam and with subscribe and the
+user takes to auth session register then pay or sign in then pay") — a public marketing landing
+page with DB-backed plans (Free/Plus/Premium), real cookie-session auth (Bun.password, zero new
+deps) and a simulated checkout flow. Constraint: do not edit the existing engine/core modules;
+all backend changes additive (migration 011 + new auth/billing modules).
