@@ -924,3 +924,10 @@ Committed ed586eb on feat/landing-pricing-auth-hardening and pushed (84d369b..ed
 Operational notes recorded: bun --watch does NOT reload .env (full restart required after edits); Bun auto-loads .env from CWD (SMTP scripts must run with workdir=backend); registrations send REAL emails.
 
 Next action: user restarts dev server and retries account creation; then optional tasks / parked analytics plan / merge PR.
+
+### Session 2026-08-25 (cont. 4) — Sign-out confirmation dialog + stale-bundle diagnosis
+
+- User reported sign-out STILL keeps them on the dashboard. Verified server-side logout is fully functional against the RUNNING dev server via a probe script (inserted a session row directly, then: /auth/me 200 -> POST /auth/logout 200 with correct Max-Age=0 Set-Cookie -> row deleted -> /auth/me 401). Frontend performSignOut has a hard-navigation watchdog. Conclusion: only explanation for "stays on dashboard" is the browser tab executing STALE JS from before the fix (Windows Desktop/OneDrive folders can break vite file watching; long-running tabs hold old chunks).
+- Implemented requested UX: shared/ui/ConfirmDialog.tsx (generic confirm modal, overlay+panel pattern matching DiagramPreviewDialog, danger variant, busy spinner via Button loading). AccountChip now opens "Sign out of SpecForge Studio?" confirmation on click; confirm triggers performSignOut(); 5s self-recovery timer re-enables the chip if navigation is ever blocked (embedded webviews/extensions) so it can never stay disabled.
+- Verification: frontend typecheck clean; 254 pass / 0 fail. Committed 2d009f4, pushed.
+- USER ACTION REQUIRED: full restart of dev servers + hard refresh (Ctrl+Shift+R) to load current bundle.
