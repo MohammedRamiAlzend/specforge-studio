@@ -3,7 +3,7 @@
   "project_name": "SpecForge Studio",
   "last_updated": "2026-08-25",
   "current_prompt_id": "21",
-  "current_phase": "auth-hardening-otp-recovery",
+  "current_phase": "billing-lifecycle",
   "status": "completed",
   "execution_mode": "human_approved_automation",
   "required_scope": [
@@ -55,11 +55,12 @@
     "21-landing-pricing-auth",
     "opt-004-skill-matching",
     "landing-polish-batch",
-    "auth-hardening-otp-recovery"
+    "auth-hardening-otp-recovery",
+    "billing-lifecycle"
   ],
   "in_progress_phases": [],
   "pending_phases": [],
-  "next_action": "ALL REQUIRED SCOPE COMPLETE (Prompts 00–20) + OPT-003 + Prompt 21 + OPT-004 + landing polish batch + auth hardening (DEC-028, 2026-08-25: email OTP verification blocks login with 403 EMAIL_NOT_VERIFIED until POST /auth/verify-email confirms a 6-digit code; forgot/reset password via emailed codes; reset revokes all sessions; hand-rolled zero-dep SMTP mailer node:net+node:tls AUTH LOGIN 465/STARTTLS, injectable via buildApp({mailer}); migration 012 users.email_verified grandfathers existing users as verified + otp_codes table; SMTP_* env HARD-REQUIRED at startup — user must add Gmail App Password to backend/.env; AuthPage verify/forgot/reset steps with 60s resend countdown; sign-out bug fixed via queryClient.clear()+window.location.replace). Verified: typecheck clean; build OK; 254 tests pass / 0 fail (33 files); smoke SMOKE TEST OK. Analytics plan remains PARKED awaiting approval. Await user direction.",
+  "next_action": "Billing lifecycle (DEC-029) COMPLETE: invoices table (migration 013), invoice on every checkout incl. $0 Free, branded email receipts on paid checkouts via SMTP mailer, computed period expiry (lapsed -> status 'expired', Free limits re-apply), Free plan limited to 1 project with 402 PLAN_LIMIT_REACHED on POST /projects for authenticated callers only, GET /billing/invoices/me history, Settings Billing tab (?tab=Billing) with switch/cancel + ConfirmDialog + invoice table, CreateProjectForm upgrade prompt. Verified: typechecks clean; 267 pass / 0 fail (35 files); smoke OK (block 24). Committed a0a80cb. Analytics plan remains PARKED awaiting approval. Await user direction.",
   "blockers": [],
   "awaiting_approval": [],
   "completion": {

@@ -939,3 +939,17 @@ Next action: user restarts dev server and retries account creation; then optiona
 - Regression probe: booted app via test helpers, registered+verified a user, reproduced EXACT failing request (content-type json + empty payload) -> logout 200, Set-Cookie Max-Age=0, /auth/me 401.
 - Verification: backend typecheck clean; 254 pass / 0 fail (33 files). Committed 5057fdf, pushed.
 - Note: user still needs to restart backend dev server to load app.ts change.
+
+### Session 2026-08-25 (cont. 6) — Billing lifecycle (DEC-029) IMPLEMENTED
+
+User direction after auth/sign-out completion: "handle the payment plans". Question round answered: FULL SIMULATED lifecycle (no external SaaS) with ALL scope items — plan-limit enforcement, invoices + billing history UI, period expiry, email receipts.
+
+Implemented:
+- Migration 013 + schema: invoices table (INV ids, FK users/subscriptions, amount_cents, card_last4, status paid/refunded, description). Expiry COMPUTED at read time from current_period_end — subscriptions.status CHECK untouched.
+- billing.ts: checkout creates an invoice on EVERY activation ($0 for Free); branded receipt email (emailShell exported from auth.ts) sent on paid checkouts only, failures logged not fatal; getActiveSubscription excludes lapsed periods; subscription view maps lapsed -> status "expired"; GET /billing/invoices/me (auth, newest first, plan-name join); getEffectivePlanKey + assertProjectAllowance + FREE_PROJECT_LIMIT=1.
+- projects.ts POST /projects: allowance enforced ONLY when a valid session exists (anonymous callers keep unrestricted legacy behavior — protects tests/seeds).
+- errors.ts += PLAN_LIMIT_REACHED (402).
+- Frontend: Subscription status += "expired"; Invoice type; useInvoices; useCheckout invalidates invoices; NEW features/billing/BillingPanel.tsx (current-plan card + status chip + renewal date + switch/cancel via ConfirmDialog + invoice table + expired banner + free upsell); SettingsPage "Billing" tab with ?tab= deep-link; CreateProjectForm renders amber upgrade box on PLAN_LIMIT_REACHED linking /checkout/plus.
+- Tests: backend/tests/billing-lifecycle.test.ts (8), frontend/tests/billing.test.tsx (5), smoke block 24 (register->limit->upgrade->invoice->expiry live). Docs FEAT-018 docs/features/billing-lifecycle.md; id-convention INV prefix.
+
+Verification: both typechecks clean; 267 pass / 0 fail (35 files); smoke SMOKE TEST OK incl. new block. Committed a0a80cb, pushed.

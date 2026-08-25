@@ -1,16 +1,17 @@
 ﻿# NEXT_ACTION
 
-STATUS NOTE (2026-08-25, cont. 3): ALL REQUIRED SCOPE COMPLETE + live SMTP delivery VERIFIED WORKING. Register-hang root cause found and fixed (see SESSION_LOG cont. 3): dotStuffed() escaped the DATA terminator ("." -> "..") so Gmail never saw end-of-data. Five SmtpMailer bugs fixed total; real email SENT OK via backend/scripts/smtp-test-send.ts.
+STATUS NOTE (2026-08-25, cont. 6): Billing lifecycle (DEC-029) IMPLEMENTED, TESTED AND PUSHED (commit a0a80cb). Auth hardening + SMTP live delivery + sign-out fix all done earlier the same day. All work on branch feat/landing-pricing-auth-hardening.
 
-What changed since the last note:
-- User bug round fixed: password show/hide toggle (PasswordInput/EyeIcon in AuthPage), backend/.env created from user's Gmail App Password (+ committed .env.example template), sign-out re-hardened with imperative performSignOut() in entities/user/api.ts.
-- SMTP ops tools kept: backend/scripts/smtp-diagnose.ts (credential/protocol validator) and smtp-test-send.ts (send smoke; run from workdir=backend).
-- Committed ed586eb and pushed to origin/feat/landing-pricing-auth-hardening (after 84d369b). PR URL: https://github.com/MohammedRamiAlzend/specforge-studio/pull/new/feat/landing-pricing-auth-hardening
-- Verification: backend typecheck clean; 254 tests pass / 0 fail (33 files); real Gmail delivery confirmed (user should see "SpecForge SMTP test" and "raw probe" emails in mouazalkhatib2013@gmail.com).
+What changed in this phase:
+- DEC-029 approved via question round: FULL SIMULATED lifecycle (no external SaaS) with ALL scope items.
+- Backend: migration 013 invoices table; invoice recorded on EVERY checkout ($0 for Free); branded receipt email on paid checkouts (emailShell exported from auth.ts; failures logged, non-fatal); computed period expiry (lapsed active sub -> status "expired", Free limits re-apply); Free plan = 1 project, enforced ONLY for authenticated callers on POST /projects (402 PLAN_LIMIT_REACHED, anonymous legacy behavior untouched); GET /billing/invoices/me.
+- Frontend: Settings "Billing" tab (?tab=Billing): current plan card w/ status chip + renewal date + card last4, switch-plan buttons (/checkout/:planKey), cancel via ConfirmDialog, invoice history table, expired banner, free upsell; CreateProjectForm amber upgrade box on PLAN_LIMIT_REACHED; subscription types gain "expired" + Invoice; useInvoices hook; checkout invalidates invoice cache.
+- Tests: billing-lifecycle.test.ts (8), billing.test.tsx (5), smoke block 24; docs FEAT-018 docs/features/billing-lifecycle.md; INV prefix in id-convention.md.
+- Verification: both typechecks clean; 267 pass / 0 fail (35 files); smoke SMOKE TEST OK.
 
 Current next action:
-- User must FULLY RESTART the dev server (bun --watch does not reload .env) and retry account creation end-to-end in the browser.
-- After that: await user direction — approve an optional task from memory/OPTIONAL_BACKLOG.md (remaining: OPT-001 deployment packaging, OPT-002 per-type diagram templates, OPT-005 sprint planning, OPT-006 changelog generator), re-visit the PARKED full-analytics plan, merge the PR, provide a new requirement, or close the project. Do NOT start optional work without explicit approval.
+- User restarts dev servers and tries the flow live: register -> checkout Plus with test card 4242 4242 4242 4242 -> Settings > Billing shows plan + invoice + receipt email arrives.
+- Then await user direction: another feature/bug round, optional backlog (OPT-001/002/005/006), PARKED analytics plan, merge PR, or close.
 
 Required files to update after the next action:
 - memory/SESSION_LOG.md, memory/STATE.json, memory/PROJECT_MEMORY.md
@@ -20,6 +21,6 @@ If the user says:
 continue
 
 Then the agent must:
-1. Report that all required work is already complete.
-2. Show the remaining optional tasks from memory/OPTIONAL_BACKLOG.md.
-3. Ask the user to approve one optional task or provide a new requirement (do NOT restart required work).
+1. Report that the approved required scope is complete.
+2. Show remaining optional tasks from memory/OPTIONAL_BACKLOG.md.
+3. Ask the user to approve one optional task or provide a new requirement.
