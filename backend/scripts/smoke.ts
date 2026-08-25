@@ -1449,6 +1449,42 @@ let depId = "";
   check("billing: expired plan re-applies Free limit -> 402", p4.statusCode === 402 && p4.json().error?.code === "PLAN_LIMIT_REACHED", p4.body);
 }
 
+// 25. dashboard summary (DEC-030)
+{
+  const inject = async (method: string, url: string, payload?: unknown, cookie?: string) =>
+    app.inject({
+      method: method as "GET",
+      url,
+      payload: payload as undefined,
+      ...(cookie ? { headers: { cookie } } : {}),
+    });
+
+  const anon = await request("GET", "/dashboard/summary");
+  check("dashboard: anonymous -> 401", anon.statusCode === 401, anon.body);
+
+  const reg = await request("POST", "/auth/register", {
+    name: "Dash User",
+    email: "dash@smoke.local",
+    password: "test-password-1",
+  });
+  const otpSubject = sentEmails.find((mail) => mail.to === "dash@smoke.local")?.subject ?? "";
+  const code = /(\d{6})/.exec(otpSubject)?.[1] ?? "";
+  const verified = await app.inject({ method: "POST", url: "/auth/verify-email", payload: { email: "dash@smoke.local", code } });
+  const token = /sf_session=([^;]+)/.exec((verified.headers["set-cookie"] as string) ?? "")?.[1] ?? "";
+  check("dashboard: session opened", verified.statusCode === 200 && token !== "", verified.body);
+
+  const me = await inject("GET", "/auth/me", undefined, `sf_session=${token}`);
+  const userId = me.json().data?.user?.id ?? "";
+  check("dashboard: me resolves user id", userId.startsWith("USR-"), me.body);
+
+  await inject("POST", "/projects", { name: "Dash project", type: "web", created_by: "owner@internal" }, `sf_session=${token}`);
+  const summary = await inject("GET", "/dashboard/summary", undefined, `sf_session=${token}`);
+  check("dashboard: summary -> 200", summary.statusCode === 200, summary.body);
+  const data = summary.json().data;
+  check("dashboard: creator stamped from session (not client payload)", data?.quota?.used === 1, summary.body);
+  check("dashboard: free quota surfaced", data?.quota?.plan_key === "free" && data?.quota?.limit === 1, summary.body);
+}
+
 await app.close();
 rmSync(config.EXPORT_DIR, { recursive: true, force: true });
 

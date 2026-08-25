@@ -325,6 +325,45 @@ export function getEffectivePlanKey(db: Database, userId: string): "free" | "plu
   return planRow?.key === "plus" || planRow?.key === "premium" ? planRow.key : "free";
 }
 
+export interface SubscriptionSummary {
+  plan_key: "free" | "plus" | "premium";
+  status: "active" | "expired";
+  cycle: BillingCycle;
+  current_period_end: string;
+  card_last4: string;
+}
+
+/**
+ * Compact subscription state for dashboard widgets (DEC-030). Mirrors the
+ * enforcement semantics of getEffectivePlanKey: a lapsed paid period reads as
+ * status "expired" with the effective plan reverted to "free".
+ */
+export function getSubscriptionSummary(db: Database, userId: string): SubscriptionSummary {
+  const row = db
+    .query(
+      "SELECT * FROM subscriptions WHERE user_id = ? AND status = 'active' ORDER BY started_at DESC LIMIT 1",
+    )
+    .get(userId) as SubscriptionRow | undefined;
+  if (!row) {
+    return { plan_key: "free", status: "active", cycle: "monthly", current_period_end: "", card_last4: "" };
+  }
+  const planRow = db.query("SELECT key FROM plans WHERE id = ?").get(row.plan_id) as
+    | { key: string }
+    | undefined;
+  const planKey =
+    planRow?.key === "plus" || planRow?.key === "premium" ? planRow.key : "free";
+  const expired = row.current_period_end
+    ? new Date(row.current_period_end).getTime() < Date.now()
+    : false;
+  return {
+    plan_key: expired ? "free" : planKey,
+    status: expired ? "expired" : "active",
+    cycle: row.cycle,
+    current_period_end: row.current_period_end ?? "",
+    card_last4: row.card_last4 ?? "",
+  };
+}
+
 /**
  * Enforces the Free-plan project allowance. Paid plans are unlimited.
  * Called from POST /projects only when a valid session exists — anonymous

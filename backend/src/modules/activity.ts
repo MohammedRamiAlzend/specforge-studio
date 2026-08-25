@@ -65,13 +65,26 @@ export function listActivity(
     payload: row.payload ? (JSON.parse(row.payload) as unknown) : null,
   }));
 
-  if (options.includePendingApprovals && options.projectId) {
-    const pending = db
-      .query(
-        `SELECT id, project_id, artifact_id, artifact_type, approver_role, status, created_at
-         FROM approvals WHERE project_id = ? AND status = 'pending' ORDER BY created_at DESC`,
-      )
-      .all(options.projectId) as {
+  if (options.includePendingApprovals) {
+    // Scoped feeds merge every pending approval of the project; the GLOBAL
+    // feed (no projectId) previously dropped them entirely (DEC-030 fix) —
+    // now it merges a capped cross-project batch so action-required items are
+    // never invisible on the dashboard.
+    const pending = (
+      options.projectId
+        ? db
+            .query(
+              `SELECT id, project_id, artifact_id, artifact_type, approver_role, status, created_at
+               FROM approvals WHERE project_id = ? AND status = 'pending' ORDER BY created_at DESC`,
+            )
+            .all(options.projectId)
+        : db
+            .query(
+              `SELECT id, project_id, artifact_id, artifact_type, approver_role, status, created_at
+               FROM approvals WHERE status = 'pending' ORDER BY created_at DESC LIMIT 20`,
+            )
+            .all()
+    ) as {
       id: string;
       project_id: string;
       artifact_id: string;
@@ -96,7 +109,12 @@ export function listActivity(
         pending: true,
       });
     }
-    items.sort((a, b) => (a.id > b.id ? -1 : a.id < b.id ? 1 : 0));
+    // Pending approvals float above the newest events so they can never be
+    // pushed out of the feed window by high event volume.
+    items.sort((a, b) => {
+      if (Boolean(a.pending) !== Boolean(b.pending)) return a.pending ? -1 : 1;
+      return a.id > b.id ? -1 : a.id < b.id ? 1 : 0;
+    });
   }
 
   return items.slice(0, limit);

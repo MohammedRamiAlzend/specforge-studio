@@ -131,3 +131,8 @@ Status: accepted — implementation started same day (DEC-028).
 
 ## Request (2026-08-25): Handle payment plans
 User: authentication/sign-in/sign-out/OTP/forgot-password are done; next task is "handle the payment plans". Existing base: DEC-026 plans/subscriptions tables, simulated Luhn checkout, cancel endpoint, CheckoutPage. Direction (simulated vs real provider) pending user decision because real providers violate the no-SaaS constraint without explicit approval.
+
+## Request (2026-08-25): Business model + presentation inside projects + dashboard redesign
+User wants: (1) when creating a project the user can also create a business model and a presentation inside the project - all in one place; (2) the dashboard itself is bad - do a FULL analysis of it and the data it shows, then rebuild it.
+Clarifying answers (question round): Business Model Canvas format; presentation delivery = HTML deck + PDF print PLUS real .pptx export (pptxgenjs dependency explicitly approved); dashboard depth = full redesign + aggregate GET /dashboard/summary endpoint.
+Phase order agreed with user: C dashboard-redesign -> A business-model-canvas -> B pitch-presentation (B consumes A's data).

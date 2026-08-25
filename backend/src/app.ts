@@ -32,6 +32,7 @@ import { registerSearchRoutes } from "./modules/search";
 import { registerActivityRoutes } from "./modules/activity";
 import { registerAuthRoutes } from "./modules/auth";
 import { registerBillingRoutes, seedBillingPlans } from "./modules/billing";
+import { registerDashboardRoutes } from "./modules/dashboard";
 import { requireSmtpMailer } from "./utils/mailer";
 import type { Mailer } from "./utils/mailer";
 
@@ -117,6 +118,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
   registerHealthRoutes(app, deps);
   registerSearchRoutes(app, deps);
   registerActivityRoutes(app, deps);
+  registerDashboardRoutes(app, deps);
 
   return app;
 }

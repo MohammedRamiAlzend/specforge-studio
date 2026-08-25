@@ -377,8 +377,14 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps): void {
     // Plan-limit enforcement (DEC-029) applies only to authenticated callers:
     // anonymous requests (legacy tests/seeds/scripts) keep unrestricted
     // behavior, while a signed-in Free user is capped at FREE_PROJECT_LIMIT.
+    let creator = body.created_by;
     try {
-      assertProjectAllowance(db, requireUser(db, request));
+      const user = requireUser(db, request);
+      assertProjectAllowance(db, user);
+      // A session outranks the client-supplied creator string: without this
+      // stamp the UI's legacy default ("owner@internal") silently bypassed
+      // both quota accounting and the Free limit itself (DEC-030 fix).
+      creator = user.id;
     } catch (error) {
       // Re-throw plan limits; swallow authentication absence (anonymous OK).
       if (
@@ -391,7 +397,7 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps): void {
       }
     }
     reply.code(201);
-    return { data: createProject(db, body) };
+    return { data: createProject(db, { ...body, created_by: creator }) };
   });
 
   app.get("/projects/:id", async (request) => {
