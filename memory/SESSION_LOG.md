@@ -901,20 +901,20 @@ Next action: await user direction (optional tasks / parked analytics plan / new 
 - Likely user-side cause of recurrence: stale bundle in long-running dev tab; advise hard refresh.
 - Verified: frontend typecheck clean; 254 tests / 0 fail.
 
-### Session 2026-08-25 (cont. 3) — Live SMTP debugging: register hang fixed end-to-end
+### Session 2026-08-25 (cont. 3) ï¿½ Live SMTP debugging: register hang fixed end-to-end
 
-User reports: register button stuck on "Working…", landing plans empty, password fields lacked show/hide toggle, sign-out still stuck.
+User reports: register button stuck on "Workingï¿½", landing plans empty, password fields lacked show/hide toggle, sign-out still stuck.
 
 Fixed in order:
 1. AuthPage.tsx: PasswordInput + EyeIcon components; show/hide toggles on main form (testId password-input) and reset step (new-password-input).
 2. backend/.env created from user's Gmail App Password (gitignored); backend/.env.example committed with setup guide. Plans-not-showing diagnosed as API-down consequence: requireSmtpMailer threw SmtpConfigError at boot when .env was absent.
 3. Sign-out re-hardened: useLogout hook removed; imperative performSignOut() (best-effort POST /auth/logout -> window.location.replace("/") in .finally + 2.5s watchdog).
-4. THE BIG ONE — SmtpMailer had five real bugs (FakeMailer tests bypass sockets, so none were caught by the suite):
+4. THE BIG ONE ï¿½ SmtpMailer had five real bugs (FakeMailer tests bypass sockets, so none were caught by the suite):
    a. 'data' handler woke the poller but never appended chunk into this.buffer -> every reply timed out at 15s (the "Working..." hang root cause).
    b. replyCode() regex matched TRAILING digits; Gmail greeting contains digits inside its ESMTP id -> returned 0 -> bogus failures. Rewritten to parse the LAST line's LEADING code per RFC 5321.
    c. readReply deadline only evaluated when woken by data; socket close undetected -> possible indefinite hangs. Rewritten as race-free poll loop (20ms) checking completion regex /(?:^|\r\n)\d{3}[^\r]*\r\n$/, lastError, closed, hard deadline.
    d. Bun quirk: setEncoding("utf8") on TLSSocket SUPPRESSES 'data' events. Removed; chunks decoded manually from Buffers.
-   e. DECISIVE bug found via raw-protocol probe (scripts/smtp-raw.ts delivered a real email proving sockets/Bun fine): dotStuffed() escaped the DATA terminator itself — lone "." became ".." so Gmail never saw <CRLF>.<CRLF> end-of-data and never replied. Fix: dot-stuff only message content; append terminator "\r\n.\r\n" after stuffing.
+   e. DECISIVE bug found via raw-protocol probe (scripts/smtp-raw.ts delivered a real email proving sockets/Bun fine): dotStuffed() escaped the DATA terminator itself ï¿½ lone "." became ".." so Gmail never saw <CRLF>.<CRLF> end-of-data and never replied. Fix: dot-stuff only message content; append terminator "\r\n.\r\n" after stuffing.
 5. Supporting fixes: session constructed BEFORE awaiting handshake (captures greeting during TLS); connectSocket uses instanceof tls.TLSSocket + 10s timeout; requireSmtpMailer strips whitespace from SMTP_PASS (Gmail shows App Passwords space-grouped); socket.resume() added defensively.
 
 Verification: bun scripts/smtp-test-send.ts -> SENT OK (real email delivered to user's Gmail inbox; a second test email "raw probe" also arrived via the diagnostic). backend typecheck clean; full suite 254 pass / 0 fail (33 files). Temp scripts deleted; kept ops tools backend/scripts/smtp-diagnose.ts (credential/protocol validator) and smtp-test-send.ts (send smoke).
@@ -925,14 +925,14 @@ Operational notes recorded: bun --watch does NOT reload .env (full restart requi
 
 Next action: user restarts dev server and retries account creation; then optional tasks / parked analytics plan / merge PR.
 
-### Session 2026-08-25 (cont. 4) — Sign-out confirmation dialog + stale-bundle diagnosis
+### Session 2026-08-25 (cont. 4) ï¿½ Sign-out confirmation dialog + stale-bundle diagnosis
 
 - User reported sign-out STILL keeps them on the dashboard. Verified server-side logout is fully functional against the RUNNING dev server via a probe script (inserted a session row directly, then: /auth/me 200 -> POST /auth/logout 200 with correct Max-Age=0 Set-Cookie -> row deleted -> /auth/me 401). Frontend performSignOut has a hard-navigation watchdog. Conclusion: only explanation for "stays on dashboard" is the browser tab executing STALE JS from before the fix (Windows Desktop/OneDrive folders can break vite file watching; long-running tabs hold old chunks).
 - Implemented requested UX: shared/ui/ConfirmDialog.tsx (generic confirm modal, overlay+panel pattern matching DiagramPreviewDialog, danger variant, busy spinner via Button loading). AccountChip now opens "Sign out of SpecForge Studio?" confirmation on click; confirm triggers performSignOut(); 5s self-recovery timer re-enables the chip if navigation is ever blocked (embedded webviews/extensions) so it can never stay disabled.
 - Verification: frontend typecheck clean; 254 pass / 0 fail. Committed 2d009f4, pushed.
 - USER ACTION REQUIRED: full restart of dev servers + hard refresh (Ctrl+Shift+R) to load current bundle.
 
-### Session 2026-08-25 (cont. 5) — Sign-out ROOT CAUSE found: FST_ERR_CTP_EMPTY_JSON_BODY
+### Session 2026-08-25 (cont. 5) ï¿½ Sign-out ROOT CAUSE found: FST_ERR_CTP_EMPTY_JSON_BODY
 
 - User pasted the actual backend log: POST /auth/logout died with 400 FST_ERR_CTP_EMPTY_JSON_BODY ("Body cannot be empty when content-type is set to 'application/json'"). Root chain: frontend shared/api/client.ts ALWAYS sets Content-Type: application/json; performSignOut posts with NO body; Fastify's default JSON parser rejects empty bodies BEFORE the route handler runs -> session row never deleted, cookie never cleared -> watchdog navigation still fires, but after reload HomeGate's /auth/me still returns the user -> user lands back on dashboard. Earlier probe passed because raw fetch without that header bypassed the parser. The "stale bundle" hypothesis from cont.4 was WRONG.
 - Fix (root, backend/src/app.ts): custom addContentTypeParser("application/json", {parseAs:"string"}) that treats empty/undefined body as {} and JSON.parses everything else (delegating parse errors). All body-less POSTs now reach their handlers.
@@ -940,14 +940,14 @@ Next action: user restarts dev server and retries account creation; then optiona
 - Verification: backend typecheck clean; 254 pass / 0 fail (33 files). Committed 5057fdf, pushed.
 - Note: user still needs to restart backend dev server to load app.ts change.
 
-### Session 2026-08-25 (cont. 6) — Billing lifecycle (DEC-029) IMPLEMENTED
+### Session 2026-08-25 (cont. 6) ï¿½ Billing lifecycle (DEC-029) IMPLEMENTED
 
-User direction after auth/sign-out completion: "handle the payment plans". Question round answered: FULL SIMULATED lifecycle (no external SaaS) with ALL scope items — plan-limit enforcement, invoices + billing history UI, period expiry, email receipts.
+User direction after auth/sign-out completion: "handle the payment plans". Question round answered: FULL SIMULATED lifecycle (no external SaaS) with ALL scope items ï¿½ plan-limit enforcement, invoices + billing history UI, period expiry, email receipts.
 
 Implemented:
-- Migration 013 + schema: invoices table (INV ids, FK users/subscriptions, amount_cents, card_last4, status paid/refunded, description). Expiry COMPUTED at read time from current_period_end — subscriptions.status CHECK untouched.
+- Migration 013 + schema: invoices table (INV ids, FK users/subscriptions, amount_cents, card_last4, status paid/refunded, description). Expiry COMPUTED at read time from current_period_end ï¿½ subscriptions.status CHECK untouched.
 - billing.ts: checkout creates an invoice on EVERY activation ($0 for Free); branded receipt email (emailShell exported from auth.ts) sent on paid checkouts only, failures logged not fatal; getActiveSubscription excludes lapsed periods; subscription view maps lapsed -> status "expired"; GET /billing/invoices/me (auth, newest first, plan-name join); getEffectivePlanKey + assertProjectAllowance + FREE_PROJECT_LIMIT=1.
-- projects.ts POST /projects: allowance enforced ONLY when a valid session exists (anonymous callers keep unrestricted legacy behavior — protects tests/seeds).
+- projects.ts POST /projects: allowance enforced ONLY when a valid session exists (anonymous callers keep unrestricted legacy behavior ï¿½ protects tests/seeds).
 - errors.ts += PLAN_LIMIT_REACHED (402).
 - Frontend: Subscription status += "expired"; Invoice type; useInvoices; useCheckout invalidates invoices; NEW features/billing/BillingPanel.tsx (current-plan card + status chip + renewal date + switch/cancel via ConfirmDialog + invoice table + expired banner + free upsell); SettingsPage "Billing" tab with ?tab= deep-link; CreateProjectForm renders amber upgrade box on PLAN_LIMIT_REACHED linking /checkout/plus.
 - Tests: backend/tests/billing-lifecycle.test.ts (8), frontend/tests/billing.test.tsx (5), smoke block 24 (register->limit->upgrade->invoice->expiry live). Docs FEAT-018 docs/features/billing-lifecycle.md; id-convention INV prefix.
@@ -969,3 +969,12 @@ Verification: both typechecks clean; 267 pass / 0 fail (35 files); smoke SMOKE T
 - Docs: genBusinessModelDoc -> 07-guides/business-model.md appended END of WORKSPACE_FILES (ART-0037); both committed examples regenerated to 37 files.
 - Frontend: entities/bmc (types/api/lib w/ BANDS layout), BusinessModelPage 3-band canvas grid w/ inline add/edit/del sticky notes; route projects/:projectId/business-model, nav after Skills, details SECTIONS card.
 - Tests: business-model.test.ts (6), business-model.test.tsx (4), smoke block 26 (3 checks). Verified: typechecks clean; 191+96=287 pass/0 fail; smoke OK. Committed 21afa7f, pushed. FEAT-020 doc; BMC prefix in id-convention.
+
+## 2026-08-25 - cont. 9: Phase B pitch presentation COMPLETE (DEC-030)
+
+- Backend: modules/presentation.ts â€” live-computed 9-slide deck from project data. GET /presentation/:projectId/data returns structured slides; GET /presentation/:projectId/pptx returns real .pptx via pptxgenjs@4.0.1 (DEC-030 approved dep). Wired in app.ts.
+- Docs: genPitchDeckDoc -> 08-presentations/pitch-deck.md appended END of WORKSPACE_FILES (ART-0038); both committed examples regenerated to 38 files.
+- Frontend: PresentationPage â€” screen-only single-slide viewer with keyboard navigation, dot indicators, .pptx download button; hidden print:block container renders all slides sequentially for native print-to-PDF. Route projects/:projectId/presentation; nav link after Business Model; ProjectDetailsPage SECTIONS card.
+- Tests: presentation.test.ts (4 pass: data shape, pptx ZIP header, 404, BMC in overview), presentation.test.tsx (4 pass: heading, title+bullets, slide count, download button), smoke block 27 (3 checks). Verified: 195 backend + 100 frontend = 295 pass / 0 fail; smoke OK. Committed bf4e299, pushed. FEAT-021 doc.
+
+**DEC-030 all three phases (A+B+C) COMPLETE â€” no remaining work from this DEC.**

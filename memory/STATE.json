@@ -3,8 +3,8 @@
   "project_name": "SpecForge Studio",
   "last_updated": "2026-08-25",
   "current_prompt_id": "21",
-  "current_phase": "business-model-canvas",
-  "status": "in_progress",
+  "current_phase": "completed",
+  "status": "completed",
   "execution_mode": "human_approved_automation",
   "required_scope": [
     "00-bootstrap-memory-and-rules",
@@ -57,23 +57,25 @@
     "landing-polish-batch",
     "auth-hardening-otp-recovery",
     "billing-lifecycle",
-    "dashboard-redesign"
+    "dashboard-redesign",
+    "business-model-canvas",
+    "pitch-presentation"
   ],
-  "in_progress_phases": ["business-model-canvas", "pitch-presentation"],
+  "in_progress_phases": [],
   "pending_phases": [],
-  "next_action": "DEC-030 round, order C->A->B. Phase C dashboard redesign COMPLETE (commit c4c564f): GET /dashboard/summary aggregate, PlanStrip/KpiRow/AttentionPanel/UpcomingMilestones, greeting + filters + sort, global activity feed pending-approvals fix, creator-stamping fix for POST /projects (UI default 'owner@internal' had silently bypassed Free limits). 277 tests / 0 fail, smoke OK. NEXT: Phase A business-model-canvas (migration 014 bmc_notes BMC ids, modules/business-model.ts CRUD, 07-guides/business-model.md appended at END of WORKSPACE_FILES, entities/bmc + BusinessModelPage canvas grid, route/nav/details-card, tests), then Phase B pitch-presentation (live-computed deck, GET /presentation/:projectId/data + /pptx via pptxgenjs APPROVED DEP, print-to-PDF viewer page, pitch-deck.md workspace file).",
+  "next_action": "DEC-030 ALL PHASES COMPLETE. Phase C (dashboard redesign, c4c564f+0a0aa12), Phase A (business model canvas, 21afa7f), Phase B (pitch presentation, bf4e299). Final: 195 backend + 100 frontend = 295 tests / 0 fail; smoke OK. No required work remains. User may request optional tasks from OPTIONAL_BACKLOG.md or close the project.",
   "blockers": [],
   "awaiting_approval": [],
   "completion": {
     "all_required_tasks_complete": true,
     "completion_verified": true,
-    "completion_reported_to_user": true,
+    "completion_reported_to_user": false,
     "remaining_required_tasks": [],
     "optional_suggestions": [
-      "Deployment packaging (docker-compose, Dockerfiles, ops docs) from the removed Prompt 13 â€” moved to the optional backlog",
+      "Deployment packaging (docker-compose, Dockerfiles, ops docs)",
       "Per-type diagram templates (e.g. API-first sequence templates, mobile flow templates)",
       "Multi-project roadmap aggregation across linked projects",
-      "Skills-to-task-pack matching (auto-assign tasks to required skills)",
+      "Skills-to-task-pack matching enhancements (auto-assign tasks to required skills)",
       "Sprint planning: group the Kanban board into sprints with velocity tracking",
       "Issue-to-release linking with a changelog generator"
     ]
@@ -126,7 +128,8 @@
     "DEC-025: OPT-003 (Multi-project roadmap aggregation) â€” approved optional task (2026-08-18), implemented: GET /roadmaps/aggregate?project= endpoint + entities/roadmap-aggregate + RoadmapAggregateCard on RoadmapPage + backend (5) and frontend (3) tests.",
     "DEC-026: Prompt 21 (Landing page, pricing & subscribe flow) â€” user-requested 2026-08-24 with engine-freeze constraint ('dont edit the engine'). Routing: / renders LandingPage for guests via HomeGate, DashboardPage for users (zero churn to internal paths); guest-only /signin /register /checkout/:planKey in PublicShell. Backend additive: migration 011 (users USR, sessions SES with SHA-256 token hashes, plans PLAN seeded $0/$19/$49 monthly + $190/$490 yearly, subscriptions SUB); modules/auth.ts (Bun.password argon2id, httpOnly sf_session cookie 30d) + modules/billing.ts (GET /plans public, checkout with Luhn+expiry mock card validation â€” card optional for Free plan, switch cancels previous sub, cancel endpoint). Frontend FSD: entities user/plan/subscription; WaveCanvas rAF background (grid blocks + wave ribbons, reduced-motion static frame); PublicShell marketing chrome; LandingPage (hero word-reveal, floating mockup, bento features, how-it-works, PricingSection live from GET /plans with cycle toggle, FAQ accordion, final CTA); AuthPage split-screen register/signin with ?return=; CheckoutPage order summary + formatted card form + success screen; AccountChip in AppShell footer (email + plan badge + sign out). Motion CSS sf-float/sf-glow-pulse/sf-word/sf-reveal + Reveal component (IntersectionObserver). Tests: backend/tests/auth-billing.test.ts (14), frontend/tests/landing.test.tsx (10); smoke extended to 292 checks. Docs: FEAT-014 docs/features/landing-billing.md; USR/SES/PLAN/SUB prefixes in id-convention.md.",
     "DEC-027: OPT-004 (Skills-to-task matching) — approved optional task via explicit user selection (2026-08-24), implemented: backend/src/modules/skill-match.ts deterministic keyword-overlap scoring + GET /skill-matches?project= (ranked per-task skills, unmatched_tasks, coverage_gaps with open/total counts, 404 unknown project, deterministic output); SkillMatchPanel FSD widget on TasksPage (scored skill chips with reasons on hover, top-4 cap, amber coverage-gaps strip, unmatched counter); docs/features/skill-matching.md FEAT-015; backend/tests/skill-match.test.ts (5) + frontend/tests/skill-match.test.tsx (4); smoke block 22. Additive only — no engine edits, no schema changes, zero new runtime dependencies.",
-    "DEC-028: Auth hardening (email OTP verification + password recovery) — user-requested 2026-08-25 with explicit choices: Block-until-verified login; hand-rolled SMTP client (no nodemailer); SMTP config HARD-REQUIRED at startup. Migration 012: users.email_verified INTEGER NOT NULL DEFAULT 0 (existing users backfilled to verified exactly once by migrate0012EmailVerified in db/index.ts — fresh installs stay unverified for new registrations) + otp_codes table (OTP ids, SHA-256 code_hash, attempts<=5 CODE_LOCKED, 10-min expiry, consumed_at supersede). auth.ts rewritten: register no longer sets a cookie and emails a 6-digit crypto-random code; POST /auth/verify-email consumes the code, marks verified and SETS the session cookie (the new sign-in moment); POST /auth/resend-otp honors a 60s cooldown (429 RATE_LIMITED propagates, unknown/verified addresses answer generic ok); login gates unverified users with 403 EMAIL_NOT_VERIFIED; POST /auth/forgot-password always 200 (anti-enumeration); POST /auth/reset-password verifies the reset code, rehashes argon2id and deletes ALL sessions. utils/mailer.ts: Mailer interface + SmtpMailer over node:net/node:tls (port 465 implicit TLS, else STARTTLS upgrade; AUTH LOGIN base64; multipart/alternative branded HTML; dot-stuffing; per-step assert) + requireSmtpMailer listing missing SMTP_HOST/USER/PASS/FROM vars; app.ts BuildAppOptions.mailer injectable (default SmtpMailer). Frontend: entities/user types+hooks (useRegister no longer caches me; useVerifyEmail/useResendOtp/useForgotPassword/useResetPassword; useLogout onSettled qc.clear()+window.location.replace('/') fixing the stuck-on-dashboard bug); AuthPage state machine form/verify/forgot/reset with 60s resend countdown and ?return= preserved; AccountChip delegates to useLogout.mutate(). Tests: helpers FakeMailer+bootAppWithMailer+registerVerifiedUser, TEST_CONFIG gains SMTP vars; auth-billing.test.ts updated to two-step flow; NEW auth-otp.test.ts (10 cases); smoke block 23 + billing block updated (verify-email now opens the session). docs/features/auth-otp-recovery.md FEAT-017 incl. Gmail App Password .env guide. Verified: typecheck clean, build OK, 254 tests / 0 fail (33 files), SMOKE TEST OK."
+    "DEC-028: Auth hardening (email OTP verification + password recovery) — user-requested 2026-08-25 with explicit choices: Block-until-verified login; hand-rolled SMTP client (no nodemailer); SMTP config HARD-REQUIRED at startup. Migration 012: users.email_verified INTEGER NOT NULL DEFAULT 0 (existing users backfilled to verified exactly once by migrate0012EmailVerified in db/index.ts — fresh installs stay unverified for new registrations) + otp_codes table (OTP ids, SHA-256 code_hash, attempts<=5 CODE_LOCKED, 10-min expiry, consumed_at supersede). auth.ts rewritten: register no longer sets a cookie and emails a 6-digit crypto-random code; POST /auth/verify-email consumes the code, marks verified and SETS the session cookie (the new sign-in moment); POST /auth/resend-otp honors a 60s cooldown (429 RATE_LIMITED propagates, unknown/verified addresses answer generic ok); login gates unverified users with 403 EMAIL_NOT_VERIFIED; POST /auth/forgot-password always 200 (anti-enumeration); POST /auth/reset-password verifies the reset code, rehashes argon2id and deletes ALL sessions. utils/mailer.ts: Mailer interface + SmtpMailer over node:net/node:tls (port 465 implicit TLS, else STARTTLS upgrade; AUTH LOGIN base64; multipart/alternative branded HTML; dot-stuffing; per-step assert) + requireSmtpMailer listing missing SMTP_HOST/USER/PASS/FROM vars; app.ts BuildAppOptions.mailer injectable (default SmtpMailer). Frontend: entities/user types+hooks (useRegister no longer caches me; useVerifyEmail/useResendOtp/useForgotPassword/useResetPassword; useLogout onSettled qc.clear()+window.location.replace('/') fixing the stuck-on-dashboard bug); AuthPage state machine form/verify/forgot/reset with 60s resend countdown and ?return= preserved; AccountChip delegates to useLogout.mutate(). Tests: helpers FakeMailer+bootAppWithMailer+registerVerifiedUser, TEST_CONFIG gains SMTP vars; auth-billing.test.ts updated to two-step flow; NEW auth-otp.test.ts (10 cases); smoke block 23 + billing block updated (verify-email now opens the session). docs/features/auth-otp-recovery.md FEAT-017 incl. Gmail App Password .env guide. Verified: typecheck clean, build OK, 254 tests / 0 fail (33 files), SMOKE TEST OK.",
+    "DEC-030: BMC + Pitch Presentation + Dashboard Redesign (2026-08-25). Phase C: GET /dashboard/summary; DashboardPage rewrite; global feed fix; creator-stamping fix; FEAT-019. Phase A: migration 014 bmc_notes; modules/business-model.ts CRUD; BusinessModelPage; 07-guides/business-model.md (ART-0037); FEAT-020. Phase B: live-computed 9-slide deck; modules/presentation.ts + pptxgenjs@4.0.1; 08-presentations/pitch-deck.md (ART-0038); PresentationPage viewer + pptx download; FEAT-021. 295 tests/0 fail, smoke OK. Commits c4c564f+0a0aa12, 21afa7f, bf4e299."
   ],
   "rejected_options_summary": []
 }
