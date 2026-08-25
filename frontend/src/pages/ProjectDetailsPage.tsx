@@ -29,6 +29,7 @@ const SECTIONS = [
   { to: "releases", title: "Releases", blurb: "Versioned releases with status and release notes." },
   { to: "skills", title: "Skills", blurb: "Capabilities and technologies this project relies on." },
   { to: "business-model", title: "Business Model", blurb: "Nine-block canvas of the business behind the product." },
+  { to: "presentation", title: "Pitch Deck", blurb: "Live-computed presentation and downloadable .pptx." },
 ] as const;
 
 export function ProjectDetailsPage() {

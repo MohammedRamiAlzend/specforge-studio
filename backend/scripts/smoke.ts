@@ -1495,6 +1495,16 @@ let depId = "";
   check("bmc: unknown block -> 400", badBlock.statusCode === 400, badBlock.body);
 }
 
+// 27. pitch presentation (DEC-030 Phase B)
+{
+  const data = await request("GET", `/presentation/${projectId}/data`);
+  check("presentation: data returns slides", data.statusCode === 200 && Array.isArray(data.json().data?.slides) && data.json().data.slides.length >= 8, data.body);
+  const pptx = await request("GET", `/presentation/${projectId}/pptx`);
+  check("presentation: pptx returns buffer", pptx.statusCode === 200 && pptx.headers["content-type"]?.includes("presentationml"), pptx.body);
+  const missing = await request("GET", "/presentation/PRJ-9999/data");
+  check("presentation: unknown project -> 404", missing.statusCode === 404, missing.body);
+}
+
 await app.close();
 rmSync(config.EXPORT_DIR, { recursive: true, force: true });
 

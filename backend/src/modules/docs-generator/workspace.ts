@@ -39,6 +39,7 @@ import {
   genBusinessModelDoc,
   genIssuesDoc,
   genReleasesDoc,
+  genPitchDeckDoc,
 } from "./generators";
 
 export interface WorkspaceFile {
@@ -101,6 +102,8 @@ export const WORKSPACE_FILES: WorkspaceFileSpec[] = [
   { path: "06-ops/releases.md", type: "index", title: "Releases", generate: genReleasesDoc },
   // DEC-030 Phase A: business model canvas; appended at the end so ART ids stay stable.
   { path: "07-guides/business-model.md", type: "index", title: "Business Model Canvas", generate: genBusinessModelDoc },
+  // DEC-030 Phase B: pitch deck markdown snapshot; appended at the end so ART ids stay stable.
+  { path: "08-presentations/pitch-deck.md", type: "index", title: "Pitch Deck", generate: genPitchDeckDoc },
 ];
 
 /**

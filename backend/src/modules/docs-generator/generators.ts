@@ -31,6 +31,7 @@ import { erdFromTables } from "../diagrams/routes";
 import { listProjectDependencies, listProjectDependents, workflowCallsForProject } from "../links/routes";
 import { listSkills } from "../skills";
 import { listBmcNotes } from "../business-model";
+import { buildPresentation } from "../presentation";
 import { listIssues } from "../issues";
 import { listReleases } from "../releases";
 
@@ -1486,4 +1487,37 @@ export function genAgentGuide(ctx: GeneratorContext): string {
     section("Verification", p("Run `bun tsc -b --noEmit` and the backend smoke tests before declaring backend work done."));
 
   return frontmatterFor(ctx, "Agent Guide", "guide") + body;
+}
+
+export function genPitchDeckDoc(ctx: GeneratorContext): string {
+  const deck = buildPresentation(ctx.db, ctx.projectId);
+  const sections = deck.slides.map((slide) => {
+    const bullets =
+      slide.bullets.length === 0 ? p("—") : ul(slide.bullets);
+    return section(slide.title, bullets);
+  }).join("");
+
+  return (
+    frontmatterFor(ctx, "Pitch Deck", "index", {
+      related: [ctx.projectId],
+    }) +
+    p("# Pitch Deck (Markdown Snapshot)") +
+    section(
+      "Purpose",
+      p(
+        "This Markdown snapshot mirrors the live presentation generated from project data on every request (BMC notes, requirements, architecture, roadmap, team, and delivery metrics). Use it as a portable, diffable fallback when a real .pptx is not needed.",
+      ),
+    ) +
+    p(
+      `_Generated at ${deck.generated_at.replace("T", " ").slice(0, 19)} UTC._`,
+    ) +
+    sections +
+    section(
+      "Downloads",
+      ul([
+        "Download .pptx — GET /presentation/:projectId/pptx",
+        "Live slide viewer — Projects → Presentation",
+      ]),
+    )
+  );
 }

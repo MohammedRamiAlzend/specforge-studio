@@ -16,6 +16,7 @@ import { DocsExportPage } from "../pages/DocsExportPage";
 import { TasksPage } from "../pages/TasksPage";
 import { SkillsPage } from "../pages/SkillsPage";
 import { BusinessModelPage } from "../pages/BusinessModelPage";
+import { PresentationPage } from "../pages/PresentationPage";
 import { IssuesPage } from "../pages/IssuesPage";
 import { ReleasesPage } from "../pages/ReleasesPage";
 import { SettingsPage } from "../pages/SettingsPage";
@@ -53,6 +54,7 @@ export function App() {
             <Route path="projects/:projectId/releases" element={<ReleasesPage />} />
             <Route path="projects/:projectId/skills" element={<SkillsPage />} />
             <Route path="projects/:projectId/business-model" element={<BusinessModelPage />} />
+            <Route path="projects/:projectId/presentation" element={<PresentationPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
 

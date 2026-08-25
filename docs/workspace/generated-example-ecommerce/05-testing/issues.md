@@ -22,12 +22,12 @@ Structured issue tracking for the project (Prompt 20). Issues cover bugs, enhanc
 
 | ID | Kind | Severity | Title | Status |
 | --- | --- | --- | --- | --- |
-| ISS-0101 | `bug` | `high` | Cart totals desync when quantity updated rapidly | `open` |
 | ISS-0102 | `tech_debt` | `medium` | Consolidate order pricing into a server-side service | `open` |
+| ISS-0101 | `bug` | `high` | Cart totals desync when quantity updated rapidly | `open` |
 ## All Issues
 
 | ID | Kind | Severity | Title | Status |
 | --- | --- | --- | --- | --- |
-| ISS-0101 | `bug` | `high` | Cart totals desync when quantity updated rapidly | `open` |
 | ISS-0102 | `tech_debt` | `medium` | Consolidate order pricing into a server-side service | `open` |
 | ISS-0103 | `enhancement` | `low` | Add product review photo uploads | `resolved` |
+| ISS-0101 | `bug` | `high` | Cart totals desync when quantity updated rapidly | `open` |

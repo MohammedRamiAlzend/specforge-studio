@@ -90,6 +90,9 @@ export function AppShell({ children }: { children?: ReactNode }) {
               <NavLink to={`/projects/${project.id}/business-model`} className={({ isActive }) => navLinkClass(isActive)}>
                 Business Model
               </NavLink>
+              <NavLink to={`/projects/${project.id}/presentation`} className={({ isActive }) => navLinkClass(isActive)}>
+                Presentation
+              </NavLink>
             </>
           ) : null}
 

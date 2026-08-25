@@ -962,3 +962,10 @@ Verification: both typechecks clean; 267 pass / 0 fail (35 files); smoke SMOKE T
 - Frontend: entities/dashboard (types/useDashboardSummary); features/dashboard PlanStrip (quota bar, upgrade/reactivate CTAs -> /settings?tab=Billing), KpiRow (5 counters), AttentionPanel + UpcomingMilestones (deep links to tasks/issues/governance/roadmap); DashboardPage rewritten (greeting via useMe, plan strip, KPI row, status filter chips + sort updated/created/name, Updated-relative on cards, tips card removed); shared/lib formatRelative added.
 - Tests: backend/tests/dashboard.test.ts (4), frontend/tests/dashboard.test.tsx (6), smoke block 25 (6 checks incl. anonymous 401 + creator stamping).
 - Verified: both typechecks clean; 185 backend + 92 frontend = 277 pass / 0 fail; SMOKE TEST OK. Committed c4c564f, pushed. Docs FEAT-019 docs/features/dashboard-redesign.md.
+
+## 2026-08-25 - cont. 8: Phase A business model canvas COMPLETE (DEC-030)
+
+- Migration 014 + schema.sql bmc_notes (9-block CHECK, BMC ids); modules/business-model.ts CRUD (GET/POST/PATCH/DELETE /bmc) with audit entityType 'bmc'.
+- Docs: genBusinessModelDoc -> 07-guides/business-model.md appended END of WORKSPACE_FILES (ART-0037); both committed examples regenerated to 37 files.
+- Frontend: entities/bmc (types/api/lib w/ BANDS layout), BusinessModelPage 3-band canvas grid w/ inline add/edit/del sticky notes; route projects/:projectId/business-model, nav after Skills, details SECTIONS card.
+- Tests: business-model.test.ts (6), business-model.test.tsx (4), smoke block 26 (3 checks). Verified: typechecks clean; 191+96=287 pass/0 fail; smoke OK. Committed 21afa7f, pushed. FEAT-020 doc; BMC prefix in id-convention.
