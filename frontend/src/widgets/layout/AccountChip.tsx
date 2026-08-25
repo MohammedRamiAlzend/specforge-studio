@@ -1,4 +1,5 @@
-import { useLogout, useMe } from "../../entities/user/api";
+import { useState } from "react";
+import { performSignOut, useMe } from "../../entities/user/api";
 import { useMySubscription } from "../../entities/subscription/api";
 
 const PLAN_BADGE: Record<string, string> = {
@@ -14,7 +15,7 @@ const PLAN_BADGE: Record<string, string> = {
 export function AccountChip() {
   const { data: me } = useMe();
   const { data: subscription } = useMySubscription();
-  const logout = useLogout();
+  const [signingOut, setSigningOut] = useState(false);
 
   if (!me) {
     return <p className="text-[11px] text-slate-600">v0.1 · internal platform</p>;
@@ -33,14 +34,17 @@ export function AccountChip() {
         </div>
         <button
           type="button"
-          disabled={logout.isPending}
-          // useLogout handles the full reset: queryClient.clear() + a hard
-          // navigation home, so no cached project data or stale route survives
-          // sign-out (fixes the "stuck on dashboard" bug).
-          onClick={() => logout.mutate()}
+          disabled={signingOut}
+          // performSignOut ignores errors, clears the cookie server-side and
+          // hard-navigates home with a watchdog timer — no cached data or
+          // stale route can survive (fixes the stuck-on-dashboard bug).
+          onClick={() => {
+            setSigningOut(true);
+            performSignOut();
+          }}
           className="mt-0.5 text-[11px] text-slate-500 transition-colors hover:text-slate-300 disabled:opacity-60"
         >
-          {logout.isPending ? "Signing out…" : "Sign out"}
+          {signingOut ? "Signing out…" : "Sign out"}
         </button>
       </div>
     </div>

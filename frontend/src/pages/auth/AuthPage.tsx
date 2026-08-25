@@ -1,4 +1,10 @@
-import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import {
   useForgotPassword,
@@ -14,16 +20,12 @@ import { WaveCanvas } from "../../widgets/background/WaveCanvas";
 type AuthMode = "signin" | "register";
 type View = "form" | "verify" | "forgot" | "reset";
 
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: ReactNode;
-}) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-400">{label}</span>
+      <span className="mb-1.5 block text-xs font-medium uppercase tracking-wide text-slate-400">
+        {label}
+      </span>
       {children}
     </label>
   );
@@ -31,6 +33,78 @@ function Field({
 
 const inputClass =
   "w-full rounded-md border border-slate-700 bg-slate-900 px-3 py-2.5 text-sm text-white placeholder:text-slate-600 transition-colors focus:border-forge-500 focus:outline-none focus:ring-1 focus:ring-forge-500";
+
+function EyeIcon({ open }: { open: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-4 w-4"
+      aria-hidden="true"
+    >
+      {open ? (
+        <>
+          <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+          <circle cx="12" cy="12" r="3" />
+        </>
+      ) : (
+        <>
+          <path d="M9.9 5.24A9.12 9.12 0 0 1 12 5c6.5 0 10 7 10 7a15.6 15.6 0 0 1-2.16 2.95" />
+          <path d="M6.61 6.61C3.79 8.39 2 12 2 12s3.5 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+          <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+          <path d="m2 2 20 20" />
+        </>
+      )}
+    </svg>
+  );
+}
+
+/** Password field with a show/hide toggle button inside the input. */
+function PasswordInput({
+  name,
+  required,
+  minLength,
+  autoComplete,
+  placeholder,
+  testId,
+}: {
+  name: string;
+  required?: boolean;
+  minLength?: number;
+  autoComplete: string;
+  placeholder: string;
+  testId?: string;
+}) {
+  const [visible, setVisible] = useState(false);
+  return (
+    <span className="relative block">
+      <input
+        name={name}
+        type={visible ? "text" : "password"}
+        required={required}
+        minLength={minLength}
+        autoComplete={autoComplete}
+        placeholder={placeholder}
+        data-testid={testId}
+        className={`${inputClass} pr-11`}
+      />
+      <button
+        type="button"
+        onClick={() => setVisible((value) => !value)}
+        aria-label={visible ? "Hide password" : "Show password"}
+        aria-pressed={visible}
+        data-testid={testId ? `${testId}-toggle` : undefined}
+        className="absolute inset-y-0 right-0 flex w-10 items-center justify-center text-slate-500 transition-colors hover:text-slate-200"
+      >
+        <EyeIcon open={visible} />
+      </button>
+    </span>
+  );
+}
 
 /** Resend countdown that ticks down once per second until it reaches zero. */
 function useCooldown(seconds: number): [number, () => void] {
@@ -95,9 +169,12 @@ function VerifyStep({ email, returnTo }: { email: string; returnTo: string }) {
 
   return (
     <>
-      <h1 className="text-2xl font-bold tracking-tight text-white">Check your inbox</h1>
+      <h1 className="text-2xl font-bold tracking-tight text-white">
+        Check your inbox
+      </h1>
       <p className="mt-2 text-sm text-slate-400">
-        We sent a 6-digit code to <span className="text-slate-200">{email}</span>. Enter it below to
+        We sent a 6-digit code to{" "}
+        <span className="text-slate-200">{email}</span>. Enter it below to
         activate your account.
       </p>
 
@@ -118,12 +195,18 @@ function VerifyStep({ email, returnTo }: { email: string; returnTo: string }) {
         </Field>
 
         {error ? (
-          <p role="alert" className="rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-300">
+          <p
+            role="alert"
+            className="rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-300"
+          >
             {error}
           </p>
         ) : null}
         {notice ? (
-          <p role="status" className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300">
+          <p
+            role="status"
+            className="rounded-md border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-300"
+          >
             {notice}
           </p>
         ) : null}
@@ -143,7 +226,11 @@ function VerifyStep({ email, returnTo }: { email: string; returnTo: string }) {
           className="w-full rounded-md border border-slate-700 px-4 py-2.5 text-sm font-medium text-slate-300 transition-colors hover:border-forge-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
           data-testid="resend-otp"
         >
-          {seconds > 0 ? `Resend code in ${seconds}s` : resend.isPending ? "Sending…" : "Resend code"}
+          {seconds > 0
+            ? `Resend code in ${seconds}s`
+            : resend.isPending
+              ? "Sending…"
+              : "Resend code"}
         </button>
       </form>
     </>
@@ -169,18 +256,30 @@ function ForgotStep({ onSent }: { onSent: (email: string) => void }) {
 
   return (
     <>
-      <h1 className="text-2xl font-bold tracking-tight text-white">Reset your password</h1>
+      <h1 className="text-2xl font-bold tracking-tight text-white">
+        Reset your password
+      </h1>
       <p className="mt-2 text-sm text-slate-400">
         Enter your account email and we&apos;ll send you a reset code.
       </p>
 
       <form onSubmit={onSubmit} className="mt-8 space-y-4" noValidate>
         <Field label="Email">
-          <input name="email" type="email" required autoComplete="email" placeholder="you@company.com" className={inputClass} />
+          <input
+            name="email"
+            type="email"
+            required
+            autoComplete="email"
+            placeholder="you@company.com"
+            className={inputClass}
+          />
         </Field>
 
         {error ? (
-          <p role="alert" className="rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-300">
+          <p
+            role="alert"
+            className="rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-300"
+          >
             {error}
           </p>
         ) : null}
@@ -226,9 +325,12 @@ function ResetStep({
 
   return (
     <>
-      <h1 className="text-2xl font-bold tracking-tight text-white">Choose a new password</h1>
+      <h1 className="text-2xl font-bold tracking-tight text-white">
+        Choose a new password
+      </h1>
       <p className="mt-2 text-sm text-slate-400">
-        Enter the code we emailed you and pick a new password. All other sessions will be signed out.
+        Enter the code we emailed you and pick a new password. All other
+        sessions will be signed out.
       </p>
 
       <form onSubmit={onSubmit} className="mt-8 space-y-4" noValidate>
@@ -256,19 +358,21 @@ function ResetStep({
           />
         </Field>
         <Field label="New password">
-          <input
+          <PasswordInput
             name="new_password"
-            type="password"
             required
             minLength={8}
             autoComplete="new-password"
             placeholder="At least 8 characters"
-            className={inputClass}
+            testId="new-password-input"
           />
         </Field>
 
         {error ? (
-          <p role="alert" className="rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-300">
+          <p
+            role="alert"
+            className="rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-300"
+          >
             {error}
           </p>
         ) : null}
@@ -350,7 +454,14 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
               <form onSubmit={onSubmit} className="mt-8 space-y-4" noValidate>
                 {isRegister ? (
                   <Field label="Full name">
-                    <input name="name" type="text" required autoComplete="name" placeholder="Ada Lovelace" className={inputClass} />
+                    <input
+                      name="name"
+                      type="text"
+                      required
+                      autoComplete="name"
+                      placeholder="Ada Lovelace"
+                      className={inputClass}
+                    />
                   </Field>
                 ) : null}
                 <Field label="Email">
@@ -364,19 +475,25 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                   />
                 </Field>
                 <Field label="Password">
-                  <input
+                  <PasswordInput
                     name="password"
-                    type="password"
                     required
                     minLength={isRegister ? 8 : undefined}
-                    autoComplete={isRegister ? "new-password" : "current-password"}
-                    placeholder={isRegister ? "At least 8 characters" : "••••••••"}
-                    className={inputClass}
+                    autoComplete={
+                      isRegister ? "new-password" : "current-password"
+                    }
+                    placeholder={
+                      isRegister ? "At least 8 characters" : "••••••••"
+                    }
+                    testId="password-input"
                   />
                 </Field>
 
                 {error ? (
-                  <p role="alert" className="sf-scale-in rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-300">
+                  <p
+                    role="alert"
+                    className="sf-scale-in rounded-md border border-rose-500/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-300"
+                  >
                     {error}
                   </p>
                 ) : null}
@@ -386,7 +503,11 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                   disabled={busy}
                   className="w-full rounded-md bg-forge-600 px-4 py-2.5 text-sm font-semibold text-white transition-all duration-150 hover:bg-forge-500 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {busy ? "Working…" : isRegister ? "Create account" : "Sign in"}
+                  {busy
+                    ? "Working…"
+                    : isRegister
+                      ? "Create account"
+                      : "Sign in"}
                 </button>
               </form>
 
@@ -409,14 +530,20 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                 {isRegister ? (
                   <>
                     Already have an account?{" "}
-                    <Link to={`/signin${returnTo !== "/" ? `?return=${encodeURIComponent(returnTo)}` : ""}`} className="font-medium text-forge-400 hover:text-forge-300">
+                    <Link
+                      to={`/signin${returnTo !== "/" ? `?return=${encodeURIComponent(returnTo)}` : ""}`}
+                      className="font-medium text-forge-400 hover:text-forge-300"
+                    >
                       Sign in
                     </Link>
                   </>
                 ) : (
                   <>
                     New to SpecForge?{" "}
-                    <Link to={`/register${returnTo !== "/" ? `?return=${encodeURIComponent(returnTo)}` : ""}`} className="font-medium text-forge-400 hover:text-forge-300">
+                    <Link
+                      to={`/register${returnTo !== "/" ? `?return=${encodeURIComponent(returnTo)}` : ""}`}
+                      className="font-medium text-forge-400 hover:text-forge-300"
+                    >
                       Create an account
                     </Link>
                   </>
@@ -437,7 +564,10 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
             />
           ) : null}
           {view === "reset" ? (
-            <ResetStep initialEmail={pendingEmail} onDone={() => setView("form")} />
+            <ResetStep
+              initialEmail={pendingEmail}
+              onDone={() => setView("form")}
+            />
           ) : null}
         </div>
       </div>
@@ -448,10 +578,12 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
         <div className="relative flex h-full flex-col justify-end p-12">
           <blockquote className="max-w-md">
             <p className="text-xl font-medium leading-relaxed text-slate-200">
-              “We went from a whiteboard photo to a governed spec, diagrams and an agent-executable
-              task list in one afternoon.”
+              “We went from a whiteboard photo to a governed spec, diagrams and
+              an agent-executable task list in one afternoon.”
             </p>
-            <footer className="mt-4 text-sm text-slate-500">— Platform team, Acme Commerce</footer>
+            <footer className="mt-4 text-sm text-slate-500">
+              — Platform team, Acme Commerce
+            </footer>
           </blockquote>
         </div>
       </div>

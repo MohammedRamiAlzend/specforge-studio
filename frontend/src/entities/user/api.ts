@@ -88,19 +88,24 @@ export function useResetPassword() {
 }
 
 /**
- * Signs out and hard-resets all client state. `qc.clear()` wipes every cached
- * query (not just /auth/me) so project-scoped data can never linger after the
- * cookie is gone, and window.location.replace("/") performs a full document
- * navigation that leaves no stale dashboard route in history.
+ * Signs out deterministically: best-effort server call (errors ignored — the
+ * session cookie dies with it or expires on its own), then ALWAYS a
+ * full-document navigation home. A watchdog timer guarantees navigation even
+ * if the request hangs, so the user can never stay trapped on a dashboard.
+ *
+ * Deliberately NOT a React Query mutation: no cache lifecycle can interfere,
+ * and the full reload rebuilds a pristine QueryClient (no stale project data).
  */
-export function useLogout() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: () => api<{ ok: boolean }>("/auth/logout", { method: "POST" }),
-    onSettled: () => {
-      qc.clear();
-      qc.setQueryData(userKeys.me, { user: null });
-      window.location.replace("/");
-    },
-  });
+export function performSignOut(): void {
+  let navigated = false;
+  const goHome = (): void => {
+    if (navigated) return;
+    navigated = true;
+    window.location.replace("/");
+  };
+  // Watchdog: force navigation even if fetch never settles.
+  setTimeout(goHome, 2500);
+  api<{ ok: boolean }>("/auth/logout", { method: "POST" })
+    .catch(() => undefined)
+    .finally(goHome);
 }

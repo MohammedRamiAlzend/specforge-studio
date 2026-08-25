@@ -40,7 +40,9 @@ export function requireSmtpMailer(config: Config): SmtpMailer {
         "SMTP_USER=<your gmail>, SMTP_PASS=<16-char App Password>, SMTP_FROM=<your gmail>.",
     );
   }
-  return new SmtpMailer(smtp);
+  // Gmail displays App Passwords grouped ("abcd efgh ijkl mnop"); spaces are
+  // not part of the secret, so strip them defensively.
+  return new SmtpMailer({ ...smtp, pass: smtp.pass.replace(/\s+/g, "") });
 }
 
 interface SmtpSettings {
@@ -51,46 +53,56 @@ interface SmtpSettings {
   from: string;
 }
 
-/** Line-based reader/writer around one (plaintext or TLS) socket. */
-class SmtpSession {
+/** Line-buffered reader/writer around one (plaintext or TLS) socket. */
+export class SmtpSession {
   private buffer = "";
-  private waiter: (() => void) | null = null;
+  private closed = false;
+  private lastError: Error | null = null;
 
   constructor(readonly socket: net.Socket | tls.TLSSocket) {
-    socket.setEncoding("utf8");
-    socket.on("data", () => {
-      const wake = this.waiter;
-      this.waiter = null;
-      wake?.();
+    // Attach ALL listeners immediately so bytes that arrive during/after the
+    // TLS handshake are never lost. NOTE: setEncoding() is deliberately NOT
+    // used — under Bun it suppresses 'data' events on TLSSocket — so chunks
+    // arrive as Buffers and are decoded here.
+    socket.on("data", (chunk: Buffer | string) => {
+      this.buffer += typeof chunk === "string" ? chunk : chunk.toString("utf8");
     });
-    socket.on("error", () => {
-      const wake = this.waiter;
-      this.waiter = null;
-      wake?.();
+    socket.once("close", () => {
+      this.closed = true;
     });
+    socket.once("error", (err: Error) => {
+      this.lastError = err;
+    });
+    // Explicitly enter flowing mode — some runtimes keep TLSSocket paused
+    // even with a 'data' listener attached pre-handshake.
+    socket.resume();
   }
 
-  /** Resolves with one full reply (multi-line replies end with "NNN "). */
-  readReply(timeoutMs = 15000): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const deadline = Date.now() + timeoutMs;
-      const poll = (): void => {
-        if (/(?:^|\r\n)\d{3}[^\r]*\r\n$/.test(this.buffer)) {
-          const reply = this.buffer;
-          this.buffer = "";
-          resolve(reply);
-          return;
-        }
-        if (Date.now() > deadline) {
-          reject(
-            new Error(`timeout waiting for SMTP reply (last bytes: ${JSON.stringify(this.buffer.slice(-120))})`),
-          );
-          return;
-        }
-        this.waiter = poll;
-      };
-      poll();
-    });
+  /**
+   * Waits for one full reply (multi-line replies end with "NNN "). A simple
+   * poll loop over the accumulator is deliberately used instead of chained
+   * event promises: it is race-free under any event ordering and always
+   * terminates via the hard deadline.
+   */
+  async readReply(timeoutMs = 15000): Promise<string> {
+    const deadline = Date.now() + timeoutMs;
+    for (;;) {
+      if (/(?:^|\r\n)\d{3}[^\r]*\r\n$/.test(this.buffer)) {
+        const reply = this.buffer;
+        this.buffer = "";
+        return reply;
+      }
+      if (this.lastError) throw this.lastError;
+      if (this.closed && !/(?:^|\r\n)\d{3}/.test(this.buffer)) {
+        throw new Error("connection closed by server while awaiting reply");
+      }
+      if (Date.now() > deadline) {
+        throw new Error(
+          `timeout waiting for SMTP reply (last bytes: ${JSON.stringify(this.buffer.slice(-120))})`,
+        );
+      }
+      await new Promise((resolve) => setTimeout(resolve, 20));
+    }
   }
 
   write(line: string): void {
@@ -106,9 +118,15 @@ class SmtpSession {
   }
 }
 
+/**
+ * Extracts the status code from an SMTP reply. Per RFC 5321 every line of a
+ * reply starts with the same 3-digit code ("250-..." for intermediates, the
+ * final line "250 ..."); the LAST line's leading code is authoritative.
+ */
 function replyCode(reply: string): number {
-  const match = reply.match(/(\d{3})[^\d]*$/);
-  return match ? Number(match[1]) : 0;
+  const lines = reply.split("\r\n").filter(Boolean);
+  const last = lines[lines.length - 1] ?? "";
+  return /^\d{3}/.test(last) ? Number(last.slice(0, 3)) : 0;
 }
 
 function base64(value: string): string {
@@ -121,6 +139,29 @@ function assert(reply: string, expected: number, step: string): void {
   }
 }
 
+/** Connects + completes the TLS handshake with a hard timeout. */
+function connectSocket(socket: net.Socket | tls.TLSSocket, timeoutMs = 10000): Promise<void> {
+  const isTls = socket instanceof tls.TLSSocket;
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      socket.destroy();
+      reject(new Error(`connect/handshake timeout after ${timeoutMs}ms`));
+    }, timeoutMs);
+    const onConnected = (): void => {
+      clearTimeout(timer);
+      socket.off("error", onError);
+      resolve();
+    };
+    const onError = (err: Error): void => {
+      clearTimeout(timer);
+      socket.off(isTls ? "secureConnect" : "connect", onConnected);
+      reject(err);
+    };
+    socket.once(isTls ? "secureConnect" : "connect", onConnected);
+    socket.once("error", onError);
+  });
+}
+
 export class SmtpMailer implements Mailer {
   constructor(private readonly smtp: SmtpSettings) {}
 
@@ -128,15 +169,19 @@ export class SmtpMailer implements Mailer {
     try {
       if (this.smtp.port === 465) {
         // Implicit TLS from the first byte (Gmail's recommended port).
-        const session = new SmtpSession(
-          tls.connect({ host: this.smtp.host, port: 465, servername: this.smtp.host }),
-        );
+        // Session is created BEFORE awaiting the handshake so its listeners
+        // capture the greeting no matter when it arrives.
+        const socket = tls.connect({ host: this.smtp.host, port: 465, servername: this.smtp.host });
+        const session = new SmtpSession(socket);
+        await connectSocket(socket);
         await this.deliver(session, input);
         return;
       }
 
       // STARTTLS: plaintext greeting/EHLO, upgrade, then deliver encrypted.
-      const plain = new SmtpSession(net.connect({ host: this.smtp.host, port: this.smtp.port }));
+      const raw = net.connect({ host: this.smtp.host, port: this.smtp.port });
+      const plain = new SmtpSession(raw);
+      await connectSocket(raw);
       let reply = await plain.readReply();
       assert(reply, 220, "greeting");
       await this.ehlo(plain);
@@ -146,13 +191,16 @@ export class SmtpMailer implements Mailer {
       assert(reply, 220, "STARTTLS");
 
       const secureSocket = await new Promise<tls.TLSSocket>((resolve, reject) => {
-        const upgraded = tls.connect({ socket: plain.socket, servername: this.smtp.host }, () =>
+        const upgraded = tls.connect({ socket: raw, servername: this.smtp.host }, () =>
           resolve(upgraded),
         );
         upgraded.once("error", reject);
       });
 
-      await this.deliver(new SmtpSession(secureSocket), input);
+      const secureSession = new SmtpSession(secureSocket);
+      // The TLS layer may have already delivered the post-handshake greeting
+      // into the fresh session's buffer; deliver() re-reads it safely.
+      await this.deliver(secureSession, input);
     } catch (error) {
       throw new Error(
         `Email delivery failed (${this.smtp.host}:${this.smtp.port}): ${
@@ -237,8 +285,11 @@ export class SmtpMailer implements Mailer {
       "",
       input.html,
       `--${boundary}--`,
-      ".",
     ].join("\r\n");
-    return `${headers}${dotStuffed(parts)}`;
+    // Dot-stuffing applies ONLY to message content. The <CRLF>.<CRLF> frame
+    // terminator is protocol syntax and must remain a single unescaped dot —
+    // stuffing it produces "..", which the server reads as more content and
+    // keeps waiting for the real terminator forever.
+    return `${headers}${dotStuffed(parts)}\r\n.\r\n`;
   }
 }

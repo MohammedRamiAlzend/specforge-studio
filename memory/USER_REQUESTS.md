@@ -122,3 +122,9 @@ User decisions (via questions):
 - Analytics plan remains PARKED awaiting approval.
 
 Status: accepted — implementation started same day (DEC-028).
+
+### 2026-08-25 — Dev bring-up bug reports (after auth hardening)
+
+1. Show/hide password toggle missing on AuthPage password fields. -> FIXED: PasswordInput component with eye toggle on both password fields.
+2. Plans not shown on landing page. -> ROOT CAUSE shared with (3): API refused to start without SMTP config, so GET /plans was ECONNREFUSED. Resolves once backend/.env is configured.
+3. Terminal log showed SmtpConfigError at boot. -> BY DESIGN (DEC-028 hard require). User chose to configure Gmail now rather than a dev console fallback: created backend/.env.example (committed template) + backend/.env (gitignored, user pastes Gmail App Password).

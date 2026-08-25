@@ -885,3 +885,18 @@ Verification:
 Blockers: none. Operational note: server startup now requires SMTP_* in backend/.env.
 
 Next action: await user direction (optional tasks / parked analytics plan / new requirement / close).
+
+### Session 2026-08-25 (cont.) — Git branch, commit, push
+
+- Created branch feat/landing-pricing-auth-hardening from main and committed ALL uncommitted work (Prompt 21 landing/pricing/auth + OPT-004 skill matching + landing polish + auth hardening): commit 84d369b, 60 files changed (+5839/-52).
+- Push initially failed: 403 — Windows Credential Manager cached github account mouazkh without write access to MohammedRamiAlzend/specforge-studio. With user approval, deleted the two git:https://github.com credential entries (cmdkey /delete); user re-authenticated via GCM sign-in; push succeeded.
+- Branch pushed with upstream tracking: origin/feat/landing-pricing-auth-hardening. PR URL offered by GitHub: https://github.com/MohammedRamiAlzend/specforge-studio/pull/new/feat/landing-pricing-auth-hardening
+- Memory: HANDOFF updated (git state). Next action: await user direction (merge PR / optional tasks / parked analytics plan / new requirement).
+
+### Session 2026-08-25 (cont. 2) — Sign-out still stuck: hardened fix
+
+- User reported sign-out on dashboard still stuck after DEC-028 fix. Code path was correct but lifecycle-dependent (React Query mutation onSettled + qc.clear + location.replace). Replaced with deterministic imperative flow:
+- entities/user/api.ts: useLogout hook REMOVED; new performSignOut() — best-effort POST /auth/logout (errors swallowed), then window.location.replace("/") in .finally, plus a 2.5s watchdog setTimeout guaranteeing navigation even if fetch hangs. Full document reload rebuilds a pristine QueryClient (no stale cache possible).
+- AccountChip.tsx: local signingOut state + onClick { setSigningOut(true); performSignOut(); }.
+- Likely user-side cause of recurrence: stale bundle in long-running dev tab; advise hard refresh.
+- Verified: frontend typecheck clean; 254 tests / 0 fail.
