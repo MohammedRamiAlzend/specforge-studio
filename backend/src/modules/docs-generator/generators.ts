@@ -30,6 +30,7 @@ import {
 import { erdFromTables } from "../diagrams/routes";
 import { listProjectDependencies, listProjectDependents, workflowCallsForProject } from "../links/routes";
 import { listSkills } from "../skills";
+import { listBmcNotes } from "../business-model";
 import { listIssues } from "../issues";
 import { listReleases } from "../releases";
 
@@ -990,6 +991,50 @@ export function genSkillsDoc(ctx: GeneratorContext): string {
       : p(`Agents executing this project's task packs should be competent in: ${[...capability.map((s) => s.name), ...tech.map((s) => s.name)].join(", ")}.`));
 
   return frontmatterFor(ctx, "Skills", "index") + body;
+}
+
+const BMC_BLOCK_TITLES: Record<string, string> = {
+  key_partners: "Key Partners",
+  key_activities: "Key Activities",
+  key_resources: "Key Resources",
+  value_propositions: "Value Propositions",
+  customer_relationships: "Customer Relationships",
+  channels: "Channels",
+  customer_segments: "Customer Segments",
+  cost_structure: "Cost Structure",
+  revenue_streams: "Revenue Streams",
+};
+
+export function genBusinessModelDoc(ctx: GeneratorContext): string {
+  const notes = listBmcNotes(ctx.db, ctx.projectId);
+  const byBlock = new Map<string, typeof notes>();
+  for (const block of Object.keys(BMC_BLOCK_TITLES)) byBlock.set(block, []);
+  for (const note of notes) {
+    byBlock.get(note.block)?.push(note);
+  }
+
+  const body =
+    p("# Business Model Canvas") +
+    section("Purpose", p("The project's business model on the classic nine-block canvas (DEC-030). Each block lists structured notes captured in the platform; the same data drives the in-app canvas and the generated pitch deck.")) +
+    Object.entries(BMC_BLOCK_TITLES)
+      .map(([block, title]) => {
+        const rows = byBlock.get(block) ?? [];
+        return section(
+          title,
+          rows.length === 0
+            ? p("No notes defined yet.")
+            : table(
+                ["ID", "Note"],
+                rows.map((note) => [note.id, note.content]),
+              ),
+        );
+      })
+      .join("") +
+    section("Deck Tie-in", notes.length === 0
+      ? p("The generated pitch deck summarizes the business model once notes are defined.")
+      : p(`The pitch deck's business model slide condenses these ${notes.length} notes into headline bullets.`));
+
+  return frontmatterFor(ctx, "Business Model Canvas", "index") + body;
 }
 
 export function genIssuesDoc(ctx: GeneratorContext): string {

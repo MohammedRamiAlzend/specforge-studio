@@ -23,6 +23,7 @@ import { registerLinkRoutes } from "./modules/links/routes";
 import { seedNodePalette } from "./modules/palette/seed";
 import { registerPaletteRoutes } from "./modules/palette/routes";
 import { registerSkillRoutes } from "./modules/skills";
+import { registerBusinessModelRoutes } from "./modules/business-model";
 import { registerSkillMatchRoutes } from "./modules/skill-match";
 import { registerTeamRoutes } from "./modules/team";
 import { registerIssueRoutes } from "./modules/issues";
@@ -98,6 +99,7 @@ export async function buildApp(options: BuildAppOptions = {}) {
   registerLinkRoutes(app, deps);
   registerPaletteRoutes(app, deps);
   registerSkillRoutes(app, deps);
+  registerBusinessModelRoutes(app, deps);
   registerSkillMatchRoutes(app, deps);
   registerRequirementRoutes(app, deps);
   registerUseCaseRoutes(app, deps);

@@ -1485,6 +1485,16 @@ let depId = "";
   check("dashboard: free quota surfaced", data?.quota?.plan_key === "free" && data?.quota?.limit === 1, summary.body);
 }
 
+// 26. business model canvas (DEC-030 Phase A)
+{
+  const note = await request("POST", "/bmc", { project_id: projectId, block: "value_propositions", content: "Specs to pitch in one place." });
+  check("bmc: create -> 201 with BMC id", note.statusCode === 201 && /^BMC-\d{4,}$/.test(note.json().data?.id ?? ""), note.body);
+  const list = await request("GET", `/bmc?project=${projectId}`);
+  check("bmc: list returns the note", list.statusCode === 200 && list.json().data?.length === 1, list.body);
+  const badBlock = await request("POST", "/bmc", { project_id: projectId, block: "not_a_block", content: "x" });
+  check("bmc: unknown block -> 400", badBlock.statusCode === 400, badBlock.body);
+}
+
 await app.close();
 rmSync(config.EXPORT_DIR, { recursive: true, force: true });
 

@@ -28,6 +28,7 @@ const SECTIONS = [
   { to: "issues", title: "Issues", blurb: "Bugs, enhancements, tech debt, and questions." },
   { to: "releases", title: "Releases", blurb: "Versioned releases with status and release notes." },
   { to: "skills", title: "Skills", blurb: "Capabilities and technologies this project relies on." },
+  { to: "business-model", title: "Business Model", blurb: "Nine-block canvas of the business behind the product." },
 ] as const;
 
 export function ProjectDetailsPage() {

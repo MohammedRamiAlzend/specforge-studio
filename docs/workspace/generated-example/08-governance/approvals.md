@@ -4,7 +4,7 @@ title: Approvals
 type: index
 status: generated
 project: PRJ-0001
-updated: "2026-08-18"
+updated: "2026-08-25"
 ---
 
 # Approvals
@@ -13,8 +13,8 @@ updated: "2026-08-18"
 
 | ID | Artifact | Approver role | Status | Decision | Date |
 | --- | --- | --- | --- | --- | --- |
-| APR-0001 | REQ-0001 (requirement) | product | `approved` | approved | 2026-08-18 |
-| APR-0002 | WF-0001 (workflow) | engineering-lead | `approved` | approved | 2026-08-18 |
+| APR-0001 | REQ-0001 (requirement) | product | `approved` | approved | 2026-08-25 |
+| APR-0002 | WF-0001 (workflow) | engineering-lead | `approved` | approved | 2026-08-25 |
 ## Rules
 
 - Final requirements, architecture, schema, and API contracts require approval.

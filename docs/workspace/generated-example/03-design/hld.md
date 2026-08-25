@@ -4,7 +4,7 @@ title: High-Level Design
 type: plan
 status: generated
 project: PRJ-0001
-updated: "2026-08-18"
+updated: "2026-08-25"
 ---
 
 # High-Level Design (HLD)

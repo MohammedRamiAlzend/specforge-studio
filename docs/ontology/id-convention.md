@@ -96,6 +96,7 @@ Extended prefixes (added by this ontology, DEC-002):
 | PLAN | Plan (billing plan free/plus/premium, Prompt 21) |
 | SUB | Subscription (user billing subscription, Prompt 21) |
 | INV | Invoice (billing history record, DEC-029 billing lifecycle) |
+| BMC | Business Model Canvas note (per-project 9-block canvas, DEC-030 Phase A) |
 
 Child codes:
 

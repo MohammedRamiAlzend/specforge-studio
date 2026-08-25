@@ -36,6 +36,7 @@ import {
   genVision,
   genWorkflowsDoc,
   genSkillsDoc,
+  genBusinessModelDoc,
   genIssuesDoc,
   genReleasesDoc,
 } from "./generators";
@@ -98,6 +99,8 @@ export const WORKSPACE_FILES: WorkspaceFileSpec[] = [
   // Prompt 20: execution and delivery; appended at the end so ART ids stay stable.
   { path: "05-testing/issues.md", type: "index", title: "Issues", generate: genIssuesDoc },
   { path: "06-ops/releases.md", type: "index", title: "Releases", generate: genReleasesDoc },
+  // DEC-030 Phase A: business model canvas; appended at the end so ART ids stay stable.
+  { path: "07-guides/business-model.md", type: "index", title: "Business Model Canvas", generate: genBusinessModelDoc },
 ];
 
 /**

@@ -15,6 +15,7 @@ import { GovernancePage } from "../pages/governance/GovernancePage";
 import { DocsExportPage } from "../pages/DocsExportPage";
 import { TasksPage } from "../pages/TasksPage";
 import { SkillsPage } from "../pages/SkillsPage";
+import { BusinessModelPage } from "../pages/BusinessModelPage";
 import { IssuesPage } from "../pages/IssuesPage";
 import { ReleasesPage } from "../pages/ReleasesPage";
 import { SettingsPage } from "../pages/SettingsPage";
@@ -51,6 +52,7 @@ export function App() {
             <Route path="projects/:projectId/issues" element={<IssuesPage />} />
             <Route path="projects/:projectId/releases" element={<ReleasesPage />} />
             <Route path="projects/:projectId/skills" element={<SkillsPage />} />
+            <Route path="projects/:projectId/business-model" element={<BusinessModelPage />} />
             <Route path="settings" element={<SettingsPage />} />
           </Route>
 
