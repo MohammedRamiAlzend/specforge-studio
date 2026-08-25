@@ -45,8 +45,9 @@ function StatChip({ label, value }: { label: string; value: number }) {
 }
 
 /** Compact single-row health strip for project cards on the dashboard. */
-export function HealthMiniCard({ projectId }: { projectId: string }) {
-  const { data: health, isLoading } = useProjectHealth(projectId);
+export function HealthMiniCard({ projectId, health: healthProp }: { projectId: string; health?: ProjectHealth }) {
+  const { data: fetchedHealth, isLoading } = useProjectHealth(healthProp ? undefined : projectId);
+  const health = healthProp ?? fetchedHealth;
   if (isLoading || !health) {
     return <div className="h-14 animate-pulse rounded-md bg-slate-100" />;
   }

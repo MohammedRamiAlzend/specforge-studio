@@ -52,5 +52,6 @@ export interface DashboardSummary {
   issues: { open: number; critical_open: number };
   critical_issues: CriticalIssueItem[];
   pending_approvals: PendingApprovalItem[];
+  pending_approvals_count: number;
   upcoming_milestones: UpcomingMilestoneItem[];
 }

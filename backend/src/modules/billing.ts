@@ -337,21 +337,25 @@ export interface SubscriptionSummary {
  * Compact subscription state for dashboard widgets (DEC-030). Mirrors the
  * enforcement semantics of getEffectivePlanKey: a lapsed paid period reads as
  * status "expired" with the effective plan reverted to "free".
+ *
+ * Uses a single JOIN query + JS expiry check. Both getEffectivePlanKey (which
+ * uses getActiveSubscription with SQL-level expiry) and this function agree
+ * on the effective plan key — the only difference is that this function also
+ * returns the "expired" status for the dashboard banner.
  */
 export function getSubscriptionSummary(db: Database, userId: string): SubscriptionSummary {
   const row = db
     .query(
-      "SELECT * FROM subscriptions WHERE user_id = ? AND status = 'active' ORDER BY started_at DESC LIMIT 1",
+      `SELECT s.*, p.key AS plan_key FROM subscriptions s
+       LEFT JOIN plans p ON p.id = s.plan_id
+       WHERE s.user_id = ? AND s.status = 'active'
+       ORDER BY s.started_at DESC LIMIT 1`,
     )
-    .get(userId) as SubscriptionRow | undefined;
+    .get(userId) as (SubscriptionRow & { plan_key: string | null }) | undefined;
   if (!row) {
     return { plan_key: "free", status: "active", cycle: "monthly", current_period_end: "", card_last4: "" };
   }
-  const planRow = db.query("SELECT key FROM plans WHERE id = ?").get(row.plan_id) as
-    | { key: string }
-    | undefined;
-  const planKey =
-    planRow?.key === "plus" || planRow?.key === "premium" ? planRow.key : "free";
+  const planKey = row.plan_key === "plus" || row.plan_key === "premium" ? row.plan_key : "free";
   const expired = row.current_period_end
     ? new Date(row.current_period_end).getTime() < Date.now()
     : false;

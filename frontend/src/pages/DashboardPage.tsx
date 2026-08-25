@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { useMe } from "../entities/user/api";
 import { useProjects } from "../entities/project/api";
-import { useDashboardSummary } from "../entities/dashboard/api";
+import { useDashboardSummary, useDashboardHealth } from "../entities/dashboard/api";
 import type { Project } from "../entities/project/types";
 import { CreateProjectForm } from "../features/create-project/CreateProjectForm";
 import { PlanStrip } from "../features/dashboard/PlanStrip";
@@ -34,6 +34,7 @@ function filterAndSort(projects: Project[], filter: StatusFilter, sort: SortMode
 export function DashboardPage() {
   const { data: me } = useMe();
   const { data: summary } = useDashboardSummary();
+  const { data: healthMap } = useDashboardHealth();
   const { data: projects, isLoading, error } = useProjects();
   const [showForm, setShowForm] = useState(false);
   const [filter, setFilter] = useState<StatusFilter>("all");
@@ -135,7 +136,7 @@ export function DashboardPage() {
                     <p className={`line-clamp-2 text-sm text-slate-600 ${project.types && project.types.length > 0 ? "mt-2" : ""}`}>
                       {project.description ?? "No description yet."}
                     </p>
-                    <HealthMiniCard projectId={project.id} />
+                    <HealthMiniCard projectId={project.id} health={healthMap?.[project.id]} />
                     <p className="mt-3 flex items-baseline justify-between gap-2">
                       <span>Updated {formatRelative(project.updated_at)}</span>
                       <span className="font-mono text-[10px] text-slate-300">{project.id}</span>

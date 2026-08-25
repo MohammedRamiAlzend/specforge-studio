@@ -37,7 +37,7 @@ export function KpiRow({ summary }: { summary: DashboardSummary | undefined }) {
     { label: "Open tasks", value: summary.tasks.open + summary.tasks.in_progress, tone: "neutral" },
     { label: "Blocked tasks", value: summary.tasks.blocked, tone: summary.tasks.blocked > 0 ? "warn" : "neutral" },
     { label: "Critical issues", value: summary.issues.critical_open, tone: summary.issues.critical_open > 0 ? "alert" : "neutral" },
-    { label: "Pending approvals", value: summary.pending_approvals.length, tone: summary.pending_approvals.length > 0 ? "warn" : "neutral" },
+    { label: "Pending approvals", value: summary.pending_approvals_count, tone: summary.pending_approvals_count > 0 ? "warn" : "neutral" },
   ];
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
