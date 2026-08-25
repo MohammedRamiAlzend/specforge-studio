@@ -931,3 +931,11 @@ Next action: user restarts dev server and retries account creation; then optiona
 - Implemented requested UX: shared/ui/ConfirmDialog.tsx (generic confirm modal, overlay+panel pattern matching DiagramPreviewDialog, danger variant, busy spinner via Button loading). AccountChip now opens "Sign out of SpecForge Studio?" confirmation on click; confirm triggers performSignOut(); 5s self-recovery timer re-enables the chip if navigation is ever blocked (embedded webviews/extensions) so it can never stay disabled.
 - Verification: frontend typecheck clean; 254 pass / 0 fail. Committed 2d009f4, pushed.
 - USER ACTION REQUIRED: full restart of dev servers + hard refresh (Ctrl+Shift+R) to load current bundle.
+
+### Session 2026-08-25 (cont. 5) — Sign-out ROOT CAUSE found: FST_ERR_CTP_EMPTY_JSON_BODY
+
+- User pasted the actual backend log: POST /auth/logout died with 400 FST_ERR_CTP_EMPTY_JSON_BODY ("Body cannot be empty when content-type is set to 'application/json'"). Root chain: frontend shared/api/client.ts ALWAYS sets Content-Type: application/json; performSignOut posts with NO body; Fastify's default JSON parser rejects empty bodies BEFORE the route handler runs -> session row never deleted, cookie never cleared -> watchdog navigation still fires, but after reload HomeGate's /auth/me still returns the user -> user lands back on dashboard. Earlier probe passed because raw fetch without that header bypassed the parser. The "stale bundle" hypothesis from cont.4 was WRONG.
+- Fix (root, backend/src/app.ts): custom addContentTypeParser("application/json", {parseAs:"string"}) that treats empty/undefined body as {} and JSON.parses everything else (delegating parse errors). All body-less POSTs now reach their handlers.
+- Regression probe: booted app via test helpers, registered+verified a user, reproduced EXACT failing request (content-type json + empty payload) -> logout 200, Set-Cookie Max-Age=0, /auth/me 401.
+- Verification: backend typecheck clean; 254 pass / 0 fail (33 files). Committed 5057fdf, pushed.
+- Note: user still needs to restart backend dev server to load app.ts change.
