@@ -128,3 +128,6 @@ Status: accepted — implementation started same day (DEC-028).
 1. Show/hide password toggle missing on AuthPage password fields. -> FIXED: PasswordInput component with eye toggle on both password fields.
 2. Plans not shown on landing page. -> ROOT CAUSE shared with (3): API refused to start without SMTP config, so GET /plans was ECONNREFUSED. Resolves once backend/.env is configured.
 3. Terminal log showed SmtpConfigError at boot. -> BY DESIGN (DEC-028 hard require). User chose to configure Gmail now rather than a dev console fallback: created backend/.env.example (committed template) + backend/.env (gitignored, user pastes Gmail App Password).
+
+## Request (2026-08-25): Handle payment plans
+User: authentication/sign-in/sign-out/OTP/forgot-password are done; next task is "handle the payment plans". Existing base: DEC-026 plans/subscriptions tables, simulated Luhn checkout, cancel endpoint, CheckoutPage. Direction (simulated vs real provider) pending user decision because real providers violate the no-SaaS constraint without explicit approval.

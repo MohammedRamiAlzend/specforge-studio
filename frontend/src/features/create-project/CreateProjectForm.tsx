@@ -1,9 +1,10 @@
 import { useState, type FormEvent } from "react";
+import { Link } from "react-router-dom";
 import { usePlatformConfig } from "../../entities/platform-config/api";
 import type { PlatformType } from "../../entities/platform-config/types";
 import { useCreateProject } from "../../entities/project/api";
 import type { ProjectType, ProjectTypeDraft } from "../../entities/project/types";
-import { errorMessage } from "../../shared/api/client";
+import { ApiError, errorMessage } from "../../shared/api/client";
 import { Button } from "../../shared/ui/Button";
 import { ErrorState } from "../../shared/ui/States";
 import { Spinner } from "../../shared/ui/Spinner";
@@ -21,6 +22,7 @@ export function CreateProjectForm({
   const [selected, setSelected] = useState<Record<string, { stack_id: string | null; library_ids: string[] }>>({});
   const [primary, setPrimary] = useState<ProjectType>("web");
   const [error, setError] = useState<string | null>(null);
+  const [planLimited, setPlanLimited] = useState(false);
   const create = useCreateProject();
 
   const enabledTypes = (types ?? []).filter((t) => t.enabled);
@@ -60,6 +62,7 @@ export function CreateProjectForm({
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError(null);
+    setPlanLimited(false);
     const typeIds = Object.keys(selected);
     if (typeIds.length === 0) {
       setError("Select at least one project type.");
@@ -83,7 +86,11 @@ export function CreateProjectForm({
       setSelected({});
       onCreated?.();
     } catch (err) {
-      setError(errorMessage(err));
+      if (err instanceof ApiError && err.code === "PLAN_LIMIT_REACHED") {
+        setPlanLimited(true);
+      } else {
+        setError(errorMessage(err));
+      }
     }
   }
 
@@ -244,6 +251,22 @@ export function CreateProjectForm({
           className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-forge-500 focus:outline-none focus:ring-1 focus:ring-forge-500"
         />
       </div>
+
+      {planLimited ? (
+        <div className="sf-scale-in rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+          <p className="font-semibold">Free plan limit reached</p>
+          <p className="mt-1 leading-relaxed">
+            The Free plan includes 1 project. Upgrade to Plus for unlimited projects, roadmaps and
+            governance — your existing projects are kept.
+          </p>
+          <Link
+            to="/checkout/plus"
+            className="mt-2 inline-block rounded-md bg-forge-600 px-3 py-1.5 font-semibold text-white transition-colors hover:bg-forge-500"
+          >
+            Upgrade to Plus
+          </Link>
+        </div>
+      ) : null}
 
       {error ? <p className="text-xs font-medium text-rose-600">{error}</p> : null}
 

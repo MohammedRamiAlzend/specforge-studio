@@ -7,6 +7,7 @@ export type ErrorCode =
   | "RATE_LIMITED"
   | "EMAIL_NOT_VERIFIED"
   | "CODE_LOCKED"
+  | "PLAN_LIMIT_REACHED"
   | "INTERNAL_ERROR";
 
 export class AppError extends Error {
@@ -35,4 +36,9 @@ export function conflict(message: string, details?: unknown): AppError {
 
 export function unauthorized(message = "Authentication required."): AppError {
   return new AppError("UNAUTHORIZED", message, 401);
+}
+
+/** 402 Payment Required — a plan allowance was exceeded (billing lifecycle). */
+export function planLimitReached(message: string, details?: unknown): AppError {
+  return new AppError("PLAN_LIMIT_REACHED", message, 402, details);
 }

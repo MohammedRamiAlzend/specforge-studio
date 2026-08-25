@@ -254,3 +254,6 @@ No rejected options recorded yet.
   - Register no longer auto-signs-in; POST /auth/verify-email creates the session. Forgot/reset endpoints anti-enumeration; reset revokes all sessions.
   - Sign-out fixed client-side: clear React Query cache + window.location.replace after logout settles.
 - status: implemented and verified 2026-08-25 (typecheck clean, build OK, 254 tests / 0 fail, smoke OK).
+
+## DEC-029: Billing full simulated lifecycle (2026-08-25)
+User explicitly chose (question round): (a) FULL SIMULATED lifecycle — no external payment provider, no-SaaS constraint upheld; (b) ALL scope items: plan-limit enforcement, invoices + billing-history UI, period-expiry handling, email receipts via the existing SMTP mailer. Real Stripe integration remains forbidden unless separately approved later. Provider seam may be kept internal but no gateway work is in scope.

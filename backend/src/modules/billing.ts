@@ -17,8 +17,11 @@ import type { Database } from "bun:sqlite";
 import type { Deps } from "../types";
 import { allocateId } from "../utils/ids";
 import { logEvent } from "../utils/events";
-import { badRequest, notFound } from "../utils/errors";
-import { requireUser, type UserRow } from "./auth";
+import { badRequest, notFound, planLimitReached } from "../utils/errors";
+import { emailShell, requireUser, type UserRow } from "./auth";
+
+/** Projects a Free-plan user may have active at once (DEC-029). */
+export const FREE_PROJECT_LIMIT = 1;
 
 // ---------------------------------------------------------------------------
 // Row + view shapes
@@ -49,6 +52,19 @@ export interface SubscriptionRow {
   canceled_at: string | null;
 }
 
+export interface InvoiceRow {
+  id: string;
+  user_id: string;
+  subscription_id: string;
+  plan_key: string;
+  cycle: "monthly" | "yearly";
+  amount_cents: number;
+  card_last4: string;
+  status: "paid" | "refunded";
+  description: string;
+  created_at: string;
+}
+
 export interface PlanView {
   id: string;
   key: string;
@@ -64,12 +80,25 @@ export interface PlanView {
 export interface SubscriptionView {
   id: string;
   cycle: SubscriptionRow["cycle"];
-  status: SubscriptionRow["status"];
+  /** Effective status: a lapsed period reads as "expired" (computed). */
+  status: "active" | "canceled" | "expired";
   cardLast4: string;
   startedAt: string;
   currentPeriodEnd: string;
   canceledAt: string | null;
   plan: PlanView;
+}
+
+export interface InvoiceView {
+  id: string;
+  planKey: string;
+  planName: string;
+  cycle: InvoiceRow["cycle"];
+  amountCents: number;
+  cardLast4: string;
+  status: InvoiceRow["status"];
+  description: string;
+  createdAt: string;
 }
 
 type BillingCycle = "monthly" | "yearly";
@@ -209,10 +238,17 @@ function getPlanByKey(db: Database, key: string): PlanRow | undefined {
     | undefined;
 }
 
+/**
+ * The user's active subscription whose billing period has not lapsed.
+ * Expiry is COMPUTED: rows keep physical status 'active' but a
+ * current_period_end in the past no longer counts (DEC-029).
+ */
 function getActiveSubscription(db: Database, userId: string): SubscriptionRow | undefined {
   return db
     .query(
-      "SELECT * FROM subscriptions WHERE user_id = ? AND status = 'active' ORDER BY started_at DESC LIMIT 1",
+      `SELECT * FROM subscriptions
+       WHERE user_id = ? AND status = 'active' AND current_period_end > strftime('%Y-%m-%dT%H:%M:%fZ','now')
+       ORDER BY started_at DESC LIMIT 1`,
     )
     .get(userId) as SubscriptionRow | undefined;
 }
@@ -230,16 +266,81 @@ function subscriptionView(db: Database, sub: SubscriptionRow): SubscriptionView 
     | PlanRow
     | undefined;
   if (!planRow) throw notFound(`Plan ${sub.plan_id} not found`);
+  // Effective status: physically-active rows whose period already ended read
+  // as "expired" so the UI can show a renewal prompt.
+  const lapsed =
+    sub.status === "active" && sub.current_period_end <= new Date().toISOString();
   return {
     id: sub.id,
     cycle: sub.cycle,
-    status: sub.status,
+    status: lapsed ? "expired" : sub.status,
     cardLast4: sub.card_last4,
     startedAt: sub.started_at,
     currentPeriodEnd: sub.current_period_end,
     canceledAt: sub.canceled_at,
     plan: toPlanView(planRow),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Invoices (billing lifecycle, DEC-029)
+// ---------------------------------------------------------------------------
+
+function toInvoiceView(row: InvoiceRow, planName: string): InvoiceView {
+  return {
+    id: row.id,
+    planKey: row.plan_key,
+    planName,
+    cycle: row.cycle,
+    amountCents: row.amount_cents,
+    cardLast4: row.card_last4,
+    status: row.status,
+    description: row.description,
+    createdAt: row.created_at,
+  };
+}
+
+/** Newest-first billing history for one user. */
+export function listInvoices(db: Database, userId: string): InvoiceView[] {
+  const rows = db
+    .query(
+      `SELECT i.*, p.name AS plan_name FROM invoices i
+       LEFT JOIN plans p ON p.key = i.plan_key
+       WHERE i.user_id = ? ORDER BY i.created_at DESC, i.id DESC`,
+    )
+    .all(userId) as Array<InvoiceRow & { plan_name: string | null }>;
+  return rows.map((row) => toInvoiceView(row, row.plan_name ?? row.plan_key));
+}
+
+/**
+ * Effective plan key for enforcement: the active unexpired subscription's
+ * plan, otherwise "free". Used by the project-allowance check.
+ */
+export function getEffectivePlanKey(db: Database, userId: string): "free" | "plus" | "premium" {
+  const active = getActiveSubscription(db, userId);
+  if (!active) return "free";
+  const planRow = db.query("SELECT key FROM plans WHERE id = ?").get(active.plan_id) as
+    | { key: string }
+    | undefined;
+  return planRow?.key === "plus" || planRow?.key === "premium" ? planRow.key : "free";
+}
+
+/**
+ * Enforces the Free-plan project allowance. Paid plans are unlimited.
+ * Called from POST /projects only when a valid session exists — anonymous
+ * callers (tests, seeds) keep their historical unrestricted behavior.
+ */
+export function assertProjectAllowance(db: Database, user: UserRow): void {
+  if (getEffectivePlanKey(db, user.id) !== "free") return;
+  const count = db
+    .query("SELECT COUNT(*) AS n FROM projects WHERE created_by = ?")
+    .get(user.id) as { n: number };
+  if (count.n >= FREE_PROJECT_LIMIT) {
+    throw planLimitReached(
+      `The Free plan includes ${FREE_PROJECT_LIMIT} project. Upgrade to Plus for unlimited projects.`,
+      { limit: FREE_PROJECT_LIMIT, plan: "free", upgradeTo: "plus" },
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -293,7 +394,33 @@ const checkoutSchema = z.object({
     .optional(),
 });
 
-function checkout(db: Database, user: UserRow, input: z.infer<typeof checkoutSchema>): SubscriptionView {
+/** Branded receipt for a completed checkout (paid plans only). */
+function receiptEmail(input: {
+  name: string;
+  planName: string;
+  cycle: BillingCycle;
+  amountCents: number;
+  cardLast4: string;
+  invoiceId: string;
+  periodEnd: string;
+}): { subject: string; text: string; html: string } {
+  const amount = `$${(input.amountCents / 100).toFixed(2)}`;
+  const shell = emailShell(
+    "Your SpecForge receipt",
+    `<p>Hi ${input.name}, thanks for your payment!</p>
+     <table style="width:100%;font-size:13px;margin:16px 0;border-collapse:collapse">
+       <tr><td style="color:#64748b;padding:4px 0">Plan</td><td style="text-align:right;font-weight:600">${input.planName} (${input.cycle})</td></tr>
+       <tr><td style="color:#64748b;padding:4px 0">Amount</td><td style="text-align:right;font-weight:700">${amount}</td></tr>
+       <tr><td style="color:#64748b;padding:4px 0">Card</td><td style="text-align:right">•••• ${input.cardLast4}</td></tr>
+       <tr><td style="color:#64748b;padding:4px 0">Invoice</td><td style="text-align:right;font-family:monospace">${input.invoiceId}</td></tr>
+       <tr><td style="color:#64748b;padding:4px 0">Renews on</td><td style="text-align:right">${input.periodEnd.slice(0, 10)}</td></tr>
+     </table>
+     <p>Manage your subscription anytime from Settings → Billing.</p>`,
+  );
+  return { subject: `SpecForge receipt ${input.invoiceId} — ${amount}`, ...shell };
+}
+
+async function checkout(db: Database, mailer: Deps["mailer"], user: UserRow, input: z.infer<typeof checkoutSchema>): Promise<SubscriptionView> {
   const plan = getPlanByKey(db, input.plan_key);
   if (!plan) throw notFound(`Plan "${input.plan_key}" not found`);
   const isFreePlan = plan.monthly_price_cents === 0 && plan.yearly_price_cents === 0;
@@ -339,6 +466,48 @@ function checkout(db: Database, user: UserRow, input: z.infer<typeof checkoutSch
     actorType: "human",
     payload: { plan_key: input.plan_key, cycle: input.cycle },
   });
+
+  // Invoice for the billing-history UI. Free activations record a $0 invoice
+  // so the account's history is complete from day one (DEC-029).
+  const amountCents =
+    input.cycle === "yearly" ? plan.yearly_price_cents : plan.monthly_price_cents;
+  const invoiceId = allocateId(db, "INV");
+  const description = isFreePlan
+    ? `${plan.name} plan activation`
+    : `${plan.name} plan — ${input.cycle} billing`;
+  db.query(
+    `INSERT INTO invoices (id, user_id, subscription_id, plan_key, cycle, amount_cents, card_last4, status, description)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 'paid', ?)`,
+  ).run(invoiceId, user.id, id, plan.key, input.cycle, amountCents, last4, description);
+
+  // Receipt email for paid checkouts; delivery problems must not roll back a
+  // completed activation, so failures are logged and swallowed.
+  if (!isFreePlan) {
+    try {
+      await mailer.send({
+        to: user.email,
+        ...receiptEmail({
+          name: user.name,
+          planName: plan.name,
+          cycle: input.cycle,
+          amountCents,
+          cardLast4: last4,
+          invoiceId,
+          periodEnd: period.toISOString(),
+        }),
+      });
+    } catch (error) {
+      logEvent(db, {
+        entityType: "invoice",
+        entityId: invoiceId,
+        action: "updated",
+        actor: user.id,
+        actorType: "system",
+        payload: { receiptError: error instanceof Error ? error.message : String(error) },
+      });
+    }
+  }
+
   return subscriptionView(db, getSubscriptionById(db, id));
 }
 
@@ -361,8 +530,15 @@ function cancelSubscription(db: Database, user: UserRow): void {
 
 function currentSubscriptionView(db: Database, request: FastifyRequest): SubscriptionView | null {
   const user = requireUser(db, request);
-  const active = getActiveSubscription(db, user.id);
-  return active ? subscriptionView(db, active) : null;
+  // The view deliberately includes lapsed periods so the billing UI can show
+  // status "expired" and offer renewal; enforcement paths use the stricter
+  // getActiveSubscription instead.
+  const row = db
+    .query(
+      "SELECT * FROM subscriptions WHERE user_id = ? AND status = 'active' ORDER BY started_at DESC LIMIT 1",
+    )
+    .get(user.id) as SubscriptionRow | undefined;
+  return row ? subscriptionView(db, row) : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -379,7 +555,7 @@ export function registerBillingRoutes(app: FastifyInstance, deps: Deps): void {
   app.post("/billing/checkout", async (request) => {
     const user = requireUser(db, request);
     const body = checkoutSchema.parse(request.body);
-    return { data: checkout(db, user, body) };
+    return { data: await checkout(db, deps.mailer, user, body) };
   });
 
   app.get("/billing/subscription/me", async (request) => {
@@ -390,5 +566,11 @@ export function registerBillingRoutes(app: FastifyInstance, deps: Deps): void {
     const user = requireUser(db, request);
     cancelSubscription(db, user);
     return { data: { ok: true } };
+  });
+
+  /** Billing history for the signed-in user (newest first). */
+  app.get("/billing/invoices/me", async (request) => {
+    const user = requireUser(db, request);
+    return { data: listInvoices(db, user.id) };
   });
 }

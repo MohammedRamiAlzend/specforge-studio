@@ -1,6 +1,8 @@
 import { useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { PlatformSettingsPanel } from "../features/platform-settings/PlatformSettingsPanel";
 import { NodePaletteSettingsPanel } from "../features/palette-settings/NodePaletteSettingsPanel";
+import { BillingPanel } from "../features/billing/BillingPanel";
 import { Card, CardHeader } from "../shared/ui/Card";
 import { PageHeader } from "../shared/ui/PageHeader";
 import { API_BASE_URL } from "../shared/config";
@@ -12,10 +14,16 @@ const DOCS = [
   { path: "docs/data/database-design.md", label: "Database design" },
 ];
 
-const TABS = ["Platform configuration", "Node palette", "Environment", "Reference"] as const;
+const TABS = ["Platform configuration", "Node palette", "Billing", "Environment", "Reference"] as const;
 
 export function SettingsPage() {
-  const [tab, setTab] = useState<(typeof TABS)[number]>("Platform configuration");
+  const [params] = useSearchParams();
+  // Deep-link support (?tab=Billing) — unknown values fall back to the first tab.
+  const requested = params.get("tab");
+  const initialTab = (TABS as readonly string[]).includes(requested ?? "")
+    ? (requested as (typeof TABS)[number])
+    : TABS[0];
+  const [tab, setTab] = useState<(typeof TABS)[number]>(initialTab);
 
   return (
     <div className="space-y-6">
@@ -44,6 +52,8 @@ export function SettingsPage() {
       {tab === "Platform configuration" ? <PlatformSettingsPanel /> : null}
 
       {tab === "Node palette" ? <NodePaletteSettingsPanel /> : null}
+
+      {tab === "Billing" ? <BillingPanel /> : null}
 
       {tab === "Environment" ? (
         <div className="grid gap-4 lg:grid-cols-2">

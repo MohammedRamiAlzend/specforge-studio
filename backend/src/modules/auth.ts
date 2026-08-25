@@ -288,7 +288,8 @@ function checkOtp(db: Database, userId: string, purpose: OtpPurpose, code: strin
 // Email templates (branded, English-only per project constraints)
 // ---------------------------------------------------------------------------
 
-function emailShell(title: string, bodyHtml: string): { text: string; html: string } {
+/** Branded transactional-email shell, shared with billing receipts (DEC-029). */
+export function emailShell(title: string, bodyHtml: string): { text: string; html: string } {
   return {
     text: `${title}\n\n${bodyHtml.replace(/<[^>]+>/g, "")}`,
     html: `<div style="font-family:Segoe UI,Arial,sans-serif;background:#0f172a;padding:32px">

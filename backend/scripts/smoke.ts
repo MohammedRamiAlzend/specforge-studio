@@ -1398,6 +1398,57 @@ let depId = "";
   check("forgot-password for unknown address is still 200 (anti-enumeration)", ghost.statusCode === 200, ghost.body);
 }
 
+// 24. billing lifecycle (DEC-029): invoices, plan limits, expiry
+{
+  const inject = async (method: string, url: string, payload?: unknown, cookie?: string) =>
+    app.inject({
+      method: method as "GET",
+      url,
+      payload: payload as undefined,
+      ...(cookie ? { headers: { cookie } } : {}),
+    });
+
+  const email = "smoke-billing@specforge.local";
+  const reg = await request("POST", "/auth/register", {
+    name: "Billing Smoke",
+    email,
+    password: "billing-pass-1",
+  });
+  check("billing: register -> 201", reg.statusCode === 201, reg.body);
+  const code = /(\d{6})/.exec(sentEmails[sentEmails.length - 1]?.subject ?? "")?.[1] ?? "";
+  const verified = await app.inject({ method: "POST", url: "/auth/verify-email", payload: { email, code } });
+  const token = /sf_session=([^;]+)/.exec((verified.headers["set-cookie"] as string) ?? "")?.[1] ?? "";
+  check("billing: verify-email opens session", verified.statusCode === 200 && token !== "", verified.body);
+  const userId = (await inject("GET", "/auth/me", undefined, `sf_session=${token}`)).json().data?.user?.id;
+
+  // Free limit: first project OK, second blocked with 402.
+  const p1 = await inject("POST", "/projects", { name: "Free project", type: "web", created_by: userId }, `sf_session=${token}`);
+  check("billing: free user creates first project -> 201", p1.statusCode === 201, p1.body);
+  const p2 = await inject("POST", "/projects", { name: "Over limit", type: "web", created_by: userId }, `sf_session=${token}`);
+  check("billing: second project on Free -> 402 PLAN_LIMIT_REACHED", p2.statusCode === 402 && p2.json().error?.code === "PLAN_LIMIT_REACHED", p2.body);
+
+  // Upgrade to Plus via paid checkout: invoice recorded + limits lifted.
+  const upgrade = await inject(
+    "POST",
+    "/billing/checkout",
+    { plan_key: "plus", cycle: "monthly", card: { name: "B S", number: "4242424242424242", exp_month: 12, exp_year: 2099, cvc: "123" } },
+    `sf_session=${token}`,
+  );
+  check("billing: plus checkout -> 200 active", upgrade.statusCode === 200 && upgrade.json().data?.status === "active", upgrade.body);
+  const invoices = await inject("GET", "/billing/invoices/me", undefined, `sf_session=${token}`);
+  const history = invoices.json().data ?? [];
+  check("billing: invoice recorded for checkout", invoices.statusCode === 200 && history.length >= 1 && history[0].amountCents === 1900 && history[0].status === "paid", invoices.body);
+  const p3 = await inject("POST", "/projects", { name: "Plus project", type: "web", created_by: userId }, `sf_session=${token}`);
+  check("billing: plus subscriber creates another project -> 201", p3.statusCode === 201, p3.body);
+
+  // Computed expiry: backdate the period, subscription reads expired and Free limits return.
+  db.query("UPDATE subscriptions SET current_period_end = '2020-01-01T00:00:00.000Z' WHERE user_id = ?").run(userId);
+  const lapsed = await inject("GET", "/billing/subscription/me", undefined, `sf_session=${token}`);
+  check("billing: lapsed period reads as expired", lapsed.json().data?.status === "expired", lapsed.body);
+  const p4 = await inject("POST", "/projects", { name: "Post-expiry", type: "web", created_by: userId }, `sf_session=${token}`);
+  check("billing: expired plan re-applies Free limit -> 402", p4.statusCode === 402 && p4.json().error?.code === "PLAN_LIMIT_REACHED", p4.body);
+}
+
 await app.close();
 rmSync(config.EXPORT_DIR, { recursive: true, force: true });
 

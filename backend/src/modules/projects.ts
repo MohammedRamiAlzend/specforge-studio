@@ -5,6 +5,8 @@ import type { Deps } from "../types";
 import { allocateId } from "../utils/ids";
 import { logEvent } from "../utils/events";
 import { badRequest, notFound } from "../utils/errors";
+import { requireUser } from "./auth";
+import { assertProjectAllowance } from "./billing";
 
 const projectTypeSchema = z.enum(["web", "mobile", "api", "ai"]);
 const projectStatusSchema = z.enum(["draft", "active", "completed", "archived"]);
@@ -372,6 +374,22 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps): void {
 
   app.post("/projects", async (request, reply) => {
     const body = createProjectSchema.parse(request.body);
+    // Plan-limit enforcement (DEC-029) applies only to authenticated callers:
+    // anonymous requests (legacy tests/seeds/scripts) keep unrestricted
+    // behavior, while a signed-in Free user is capped at FREE_PROJECT_LIMIT.
+    try {
+      assertProjectAllowance(db, requireUser(db, request));
+    } catch (error) {
+      // Re-throw plan limits; swallow authentication absence (anonymous OK).
+      if (
+        error &&
+        typeof error === "object" &&
+        "code" in error &&
+        (error as { code?: string }).code === "PLAN_LIMIT_REACHED"
+      ) {
+        throw error;
+      }
+    }
     reply.code(201);
     return { data: createProject(db, body) };
   });
