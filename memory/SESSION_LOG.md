@@ -953,3 +953,12 @@ Implemented:
 - Tests: backend/tests/billing-lifecycle.test.ts (8), frontend/tests/billing.test.tsx (5), smoke block 24 (register->limit->upgrade->invoice->expiry live). Docs FEAT-018 docs/features/billing-lifecycle.md; id-convention INV prefix.
 
 Verification: both typechecks clean; 267 pass / 0 fail (35 files); smoke SMOKE TEST OK incl. new block. Committed a0a80cb, pushed.
+
+## 2026-08-25 - cont. 7: Phase C dashboard redesign COMPLETE (DEC-030)
+
+- Recorded user request + DEC-030 choices in USER_REQUESTS/DECISIONS (BMC format; pptx dep approved; live-computed deck; order C->A->B).
+- Backend: new modules/dashboard.ts GET /dashboard/summary (auth-required aggregate: projects by status, quota via FREE_PROJECT_LIMIT/getSubscriptionSummary, task counts, top blocked tasks, critical issues, pending approvals, next 6 milestones unioned from milestones + roadmap_milestones); billing.ts exports getSubscriptionSummary; activity.ts GLOBAL feed now merges pending approvals (old code required projectId -> silent drop) and floats them above newer events.
+- REAL BUG FOUND VIA SMOKE: POST /projects accepted client-supplied created_by ('owner@internal' UI default) so Free-limit + quota NEVER applied to real UI users. Fixed by stamping creator = session user id for authenticated callers (anonymous legacy behavior kept). Smoke block 25 asserts the stamp.
+- Frontend: entities/dashboard (types/useDashboardSummary); features/dashboard PlanStrip (quota bar, upgrade/reactivate CTAs -> /settings?tab=Billing), KpiRow (5 counters), AttentionPanel + UpcomingMilestones (deep links to tasks/issues/governance/roadmap); DashboardPage rewritten (greeting via useMe, plan strip, KPI row, status filter chips + sort updated/created/name, Updated-relative on cards, tips card removed); shared/lib formatRelative added.
+- Tests: backend/tests/dashboard.test.ts (4), frontend/tests/dashboard.test.tsx (6), smoke block 25 (6 checks incl. anonymous 401 + creator stamping).
+- Verified: both typechecks clean; 185 backend + 92 frontend = 277 pass / 0 fail; SMOKE TEST OK. Committed c4c564f, pushed. Docs FEAT-019 docs/features/dashboard-redesign.md.
