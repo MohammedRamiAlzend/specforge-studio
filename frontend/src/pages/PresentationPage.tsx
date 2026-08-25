@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
-import { api } from "../shared/api/client";
+import { api, ApiError } from "../shared/api/client";
+import { API_BASE_URL } from "../shared/config";
 import { Button } from "../shared/ui/Button";
 
 interface DeckSlide {
@@ -18,22 +19,20 @@ interface PresentationData {
 }
 
 function usePresentationData(projectId: string | undefined) {
-  return useQuery<{ data: PresentationData }>({
+  return useQuery<PresentationData>({
     queryKey: ["presentation-data", projectId],
     queryFn: async () => {
       if (!projectId) throw new Error("Missing project ID");
-      const { data } = await api.get(`/presentation/${projectId}/data`);
-      return data as { data: PresentationData };
+      return api<PresentationData>(`/presentation/${projectId}/data`);
     },
     enabled: !!projectId,
   });
 }
 
 async function downloadPptx(projectId: string) {
-  const { data } = await api.get(`/presentation/${projectId}/pptx`, { responseType: "blob" });
-  const blob = new Blob([data as BlobPart], {
-    type: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-  });
+  const res = await fetch(`${API_BASE_URL}/presentation/${projectId}/pptx`, { credentials: "include" });
+  if (!res.ok) throw new Error(`Download failed: ${res.status}`);
+  const blob = await res.blob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -74,12 +73,12 @@ function SlideCard({ slide }: { slide: DeckSlide }) {
   );
 }
 
-export default function PresentationPage() {
+export function PresentationPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const { data, isLoading, error } = usePresentationData(projectId);
   const [current, setCurrent] = useState(0);
 
-  const slides = data?.data?.slides ?? [];
+  const slides = data?.slides ?? [];
   const total = slides.length;
   const atStart = current <= 0;
   const atEnd = current >= total - 1;
@@ -108,7 +107,7 @@ export default function PresentationPage() {
     );
   }
 
-  if (error || !data?.data) {
+  if (error || !data) {
     return (
       <div className="p-8 text-center text-red-600">
         Failed to load presentation data. Please try again later.
@@ -118,40 +117,29 @@ export default function PresentationPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Header */}
       <div className="flex items-start justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-900">Pitch Deck</h1>
           <p className="text-sm text-slate-500 mt-1">
-            Live-computed from project data &middot; {new Date(data.data.generated_at).toLocaleString()}
+            Live-computed from project data &middot; {new Date(data.generated_at).toLocaleString()}
           </p>
         </div>
         {projectId && (
-          <Button variant="outline" size="sm" onClick={() => downloadPptx(projectId)}>
+          <Button variant="secondary" size="sm" onClick={() => downloadPptx(projectId)}>
             Download .pptx
           </Button>
         )}
       </div>
 
-      {/* Viewer */}
       <div className="flex flex-col items-center gap-4">
         {total > 0 && (
           <>
             <div className="w-full max-w-3xl">
-              <SlideCard slide={slides[current]} />
+              <SlideCard slide={slides[current]!} />
             </div>
-            {/* Dots + arrows */}
             <div className="flex items-center gap-3 print:hidden">
-              <Button
-                variant="outline"
-                size="icon"
-                disabled={atStart}
-                onClick={prev}
-                aria-label="Previous slide"
-              >
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M15 18l-6-6 6-6" />
-                </svg>
+              <Button variant="ghost" size="sm" disabled={atStart} onClick={prev} aria-label="Previous slide">
+                &#8592;
               </Button>
               <div className="flex gap-1.5">
                 {slides.map((_: DeckSlide, i: number) => (
@@ -163,16 +151,8 @@ export default function PresentationPage() {
                   />
                 ))}
               </div>
-              <Button
-                variant="outline"
-                size="icon"
-                disabled={atEnd}
-                onClick={next}
-                aria-label="Next slide"
-              >
-                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M9 18l6-6-6-6" />
-                </svg>
+              <Button variant="ghost" size="sm" disabled={atEnd} onClick={next} aria-label="Next slide">
+                &#8594;
               </Button>
             </div>
             <p className="text-xs text-slate-400 print:hidden">
@@ -182,7 +162,6 @@ export default function PresentationPage() {
         )}
       </div>
 
-      {/* Print view: render all slides sequentially for print-to-PDF */}
       <div className="hidden print:block mt-12 print:mt-0">
         {slides.map((slide: DeckSlide, i: number) => (
           <div key={i} className="print:break-after-page pb-8 print:pb-0">
