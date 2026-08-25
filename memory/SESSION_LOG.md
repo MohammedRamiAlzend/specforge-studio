@@ -900,3 +900,27 @@ Next action: await user direction (optional tasks / parked analytics plan / new 
 - AccountChip.tsx: local signingOut state + onClick { setSigningOut(true); performSignOut(); }.
 - Likely user-side cause of recurrence: stale bundle in long-running dev tab; advise hard refresh.
 - Verified: frontend typecheck clean; 254 tests / 0 fail.
+
+### Session 2026-08-25 (cont. 3) — Live SMTP debugging: register hang fixed end-to-end
+
+User reports: register button stuck on "Working…", landing plans empty, password fields lacked show/hide toggle, sign-out still stuck.
+
+Fixed in order:
+1. AuthPage.tsx: PasswordInput + EyeIcon components; show/hide toggles on main form (testId password-input) and reset step (new-password-input).
+2. backend/.env created from user's Gmail App Password (gitignored); backend/.env.example committed with setup guide. Plans-not-showing diagnosed as API-down consequence: requireSmtpMailer threw SmtpConfigError at boot when .env was absent.
+3. Sign-out re-hardened: useLogout hook removed; imperative performSignOut() (best-effort POST /auth/logout -> window.location.replace("/") in .finally + 2.5s watchdog).
+4. THE BIG ONE — SmtpMailer had five real bugs (FakeMailer tests bypass sockets, so none were caught by the suite):
+   a. 'data' handler woke the poller but never appended chunk into this.buffer -> every reply timed out at 15s (the "Working..." hang root cause).
+   b. replyCode() regex matched TRAILING digits; Gmail greeting contains digits inside its ESMTP id -> returned 0 -> bogus failures. Rewritten to parse the LAST line's LEADING code per RFC 5321.
+   c. readReply deadline only evaluated when woken by data; socket close undetected -> possible indefinite hangs. Rewritten as race-free poll loop (20ms) checking completion regex /(?:^|\r\n)\d{3}[^\r]*\r\n$/, lastError, closed, hard deadline.
+   d. Bun quirk: setEncoding("utf8") on TLSSocket SUPPRESSES 'data' events. Removed; chunks decoded manually from Buffers.
+   e. DECISIVE bug found via raw-protocol probe (scripts/smtp-raw.ts delivered a real email proving sockets/Bun fine): dotStuffed() escaped the DATA terminator itself — lone "." became ".." so Gmail never saw <CRLF>.<CRLF> end-of-data and never replied. Fix: dot-stuff only message content; append terminator "\r\n.\r\n" after stuffing.
+5. Supporting fixes: session constructed BEFORE awaiting handshake (captures greeting during TLS); connectSocket uses instanceof tls.TLSSocket + 10s timeout; requireSmtpMailer strips whitespace from SMTP_PASS (Gmail shows App Passwords space-grouped); socket.resume() added defensively.
+
+Verification: bun scripts/smtp-test-send.ts -> SENT OK (real email delivered to user's Gmail inbox; a second test email "raw probe" also arrived via the diagnostic). backend typecheck clean; full suite 254 pass / 0 fail (33 files). Temp scripts deleted; kept ops tools backend/scripts/smtp-diagnose.ts (credential/protocol validator) and smtp-test-send.ts (send smoke).
+
+Committed ed586eb on feat/landing-pricing-auth-hardening and pushed (84d369b..ed586eb). PR URL: https://github.com/MohammedRamiAlzend/specforge-studio/pull/new/feat/landing-pricing-auth-hardening
+
+Operational notes recorded: bun --watch does NOT reload .env (full restart required after edits); Bun auto-loads .env from CWD (SMTP scripts must run with workdir=backend); registrations send REAL emails.
+
+Next action: user restarts dev server and retries account creation; then optional tasks / parked analytics plan / merge PR.

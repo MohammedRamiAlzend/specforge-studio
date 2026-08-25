@@ -1,15 +1,16 @@
 ﻿# NEXT_ACTION
 
-STATUS NOTE (2026-08-25): ALL REQUIRED SCOPE COMPLETE — Prompts 00–20 + OPT-003 + Prompt 21 + landing polish + auth hardening (email OTP verification + password recovery, DEC-028) implemented and verified.
+STATUS NOTE (2026-08-25, cont. 3): ALL REQUIRED SCOPE COMPLETE + live SMTP delivery VERIFIED WORKING. Register-hang root cause found and fixed (see SESSION_LOG cont. 3): dotStuffed() escaped the DATA terminator ("." -> "..") so Gmail never saw end-of-data. Five SmtpMailer bugs fixed total; real email SENT OK via backend/scripts/smtp-test-send.ts.
 
 What changed since the last note:
-- Auth hardening batch IMPLEMENTED (user-requested 2026-08-25, decisions pre-approved in DEC-028): registration now ends at an emailed 6-digit code; login returns 403 EMAIL_NOT_VERIFIED until POST /auth/verify-email confirms it (that call sets the session cookie). Forgot/reset password via emailed codes; reset revokes all sessions. Hand-rolled zero-dependency SMTP mailer (node:net/node:tls, AUTH LOGIN, 465 implicit TLS / STARTTLS) with injectable Mailer via buildApp({mailer}). Migration 012 adds users.email_verified (legacy users grandfathered as verified) + otp_codes table.
-- IMPORTANT OPERATIONAL NOTE: the API now REFUSES TO START without SMTP_* env vars — the user must add their Gmail App Password settings to backend/.env (guide in docs/features/auth-otp-recovery.md).
-- Frontend: AuthPage verify/forgot/reset steps (60s resend countdown, ?return= preserved); sign-out bug FIXED (useLogout now qc.clear() + window.location.replace('/')).
-- Verification: root typecheck clean; build OK; 254 tests pass / 0 fail (33 files); smoke SMOKE TEST OK (block 23).
+- User bug round fixed: password show/hide toggle (PasswordInput/EyeIcon in AuthPage), backend/.env created from user's Gmail App Password (+ committed .env.example template), sign-out re-hardened with imperative performSignOut() in entities/user/api.ts.
+- SMTP ops tools kept: backend/scripts/smtp-diagnose.ts (credential/protocol validator) and smtp-test-send.ts (send smoke; run from workdir=backend).
+- Committed ed586eb and pushed to origin/feat/landing-pricing-auth-hardening (after 84d369b). PR URL: https://github.com/MohammedRamiAlzend/specforge-studio/pull/new/feat/landing-pricing-auth-hardening
+- Verification: backend typecheck clean; 254 tests pass / 0 fail (33 files); real Gmail delivery confirmed (user should see "SpecForge SMTP test" and "raw probe" emails in mouazalkhatib2013@gmail.com).
 
 Current next action:
-- Await user direction: approve another optional task from memory/OPTIONAL_BACKLOG.md (remaining: OPT-001 deployment packaging, OPT-002 per-type diagram templates, OPT-005 sprint planning, OPT-006 changelog generator), re-visit the PARKED full-analytics plan, provide a new requirement, or close the project. Do NOT start optional work without explicit approval.
+- User must FULLY RESTART the dev server (bun --watch does not reload .env) and retry account creation end-to-end in the browser.
+- After that: await user direction — approve an optional task from memory/OPTIONAL_BACKLOG.md (remaining: OPT-001 deployment packaging, OPT-002 per-type diagram templates, OPT-005 sprint planning, OPT-006 changelog generator), re-visit the PARKED full-analytics plan, merge the PR, provide a new requirement, or close the project. Do NOT start optional work without explicit approval.
 
 Required files to update after the next action:
 - memory/SESSION_LOG.md, memory/STATE.json, memory/PROJECT_MEMORY.md
