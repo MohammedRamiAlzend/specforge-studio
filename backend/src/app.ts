@@ -64,6 +64,26 @@ export async function buildApp(options: BuildAppOptions = {}) {
   const app = Fastify({ logger: { level: config.LOG_LEVEL } });
   registerErrorHandler(app);
 
+  // The frontend api() client always sets Content-Type: application/json, so
+  // body-less POSTs (e.g. /auth/logout) would otherwise die with
+  // FST_ERR_CTP_EMPTY_JSON_BODY BEFORE the route handler runs — silently
+  // skipping cookie/session side effects. Treat an empty JSON body as {}.
+  app.addContentTypeParser(
+    "application/json",
+    { parseAs: "string" },
+    (_request, body: string, done) => {
+      if (body === "" || body === undefined) {
+        done(null, {});
+        return;
+      }
+      try {
+        done(null, JSON.parse(body));
+      } catch (error) {
+        done(error as Error, undefined);
+      }
+    },
+  );
+
   app.get("/healthz", async () => {
     db.query("SELECT 1").get();
     return { status: "ok", db: "ok", time: new Date().toISOString() };
