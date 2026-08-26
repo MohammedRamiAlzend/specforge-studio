@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { Button } from "./Button";
 
 export interface ConfirmDialogProps {
@@ -31,9 +32,9 @@ export function ConfirmDialog({
 }: ConfirmDialogProps) {
   if (!open) return null;
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-6"
+      className="fixed inset-0 z-[100] flex min-h-screen items-center justify-center bg-slate-950/50 p-4 sm:p-6"
       onClick={busy ? undefined : onClose}
     >
       <div
@@ -62,6 +63,7 @@ export function ConfirmDialog({
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

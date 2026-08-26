@@ -101,3 +101,12 @@ Focused verification: typecheck passed; Leona provider, security regression, aut
 Reworked the dashboard sidebar collapsed state into a stable icon rail. The header now centers the brand mark and positions the expand control without squeezing the logo; collapsed links use consistent icon-only spacing; non-active icons have sufficient contrast; active indicators no longer distort the icon row; tooltips remain available through link titles; the active project card remains compact; and the footer reduces to a small status marker instead of overflowing text. Expanded navigation labels and group controls remain intact.
 
 Focused verification passed: typecheck plus dashboard, account-settings, and experience-preview tests ran 10 tests with 0 failures and 32 assertions.
+
+
+## Navigation rebuild and sign-out modal fix
+
+Replaced the legacy AppShell sidebar markup with a new `DashboardSidebar` component. The new structure has a fixed desktop rail, predictable 288px expanded and 76px collapsed widths, centered logo/icon geometry, independent collapse control, grouped project navigation, compact active-project card, accessible collapsed-link labels/tooltips, admin/settings controls, mobile drawer support, and a non-overflowing footer state.
+
+The shared `ConfirmDialog` now renders through a document-body portal. This prevents sticky headers, backdrop filters, and local stacking contexts from positioning the sign-out dialog against the top edge. The dialog uses a viewport-centered flex overlay with responsive padding and a high z-index.
+
+Verification passed: typecheck plus Dashboard and Account Settings tests ran 8 tests with 0 failures and 26 assertions.
