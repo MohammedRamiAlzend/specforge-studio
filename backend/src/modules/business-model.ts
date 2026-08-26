@@ -38,12 +38,18 @@ export const BMC_BLOCKS = [
 
 export type BmcBlock = (typeof BMC_BLOCKS)[number];
 
+export const BMC_NOTE_COLORS = ["yellow", "blue", "green", "pink", "purple", "orange"] as const;
+export type BmcNoteColor = (typeof BMC_NOTE_COLORS)[number];
+
 export interface BmcNoteRow {
   id: string;
   project_id: string;
   block: BmcBlock;
   content: string;
   sort_order: number;
+  position_x: number;
+  position_y: number;
+  color: BmcNoteColor;
   created_at: string;
   updated_at: string;
 }
@@ -54,17 +60,26 @@ export interface BmcNoteRow {
 
 const bmcBlockSchema = z.enum(BMC_BLOCKS);
 
+const colorSchema = z.enum(BMC_NOTE_COLORS);
+
 const createNoteSchema = z.object({
   project_id: z.string().min(1),
   block: bmcBlockSchema,
   content: z.string().min(1).max(2000),
   sort_order: z.number().int().optional(),
+  position_x: z.number().finite().optional(),
+  position_y: z.number().finite().optional(),
+  color: colorSchema.optional(),
 });
 
 const updateNoteSchema = z
   .object({
+    block: bmcBlockSchema.optional(),
     content: z.string().min(1).max(2000).optional(),
     sort_order: z.number().int().optional(),
+    position_x: z.number().finite().optional(),
+    position_y: z.number().finite().optional(),
+    color: colorSchema.optional(),
   })
   .strict();
 
@@ -99,10 +114,14 @@ function createNote(db: Database, input: z.infer<typeof createNoteSchema>): BmcN
     throw notFound(`Project ${input.project_id} not found`);
   }
   const id = allocateId(db, "BMC");
+  const sortOrder = input.sort_order ?? 0;
+  const blockIndex = BMC_BLOCKS.indexOf(input.block);
+  const positionX = input.position_x ?? 24 + blockIndex * 248;
+  const positionY = input.position_y ?? 96 + sortOrder * 104;
   db.query(
-    `INSERT INTO bmc_notes (id, project_id, block, content, sort_order)
-     VALUES (?, ?, ?, ?, ?)`,
-  ).run(id, input.project_id, input.block, input.content, input.sort_order ?? 0);
+    `INSERT INTO bmc_notes (id, project_id, block, content, sort_order, position_x, position_y, color)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(id, input.project_id, input.block, input.content, sortOrder, positionX, positionY, input.color ?? "yellow");
   logEvent(db, {
     projectId: input.project_id,
     entityType: "bmc",
@@ -118,8 +137,12 @@ function updateNote(db: Database, id: string, patch: z.infer<typeof updateNoteSc
   const sets: string[] = [];
   const values: (string | number | null)[] = [];
   const fields: Record<string, unknown> = {
+    block: patch.block,
     content: patch.content,
     sort_order: patch.sort_order,
+    position_x: patch.position_x,
+    position_y: patch.position_y,
+    color: patch.color,
   };
   for (const [column, value] of Object.entries(fields)) {
     if (value !== undefined) {

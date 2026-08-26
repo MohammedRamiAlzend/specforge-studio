@@ -1,0 +1,63 @@
+name: Windows desktop release
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  windows-installer:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install
+
+      - name: Configure packaged app origin
+        shell: pwsh
+        env:
+          SPECFORGE_APP_URL: ${{ vars.SPECFORGE_APP_URL }}
+        run: |
+          if (-not $env:SPECFORGE_APP_URL) { throw "Repository variable SPECFORGE_APP_URL is required for a release build." }
+          @{ appUrl = $env:SPECFORGE_APP_URL } | ConvertTo-Json | Set-Content desktop/config/app-config.json
+
+      - name: Validate signed release configuration
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        env:
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: |
+          if (-not $env:WIN_CSC_LINK) { throw "WIN_CSC_LINK secret is required for tagged signed releases." }
+          if (-not $env:WIN_CSC_KEY_PASSWORD) { throw "WIN_CSC_KEY_PASSWORD secret is required for tagged signed releases." }
+
+      - name: Build Windows installer and portable app
+        env:
+          CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: bun run desktop:dist
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: specforge-studio-windows
+          path: desktop/release/*
+          if-no-files-found: error
+
+      - name: Publish tagged Windows release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: desktop/release/*

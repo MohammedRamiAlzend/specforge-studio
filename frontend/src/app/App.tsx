@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "../widgets/layout/AppShell";
 import { PublicShell } from "../widgets/layout/PublicShell";
-import { GuestOnly, HomeGate } from "./guards";
+import { GuestOnly, HomeGate, Protected } from "./guards";
 import { ProjectDetailsPage } from "../pages/ProjectDetailsPage";
 import { ModelerPage } from "../pages/modeler/ModelerPage";
 import { CanvasPage } from "../pages/modeler/CanvasPage";
@@ -16,12 +16,14 @@ import { DocsExportPage } from "../pages/DocsExportPage";
 import { TasksPage } from "../pages/TasksPage";
 import { SkillsPage } from "../pages/SkillsPage";
 import { BusinessModelPage } from "../pages/BusinessModelPage";
-import { PresentationPage } from "../pages/PresentationPage";
+import PresentationPage from "../pages/PresentationPage";
 import { IssuesPage } from "../pages/IssuesPage";
 import { ReleasesPage } from "../pages/ReleasesPage";
 import { SettingsPage } from "../pages/SettingsPage";
+import { AccountPage } from "../pages/AccountPage";
 import { AuthPage } from "../pages/auth/AuthPage";
 import { CheckoutPage } from "../pages/billing/CheckoutPage";
+import { AdminPage } from "../pages/admin/AdminPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -38,7 +40,13 @@ export function App() {
               dashboard for signed-in users — internal paths unchanged. */}
           <Route index element={<HomeGate />} />
 
-          <Route element={<AppShell />}>
+          <Route
+            element={
+              <Protected>
+                <AppShell />
+              </Protected>
+            }
+          >
             <Route path="projects/:projectId" element={<ProjectDetailsPage />} />
             <Route path="projects/:projectId/modeler" element={<ModelerPage />} />
             <Route path="projects/:projectId/modeler/:graphId" element={<CanvasPage />} />
@@ -55,7 +63,9 @@ export function App() {
             <Route path="projects/:projectId/skills" element={<SkillsPage />} />
             <Route path="projects/:projectId/business-model" element={<BusinessModelPage />} />
             <Route path="projects/:projectId/presentation" element={<PresentationPage />} />
+            <Route path="account" element={<AccountPage />} />
             <Route path="settings" element={<SettingsPage />} />
+            <Route path="admin" element={<AdminPage />} />
           </Route>
 
           {/* Prompt 21: public marketing routes (guests only where relevant). */}

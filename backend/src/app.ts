@@ -1,9 +1,10 @@
 import Fastify from "fastify";
 import type { Database } from "bun:sqlite";
-import { loadConfig, type Config } from "./config/index";
+import { loadConfig, resolveSmtpConfig, type Config } from "./config/index";
 import { openDatabase } from "./db/index";
 import { registerErrorHandler } from "./plugins/error";
 import { registerProjectRoutes } from "./modules/projects";
+import { registerProjectMemberRoutes } from "./modules/project-members";
 import { registerRequirementRoutes } from "./modules/requirements";
 import { registerUseCaseRoutes } from "./modules/use-cases";
 import { registerWorkflowRoutes } from "./modules/workflows";
@@ -32,9 +33,12 @@ import { registerReleaseRoutes } from "./modules/releases";
 import { registerHealthRoutes } from "./modules/health";
 import { registerSearchRoutes } from "./modules/search";
 import { registerActivityRoutes } from "./modules/activity";
-import { registerAuthRoutes } from "./modules/auth";
+import { registerAuthRoutes, seedConfiguredAdmins } from "./modules/auth";
+import { registerAuthorizationHook } from "./modules/authorization";
 import { registerBillingRoutes, seedBillingPlans } from "./modules/billing";
 import { registerDashboardRoutes } from "./modules/dashboard";
+import { registerAdminRoutes } from "./modules/admin";
+import { registerLeonaRoutes } from "./modules/leona";
 import { requireSmtpMailer } from "./utils/mailer";
 import type { Mailer } from "./utils/mailer";
 
@@ -62,12 +66,36 @@ export async function buildApp(options: BuildAppOptions = {}) {
   seedNodePalette(db);
   // Prompt 21: idempotent built-in billing plans (free / plus / premium) for
   // the public landing pricing section and the subscribe flow.
-  seedBillingPlans(db);
+    seedBillingPlans(db);
+  seedConfiguredAdmins(db, config.ADMIN_EMAILS);
 
   const app = Fastify({ logger: { level: config.LOG_LEVEL } });
   registerErrorHandler(app);
 
-  // The frontend api() client always sets Content-Type: application/json, so
+  // Secure mode protects every product API by default. Public auth/plan
+  // endpoints remain available; fixture tooling must explicitly set
+  // AUTH_REQUIRED=false to retain the legacy trusted-internal mode.
+  app.addHook("onRequest", async (request, reply) => {
+    // Defense-in-depth browser protections. CSP and HSTS are deployment-aware;
+    // the frontend may be served from a separate origin and local preview uses HTTP.
+    reply.header("X-Content-Type-Options", "nosniff");
+    reply.header("X-Frame-Options", "DENY");
+    reply.header("Referrer-Policy", "strict-origin-when-cross-origin");
+    reply.header("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+
+    const origin = request.headers.origin;
+    if (origin && config.CORS_ORIGIN && origin === config.CORS_ORIGIN) {
+      reply.header("Access-Control-Allow-Origin", origin);
+      reply.header("Access-Control-Allow-Credentials", "true");
+      reply.header("Access-Control-Allow-Headers", "Content-Type");
+      reply.header("Access-Control-Allow-Methods", "GET,POST,PATCH,PUT,DELETE,OPTIONS");
+      reply.header("Vary", "Origin");
+    }
+  });
+
+  registerAuthorizationHook(app, db, config);
+
+  // Prompt 21:frontend api() client always sets Content-Type: application/json, so
   // body-less POSTs (e.g. /auth/logout) would otherwise die with
   // FST_ERR_CTP_EMPTY_JSON_BODY BEFORE the route handler runs — silently
   // skipping cookie/session side effects. Treat an empty JSON body as {}.
@@ -92,10 +120,26 @@ export async function buildApp(options: BuildAppOptions = {}) {
     return { status: "ok", db: "ok", time: new Date().toISOString() };
   });
 
+  app.options("/*", async (_request, reply) => {
+    reply.code(204);
+    return null;
+  });
+
+  app.get("/readyz", async (_request, reply) => {
+    db.query("SELECT 1").get();
+    const smtp = resolveSmtpConfig(config);
+    if (smtp.missing.length > 0) {
+      reply.code(503);
+      return { status: "not_ready", db: "ok", smtp: "missing_configuration", missing: smtp.missing };
+    }
+    return { status: "ready", db: "ok", smtp: "configured", time: new Date().toISOString() };
+  });
+
   const deps = { db, config, mailer };
   registerAuthRoutes(app, deps);
   registerBillingRoutes(app, deps);
   registerProjectRoutes(app, deps);
+  registerProjectMemberRoutes(app, deps);
   registerPlatformConfigRoutes(app, deps);
   registerLinkRoutes(app, deps);
   registerPaletteRoutes(app, deps);
@@ -123,6 +167,8 @@ export async function buildApp(options: BuildAppOptions = {}) {
   registerSearchRoutes(app, deps);
   registerActivityRoutes(app, deps);
   registerDashboardRoutes(app, deps);
+  registerAdminRoutes(app, deps);
+  registerLeonaRoutes(app, deps);
 
   return app;
 }

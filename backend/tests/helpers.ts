@@ -16,13 +16,19 @@ export const TEST_CONFIG: Config = {
   HOST: "127.0.0.1",
   DATABASE_PATH: ":memory:",
   EXPORT_DIR: "data/test-exports",
+  BACKUP_STATUS_FILE: "data/test-backup-status.json",
   LOG_LEVEL: "silent",
-  NODE_ENV: "test",
+    NODE_ENV: "test",
+  AUTH_REQUIRED: false,
+  COOKIE_SECURE: false,
+  AUTH_RATE_LIMIT_ENABLED: false,
   SMTP_HOST: "smtp.test.local",
   SMTP_PORT: 465,
   SMTP_USER: "test@specforge.local",
   SMTP_PASS: "test-password",
   SMTP_FROM: "no-reply@specforge.local",
+  ADMIN_EMAILS: "",
+  TRUSTED_SIGNUP_DOMAINS: "example.com,specforge.local,test.com,test.local",
 };
 
 /**

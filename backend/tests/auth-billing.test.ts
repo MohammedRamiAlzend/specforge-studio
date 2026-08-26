@@ -9,6 +9,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import type { FastifyInstance } from "fastify";
 import { bootAppWithMailer, createTestContext, registerVerifiedUser, request, type FakeMailer } from "./helpers";
+import { seedAdminAccount } from "../src/modules/auth";
 
 const GOOD_CARD = {
   name: "Ada Lovelace",
@@ -90,6 +91,29 @@ describe("auth & billing (Prompt 21)", () => {
     expect(res.json().error.code).toBe("VALIDATION_ERROR");
   });
 
+  test("POST /auth/register blocks email domains outside the trusted allowlist", async () => {
+    const res = await request(app, "POST", "/auth/register", {
+      name: "Spam Account",
+      email: "spam@gmail.com",
+      password: "safe-password",
+    });
+    expect(res.statusCode).toBe(403);
+    expect(res.json().error.code).toBe("SIGNUP_DOMAIN_NOT_ALLOWED");
+    expect(res.json().error.message).toContain("trusted organization email domains");
+  });
+
+  test("seedAdminAccount creates a verified global administrator with a hashed password", async () => {
+    const ctx = createTestContext();
+    const seeded = await seedAdminAccount(ctx.db);
+    expect(seeded.email).toBe("admin@specforge.com");
+    expect(seeded.email_verified).toBe(1);
+    expect(seeded.is_admin).toBe(1);
+    expect(seeded.password_hash).not.toBe("password123");
+    const seededAgain = await seedAdminAccount(ctx.db);
+    expect(seededAgain.id).toBe(seeded.id);
+    expect(ctx.db.query("SELECT COUNT(*) AS count FROM users WHERE email = ?").get("admin@specforge.com")).toEqual({ count: 1 });
+  });
+
   test("GET /auth/me without a session -> 401 UNAUTHORIZED", async () => {
     const res = await request(app, "GET", "/auth/me");
     expect(res.statusCode).toBe(401);
@@ -131,6 +155,39 @@ describe("auth & billing (Prompt 21)", () => {
     });
     expect(me.statusCode).toBe(200);
     expect(me.json().data.user.email).toBe("grace@example.com");
+  });
+
+  test("PATCH /auth/me updates only the authenticated user's display name", async () => {
+    const login = await app.inject({
+      method: "POST",
+      url: "/auth/login",
+      payload: { email: "grace@example.com", password: "compiler-queen" },
+    });
+    const token = /sf_session=([^;]+)/.exec((login.headers["set-cookie"] as string) ?? "")?.[1];
+    expect(token).toBeTruthy();
+
+    const update = await app.inject({
+      method: "PATCH",
+      url: "/auth/me",
+      headers: { cookie: `sf_session=${token}` },
+      payload: { name: "Grace Hopper · Product lead" },
+    });
+    expect(update.statusCode).toBe(200);
+    expect(update.json().data.user.name).toBe("Grace Hopper · Product lead");
+    expect(update.json().data.user.password_hash).toBeUndefined();
+
+    const me = await app.inject({
+      method: "GET",
+      url: "/auth/me",
+      headers: { cookie: `sf_session=${token}` },
+    });
+    expect(me.json().data.user.name).toBe("Grace Hopper · Product lead");
+  });
+
+  test("PATCH /auth/me without a session -> 401 UNAUTHORIZED", async () => {
+    const res = await request(app, "PATCH", "/auth/me", { name: "Should fail" });
+    expect(res.statusCode).toBe(401);
+    expect(res.json().error.code).toBe("UNAUTHORIZED");
   });
 
   test("POST /auth/login with wrong password -> 401 INVALID_CREDENTIALS message", async () => {

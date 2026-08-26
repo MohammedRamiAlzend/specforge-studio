@@ -5,13 +5,17 @@
   "type": "module",
   "workspaces": [
     "backend",
-    "frontend"
+    "frontend",
+    "desktop"
   ],
   "scripts": {
     "dev": "concurrently -k -n api,web -c blue,green \"bun run --cwd backend dev\" \"bun run --cwd frontend dev\"",
     "build": "bun run --cwd frontend build",
     "typecheck": "tsc -b --noEmit",
-    "test": "bun test backend/tests frontend/tests"
+    "test": "bun test backend/tests frontend/tests",
+    "desktop:dev": "bun run --cwd desktop dev",
+    "desktop:dist": "bun run --cwd desktop dist",
+    "desktop:dist:dir": "bun run --cwd desktop dist:dir"
   },
   "devDependencies": {
     "@types/bun": "latest",

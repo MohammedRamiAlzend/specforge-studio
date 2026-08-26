@@ -12,12 +12,10 @@ const mockSlides = [
 ];
 
 const mockData = {
-  data: {
-    project: { id: "PRJ-0001", name: "Test Project", description: null, status: "active" },
-    stacks: [],
-    slides: mockSlides,
-    generated_at: "2026-08-25T12:00:00.000Z",
-  },
+  project: { id: "PRJ-0001", name: "Test Project", description: null, status: "active" },
+  stacks: [],
+  slides: mockSlides,
+  generated_at: "2026-08-25T12:00:00.000Z",
 };
 
 function renderPage(projectId = "PRJ-0001") {
@@ -55,8 +53,22 @@ describe("PresentationPage", () => {
     expect(html).toContain("Login flow");
   });
 
-  it("contains the download button", () => {
+  it("contains the download and presentation studio tools", () => {
     const html = renderPage();
     expect(html).toContain("Download .pptx");
+    expect(html).toContain("Presentation Studio");
+    expect(html).toContain("Edit deck");
+    expect(html).toContain("Speaker notes");
+    expect(html).toContain("Duplicate");
+    expect(html).toContain("Present");
+    expect(html).toContain("+ Text");
+    expect(html).toContain("+ Image");
+    expect(html).toContain("+ Shape");
+    expect(html).toContain("PowerPoint tools");
+    expect(html).toContain("Open Presenter View");
+    expect(html).toContain("Format &amp; design");
+    expect(html).toContain("Select an element");
+    expect(html).toContain("resize handles");
+    expect(html).toContain("Text color");
   });
 });

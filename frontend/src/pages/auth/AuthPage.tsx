@@ -449,6 +449,11 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
                 {isRegister
                   ? "Start forging specs in minutes."
                   : "Sign in to continue to your workspace."}
+                {isRegister ? (
+                  <span className="mt-1 block text-xs text-slate-500">
+                    Registration is limited to trusted organization email domains.
+                  </span>
+                ) : null}
               </p>
 
               <form onSubmit={onSubmit} className="mt-8 space-y-4" noValidate>

@@ -358,3 +358,174 @@ The agent must never start optional work without approval.
 - LANDING / PRICING / AUTH COMPLETE (2026-08-24, DEC-026) + OPT-004 skill matching (DEC-027) + landing polish batch: public landing with live pricing from GET /plans ($0/$19/$49, yearly $190/$490), mock-card checkout (Luhn; test card 4242…), SQLite cookie sessions (USR/SES/SUB ids), SVG anvil-spark Logo + scroll-spy nav + useAutoReveal fix + modern footer + /#anchors. FEAT-014/FEAT-015.
 - AUTH HARDENING COMPLETE (2026-08-25, DEC-028): email OTP verification now gates login (403 EMAIL_NOT_VERIFIED); register emails a 6-digit code and POST /auth/verify-email consumes it, marks the account verified and sets the session cookie; forgot/reset password via emailed codes (anti-enumeration, reset revokes all sessions; codes SHA-256 hashed, 10-min expiry, 5-attempt CODE_LOCKED, 60s resend RATE_LIMITED). Hand-rolled zero-dependency SMTP mailer (node:net/node:tls, AUTH LOGIN, 465 implicit TLS / STARTTLS) injected through buildApp({mailer}); SMTP_* env vars are HARD-REQUIRED at startup — backend/.env needs Gmail App Password settings (guide: docs/features/auth-otp-recovery.md, FEAT-017). Migration 012: users.email_verified (legacy users grandfathered as verified via migrate0012EmailVerified patch in db/index.ts; fresh installs keep new registrations unverified) + otp_codes table. Frontend AuthPage gained verify/forgot/reset steps (60s resend countdown, ?return= preserved); sign-out bug FIXED (useLogout: qc.clear() + window.location.replace('/')). Tests: FakeMailer/bootAppWithMailer/registerVerifiedUser helpers; auth-otp.test.ts (10 cases); smoke block 23. Verified: typecheck clean, build OK, 254 tests pass / 0 fail (33 files), SMOKE TEST OK.
 - PARKED PLAN (not approved): full analytics — workspace /analytics page + per-project /projects/:id/analytics + dashboard strip using hand-built SVG charts (StatCard/BarList/DonutRing/Sparkline), GET /analytics/workspace + GET /projects/:id/analytics reusing computeProjectHealth/collectValidationWarnings/buildSkillMatchReport/event_log time-series, FEAT-016. Do NOT start without explicit user approval.
+
+
+## Technical Assessment — 2026-08-25
+
+- User requested a deep project analysis of `D:\specforge-studio`; the completed report is `docs/reviews/technical-assessment-2026-08-25.md`.
+- Assessment was non-destructive. The local dependency tree was initially incomplete (package folders existed without package contents), so it was rebuilt from `bun.lock` using `bun install --frozen-lockfile`; no source or lockfile changes resulted.
+- Verification after the clean dependency restore: `bun test backend/tests frontend/tests` passed 295 tests / 0 failures / 1,339 assertions; `bun run --cwd backend smoke` reported `SMOKE TEST OK`.
+- Release blockers found: root `bun run typecheck` and `bun run build` fail with 11 TypeScript errors. The main defects are in the PresentationPage integration (default/named export mismatch, invalid Axios-style calls against the functional API client, unsupported Button props, and unsafe indexed slide access), plus two strict test typing errors.
+- High-priority architecture finding: public user/session functionality does not provide project authorization or tenant isolation; existing internal APIs intentionally remain open. Treat the system as a trusted internal workspace only unless an ownership/membership/role authorization model is explicitly approved and implemented.
+- Additional prioritized findings: cross-origin cookie deployment is incomplete, SMTP is a hard startup dependency with no visible readiness/operational mitigation, and the repository has no CI/deployment/backup packaging. The report provides a remediation sequence; no optional work was started.
+
+
+## Implementation Batch — 2026-08-25
+
+The user approved execution of priorities 1–7 from the technical assessment. The batch repaired the presentation TypeScript/build regressions and restored passing `bun run typecheck` and `bun run build`.
+
+Authorization hardening added secure-by-default `AUTH_REQUIRED`, additive `project_members` migration 015, owner membership creation, project list/read/update isolation, centralized project-scope checks for common route/query/body/id shapes, project-member CRUD routes, and frontend protected workspace routes. Auth operations now support explicit Secure cookies, exact credentialed CORS, per-app throttling, and public `/readyz` readiness reporting. The frontend API sends credentials and the AppShell navigation is grouped into Planning, Design, and Outputs.
+
+Delivery work added CI quality gates, backend/frontend Dockerfiles, Nginx SPA/proxy configuration, Compose with a persistent SQLite volume, `.dockerignore`, operations documentation, and an executable SQLite backup helper. Docker execution was not possible because Docker is not installed on the attached Windows machine.
+
+Verification passed after the implementation: typecheck; production build; backend suite (198 tests across 24 files); frontend suite (100 tests across 18 files); authorization regression tests (3 tests); targeted auth-billing tests (14 tests); and backend smoke (`SMOKE TEST OK`).
+
+No new unapproved backlog feature was started. OPT-003 and OPT-004 were already implemented. OPT-005 Sprint Planning, OPT-006 Issue-to-Release/Changelog, and the parked analytics plan remain pending explicit feature-level approval.
+
+
+## Business Model and Presentation Visual Integration — 2026-08-25
+
+The user approved a full visual and integration pass for Business Model and Presentation. Added reusable `frontend/src/widgets/experience/ExperiencePreview.tsx` components with dark/glass previews for the nine-block Business Model Canvas and generated pitch presentation. Dashboard now includes quick-action cards for the most recently visible project, linking directly to Business Model and Presentation.
+
+The public landing page now includes a dedicated “Build the case, then tell the story” showcase section with both previews and calls to action. The internal Business Model page now has a dark strategy hero, per-block note counts, color-coded canvas accents, and a project return action while preserving note CRUD. The internal Presentation page now has a dark narrative hero, metadata chips, project return action, improved slide cards, and preserved PPTX download, navigation, keyboard, and print behavior.
+
+Verification: typecheck passed; production build passed; focused frontend tests passed (16 tests across four files); new preview tests passed; complete frontend suite passed with 102 tests across 19 files and 0 failures. Existing server functionality was preserved.
+
+
+## Dashboard User-Flow Test — 2026-08-25
+
+Started the development preview on the attached Windows machine at frontend port 5173 and backend port 3000. The landing page responded with HTTP 200 and contained the expected SpecForge markers. The backend `/healthz` endpoint responded successfully with database status `ok`. An anonymous dashboard summary request returned HTTP 401 as intended.
+
+The first disposable registration attempt was made against the raw backend `/api/auth/register` path and exposed a route-prefix mismatch: the backend routes are unprefixed while the frontend Vite proxy owns the `/api` prefix. The actual user-facing frontend proxy path `http://127.0.0.1:5173/api/auth/register` succeeded with HTTP 201. The centralized authorization hook was updated to normalize an optional `/api/` prefix so public authentication and protected route checks behave consistently across proxy and direct-server contexts. Typecheck and authorization tests passed after the fix.
+
+Full browser rendering could not be completed through the sandbox browser because it could not connect to the attached Windows localhost/LAN preview. The local Windows HTTP checks verified the served landing page, API health, anonymous dashboard protection, and user-facing registration path. A verified dashboard session still requires an accessible mailbox or user-provided credentials because registration correctly requires email verification.
+
+
+## Dashboard Side Navigation Redesign — 2026-08-25
+
+The dashboard workspace shell was redesigned for user clarity and faster navigation. The side navigation now uses clearer Plan, Design, and Outputs groups; collapsible group headers; route-aware active states with accent indicators; familiar SVG glyphs; project context with an active-project card and overview action; a no-project empty state; and improved labels/tooltips. The desktop sidebar width was increased for readability.
+
+On smaller screens, navigation is now a slide-in drawer with backdrop dismissal, close controls, automatic closing after route changes, and a compact top bar with hamburger access, logo, and current project context. The navigation remains keyboard-accessible through real buttons and links with `aria-expanded`, `aria-label`, `title`, and active-route semantics.
+
+Verification passed: typecheck; complete frontend suite (102 tests across 19 files, 0 failures); and production build. The build still emits the existing Vite chunk-size advisory but completes successfully.
+
+
+## Guided Dashboard Redesign — 2026-08-25
+
+The dashboard was redesigned from a dense project list into a guided command center. The new layout leads with a modern dark hero and personalized greeting, makes “New project” prominent, explains that Business Model and Presentation are created inside a project, and provides direct actions: “Create Business Model” opens the per-project nine-block canvas, while “Generate Presentation” opens the live project-generated pitch deck. It also includes a simple three-step recommended flow: define the business, model the system, and share the story.
+
+The project list remains available below the guided area with filtering, sorting, health, and activity. A dedicated no-project state explains the required sequence and provides a direct create-project action. The existing “Welcome back, <name>” greeting contract was preserved after regression testing.
+
+Verification passed: typecheck; dashboard regression tests (6 pass); and production build. The build still emits the existing Vite large-chunk advisory but completes successfully.
+
+
+## Settings and Account Navigation Pass — 2026-08-25
+
+The settings and account experience was redesigned in response to user feedback. `AppShell` no longer places the account/sign-out control in the scrollable sidebar footer; a persistent `AccountMenu` now appears in the desktop header and mobile top bar with avatar initials, display name, email, plan badge, Profile, Billing, Workspace settings, and confirmed Sign out actions. The old `AccountChip` remains only as a compatibility re-export.
+
+A dedicated protected `/account` route was added through `AccountPage`. It shows editable display name, email verification state, member-since date, account ID, and current plan. The backend now exposes an authenticated name-only `PATCH /auth/me` endpoint, updates the React Query cache, and records `profile_updated` in the audit log. Password, email, and payment-secret mutation are not exposed.
+
+`SettingsPage` was simplified to two areas: Workspace and Billing. Workspace groups advanced Project setup and Node palette configuration; Billing keeps subscription and invoice management. The low-value Environment and Reference tabs were removed from the normal user-facing settings IA. Focused account/settings frontend tests and auth-billing profile tests were added. Typecheck passed; the focused dashboard, account/settings, and auth-billing suites passed. Full frontend-suite execution remained affected by the existing runner hang and should be retried separately if needed.
+
+
+## Branding and Admin Monitoring Audit — 2026-08-25
+
+The shared SpecForge mark was replaced across the React application and browser favicon. The new mark is a blueprint-style system symbol: a central forge-colored node connected to four rails on a dark technical tile. It contains no letter-based SF monogram or generated wordmark and remains scalable at landing, dashboard, and favicon sizes.
+
+The landing footer was rebuilt as a commercial and technical product footer. It now includes a stronger conversion band, explicit engineering positioning, DB-first and traceability proof points, product capability links, account and plan entry points, and a more credible plans-at-a-glance section. The existing no-unapproved-SaaS and simulated-checkout constraints remain unchanged.
+
+An admin-monitoring audit was documented in `docs/reviews/admin-monitoring-audit-2026-08-25.md` as AUDIT-002. The result is that admin monitoring is not complete: current foundations include user dashboard aggregation, project health analytics, user-scoped billing, public `/healthz`, and public `/readyz`; missing are a protected global admin role, admin plan catalog, admin subscription management, admin payment inspection, safe operations dashboard, and admin access-control routes. The project’s scenario matrix requires these surfaces before admin monitoring can be considered done.
+
+Verification passed after this pass: root typecheck, production build, focused landing/UI-polish tests (17). The Vite large-chunk message remains advisory only. Human visual review is still recommended in the running preview.
+
+
+## Checkpoint 2026-08-26 — Protected admin monitoring and Windows application path
+
+The user approved the saved preview review and the security-sensitive admin-control-plane work, then added a Windows dashboard-application requirement. The attached Windows preview was restarted and returned HTTP 200 for the landing page and backend health endpoint. A sandbox browser could not connect to the attached Windows localhost for visual inspection, so visual review remains a human-preview limitation.
+
+The admin implementation adds `users.is_admin` via additive migration 016, legacy-database fallback migration logic, exact-email `ADMIN_EMAILS` bootstrap, a `requireAdmin` guard, and centralized protection for `/admin/*`. The protected API now includes operations overview, safe counts, SMTP/readiness and migration metadata, recent audit events, plan listing and safe metadata editing, masked subscription search with audited cancel/reactivate actions, and masked invoice inspection. The frontend adds a protected `/admin` route, conditional Admin operations navigation, operations cards, plan visibility, subscription actions, invoices, and audit events. Real payment charging remains out of scope.
+
+The Windows application path is an Electron shell under `desktop/`. It reuses the hosted React dashboard and does not create a second backend or local database. The shell uses context isolation, sandboxing, disabled Node integration, same-origin navigation restrictions, and configurable `SPECFORGE_APP_URL` or packaged JSON configuration. Root scripts expose desktop development and distribution commands. A Windows GitHub Actions workflow builds NSIS and portable artifacts and publishes tagged releases. The landing CTA/footer activates a real installer link only when `VITE_WINDOWS_DOWNLOAD_URL` is configured; otherwise it says the release is preparing and avoids a misleading fake download.
+
+Final verification for this checkpoint: backend admin tests passed (3 tests, 0 failures), root typecheck passed, production frontend build passed, and focused dashboard/account/UI tests passed (10 tests, 0 failures in the final run). The local Windows packaging check reached electron-builder and downloaded Electron but was stopped before an installer artifact was produced; the reproducible release path is the Windows CI workflow. Release completion still requires production `ADMIN_EMAILS`, backup telemetry, a real deployed app URL, Authenticode signing, published installer assets, and a frontend rebuild with `VITE_WINDOWS_DOWNLOAD_URL`.
+
+
+## Checkpoint 2026-08-26 — Release requirements execution
+
+The user requested that all remaining release requirements be completed. Backup telemetry is now implemented: `ops/backup.sh` writes an integrity-verified `last-backup.json` record, the backend reads it through `BACKUP_STATUS_FILE`, `/admin/overview` reports fresh/stale/not-reported status and age, Docker includes the sqlite3 CLI and backup helper, Compose persists `/app/backups`, and `ops/backup.cron.example` provides a daily host schedule.
+
+The Windows desktop package was corrected and built successfully. Missing Electron source/config files were restored, the archive glob was fixed, the branded `desktop/assets/icon.ico` was added, and electron-builder generated `SpecForge-Studio-0.1.0-win-x64.exe` plus its blockmap. The Windows workflow now validates signing secrets for tagged releases and maps `WIN_CSC_LINK`/`WIN_CSC_KEY_PASSWORD` to electron-builder signing variables. The local artifact is a QA build; public release still requires certificate-backed signing and publication.
+
+Verification: admin tests passed 3/3; root typecheck passed; production frontend build passed; focused UI tests passed previously 10/10; Windows `bun run desktop:dist` exited 0 and produced the installer artifact. WSL/bash syntax verification could not run because virtualization/Hyper-V is unavailable on the attached machine; the backup shell syntax was inspected and the runtime helper is intended for the Linux backend image.
+
+Remaining external actions are production-only: set `ADMIN_EMAILS`, install the backup cron entry on the Docker host, set a real HTTPS `SPECFORGE_APP_URL`, configure Authenticode secrets in GitHub, run the signed tagged release workflow, publish the installer, set `VITE_WINDOWS_DOWNLOAD_URL`, redeploy the frontend, and perform human visual review in the attached preview. Docker execution and real deployment cannot be verified without the host environment and credentials.
+
+
+## Checkpoint 2026-08-26 — Trusted signup domains and seeded administrator
+
+The requested administrator was seeded into the local database through the explicit `bun run --cwd backend seed-admin` command as `admin@specforge.com` with the requested password `password123`; the account is verified, global-admin, idempotent, and stores only a password hash. The seed command accepts environment overrides and is not run automatically during server boot.
+
+New registrations are now restricted by `TRUSTED_SIGNUP_DOMAINS`, defaulting to `specforge.com` and allowing exact domains plus subdomains. Registrations outside the allowlist are rejected before user/OTP creation with `SIGNUP_DOMAIN_NOT_ALLOWED`; existing accounts remain able to sign in. The auth UI explains the trusted-work-email requirement. Test configuration explicitly allows its fixture domains.
+
+Verification: 18 auth/billing tests passed, including blocked-domain and idempotent-admin-seed coverage; root typecheck passed; production frontend build passed. Documentation added at `docs/features/auth-domain-policy.md`; backend environment example documents the allowlist and seed command.
+
+
+## Checkpoint 2026-08-26 — Landing Windows download activated
+
+The landing page no longer shows a disabled “Windows app · soon” state. The verified 84 MB `SpecForge-Studio-0.1.0-win-x64.exe` artifact is bundled at `frontend/public/downloads/SpecForge-Studio-0.1.0-win-x64.exe`, and `PublicShell` defaults to the same-site `/downloads/...` URL. `VITE_WINDOWS_DOWNLOAD_URL` remains available as an optional override for a later signed GitHub release. The built `frontend/dist` contains the installer and the running preview serves it with HTTP 200 and `application/octet-stream`.
+
+Verification: landing tests passed, root typecheck passed, and production build passed. The test suite now asserts the download href and rejects the old “soon” placeholder.
+
+
+## Checkpoint 2026-08-26 — Business Model Canvas and Presentation Studio enhancement
+
+The Business Model Canvas was upgraded from a rigid nine-block CRUD grid into a spatial Miro-style board. Nine canonical frames remain the source structure, and notes are now color-coded sticky cards with drag placement, persisted `position_x`/`position_y`, colors, block reassignment, inspector editing, filtering, zoom/fit controls, mini-map, add-note flow, and automatic save behavior. Additive migration 017 and the BMC API support position, color, and block updates; legacy notes use deterministic fallback positions.
+
+The Presentation page was upgraded into Presentation Studio with thumbnails, current-slide editing, talking-point add/remove, slide add/duplicate/delete/reorder, Paper/Graphite/Violet themes, zoom, grid, speaker notes, presenter mode with full-screen navigation/progress, keyboard shortcuts, reset-to-live-data, and explicit synced/local-edit state. Existing live-data generation, print rendering, and PPTX download remain intact.
+
+Verification: focused backend BMC suite 6/6; focused frontend BMC/Presentation suites 8/8 with 60 assertions; backend Presentation suite 4/4; root typecheck passed; production build passed; preview landing/BMC/Presentation/health routes returned HTTP 200. Full frontend test invocation stalled without output and was stopped; focused suites passed.
+
+
+## Workflow Rule — Per-session Markdown results (2026-08-26)
+
+The user requires every completed session result to be saved as a dedicated English Markdown file inside `docs/session-results/`. The directory includes a README naming convention, and the latest completed BMC/Presentation session is recorded in `docs/session-results/2026-08-26-bmc-presentation-studio.md`. Future sessions must create a new dated result file in addition to updating the memory logs.
+
+
+## Checkpoint 2026-08-26 — Authenticated workflow and exports
+
+Signed in successfully as `mouazalkhatib2022@gmail.com`. The Free plan correctly blocked creation of a second project with `PLAN_LIMIT_REACHED`; after user approval, the existing project `PRJ-0002` (`mouaz res`) was used. The project now has nine BMC notes across all nine blocks, and the presentation data endpoint returns nine slides. Docs generation created `DOCS-0001` with 38 Markdown files, and the complete ZIP download was verified at `ops/PRJ-0002-workspace.zip`.
+
+The BMC now exposes direct `Export MD` and `Export JSON` actions. Markdown is the recommended human-facing format; JSON is available for structured integrations and backups; the Docs workspace ZIP is the best complete-project handoff. Focused backend/frontend tests passed with 79 assertions, root typecheck passed, and the production build passed. The detailed user-facing result is saved at `docs/session-results/2026-08-26-authenticated-export-workflow.md`.
+
+
+## Checkpoint 2026-08-26 — Fixed dashboard and Presentation editor
+
+The dashboard shell now uses `h-screen overflow-hidden`; the desktop sidebar is fixed to the viewport while the main workspace scrolls independently, and mobile drawer behavior is preserved. Presentation Studio was rebuilt with a PowerPoint-inspired local editor: add/select/edit text, images, and shapes; use common Microsoft-style font choices; upload images or set image URLs; change shape type/color; move elements with directional controls; reorder layers; remove elements; manage slides; and enter a redesigned Presenter View with clean navigation and progress.
+
+The backend live presentation and PPTX contracts remain unchanged. Arbitrary slide elements are local working-draft state with reset-to-live-data behavior. Root typecheck and production build passed; Presentation tests passed 4/4 with 18 assertions; dashboard/account/settings tests passed 12/12 with 37 assertions; connected preview routes returned HTTP 200. The detailed result is saved at `docs/session-results/2026-08-26-dashboard-presentation-editor.md`.
+
+
+## Checkpoint 2026-08-26 — Presentation canvas resizing and colors
+
+Presentation Studio now renders four direct corner resize handles on selected text, image, and shape elements. Pointer resizing updates bounded local canvas percentages with minimum sizes and keeps elements within the slide. Text has a live Text color picker; shapes have a live Color picker for rectangle, circle, and line variants. Slide elements use accessible selectable containers rather than nested buttons. Typecheck, production build, and the Presentation regression suite passed (4 tests, 20 assertions). The detailed result is saved at `docs/session-results/2026-08-26-presentation-resize-colors.md`.
+
+
+## Navigation and project-generation agent checkpoint — 2026-08-26
+
+Added a desktop dashboard sidebar collapse/expand control with a double-chevron icon. Collapsed mode becomes a tooltip-enabled icon rail, keeps active indicators, adjusts the content margin, and persists the preference locally; mobile remains a full drawer. Focused dashboard/UI-polish tests passed and root typecheck passed.
+
+Studied the proposed project-generation agent. The intended workflow is database-backed context snapshot from Business Model, Presentation, Markdown, requirements, model graphs, roadmap, skills, and governance; sensitive-value filtering; strict structured draft; validation; user approval; artifact materialization; and exports. A hybrid commercial model is proposed: customer-owned keys for flexibility and lower SpecForge variable cost, plus SpecForge-managed provider access on paid plans with quotas, model tiers, cost controls, and admin audit/kill-switch operations. OpenAI is the initial managed-provider candidate, with Anthropic and Gemini as later adapters, based on official pricing/privacy pages retrieved 2026-08-26. External provider credential storage and managed billing remain pending explicit provider/storage approval. Detailed design: `docs/features/project-generation-agent.md`. Session result: `docs/session-results/2026-08-26-nav-and-project-agent-design.md`.
+
+
+## Leona Agent overlay and plan messaging — 2026-08-26
+
+Added a global Leona Agent dashboard launcher and overlay. The UI explains the four-step project-aware flow: read project context, build a structured draft, review the diff, then approve and export. It presents BYOK and SpecForge-managed provider modes and links to provider settings, but does not collect raw credentials before the provider adapter and secret-storage approach are approved.
+
+Updated built-in landing plan copy so Free and Plus describe customer-owned provider keys and Premium describes managed-provider access subject to usage policy. Existing plan rows merge the new capability text without overwriting administrator-customized feature copy. Added a Leona pricing explainer to the landing page. Focused landing/dashboard/UI tests and root typecheck passed. Session result: `docs/session-results/2026-08-26-leona-agent-overlay-and-plans.md`.
+
+Pending: explicit approval for OpenAI as first managed provider and encrypted/reference-based production secret storage before implementing external calls, Premium entitlement enforcement, quotas, admin provider controls, context snapshot, draft validation, and materialization.
+
+
+## Project gap analysis � 2026-08-26
+
+Created docs/session-results/2026-08-26-project-gap-analysis.md and added it to docs/analysis-index.md. The core platform is implemented, while Leona backend/provider integration, secure provider persistence, AI quotas, production security hardening, green full verification, real payments, production deployment, visual QA, Docker verification, Presentation draft persistence, bundle optimization, and repository cleanup/commit remain incomplete or conditional. Recommended order: green tests, secure Leona backend, AI controls, production hardening, then distribution and QA.

@@ -22,7 +22,7 @@ import type { Database } from "bun:sqlite";
 import type { Deps } from "../types";
 import { allocateId } from "../utils/ids";
 import { logEvent } from "../utils/events";
-import { AppError, badRequest, conflict, unauthorized } from "../utils/errors";
+import { AppError, badRequest, conflict, unauthorized, forbidden } from "../utils/errors";
 
 // ---------------------------------------------------------------------------
 // Row + view shapes
@@ -34,6 +34,7 @@ export interface UserRow {
   name: string;
   password_hash: string;
   email_verified: number;
+  is_admin: number;
   created_at: string;
   updated_at: string;
 }
@@ -62,6 +63,7 @@ export interface PublicUser {
   email: string;
   name: string;
   email_verified: boolean;
+  is_admin: boolean;
   created_at: string;
 }
 
@@ -73,6 +75,7 @@ const OTP_MAX_ATTEMPTS = 5;
 const OTP_RESEND_COOLDOWN_MS = 60 * 1000;
 
 export const EMAIL_NOT_VERIFIED = "EMAIL_NOT_VERIFIED";
+export const SIGNUP_DOMAIN_NOT_ALLOWED = "SIGNUP_DOMAIN_NOT_ALLOWED";
 
 // ---------------------------------------------------------------------------
 // Validation schemas
@@ -91,6 +94,10 @@ const loginSchema = z.object({
 
 const emailSchema = z.object({
   email: z.string().email().max(200).toLowerCase().trim(),
+});
+
+const profileSchema = z.object({
+  name: z.string().min(1).max(120).trim(),
 });
 
 const verifyEmailSchema = z.object({
@@ -135,12 +142,12 @@ function sha256(value: string): string {
 const hashToken = sha256;
 const hashOtp = sha256;
 
-function sessionCookie(token: string): string {
-  return `${SESSION_COOKIE}=${token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${SESSION_TTL_SECONDS}`;
+function sessionCookie(token: string, secure: boolean): string {
+  return `${SESSION_COOKIE}=${token}; HttpOnly; Path=/; SameSite=Lax; Max-Age=${SESSION_TTL_SECONDS}${secure ? "; Secure" : ""}`;
 }
 
-function clearSessionCookie(): string {
-  return `${SESSION_COOKIE}=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0`;
+function clearSessionCookie(secure: boolean): string {
+  return `${SESSION_COOKIE}=; HttpOnly; Path=/; SameSite=Lax; Max-Age=0${secure ? "; Secure" : ""}`;
 }
 
 function expiryDate(): string {
@@ -166,6 +173,37 @@ export function getUserById(db: Database, id: string): UserRow | undefined {
   return db.query("SELECT * FROM users WHERE id = ?").get(id) as UserRow | undefined;
 }
 
+/** Grants admin access only to exact, operator-configured email addresses. */
+export function seedConfiguredAdmins(db: Database, adminEmails: string): void {
+  const emails = adminEmails
+    .split(",")
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean);
+  for (const email of emails) {
+    db.query("UPDATE users SET is_admin = 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE email = ?").run(email);
+  }
+}
+
+/** Explicit seed utility for a verified local/operator account. */
+export async function seedAdminAccount(
+  db: Database,
+  email = "admin@specforge.com",
+  password = "password123",
+  name = "SpecForge Administrator",
+): Promise<UserRow> {
+  const normalizedEmail = email.trim().toLowerCase();
+  const existing = getUserByEmail(db, normalizedEmail);
+  const passwordHash = await Bun.password.hash(password);
+  if (existing) {
+    db.query("UPDATE users SET name = ?, password_hash = ?, email_verified = 1, is_admin = 1, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?").run(name, passwordHash, existing.id);
+    return getUserById(db, existing.id) as UserRow;
+  }
+  const id = allocateId(db, "USR");
+  db.query("INSERT INTO users (id, email, name, password_hash, email_verified, is_admin) VALUES (?, ?, ?, ?, 1, 1)").run(id, normalizedEmail, name, passwordHash);
+  logEvent(db, { entityType: "user", entityId: id, action: "admin_seeded", actor: "system", actorType: "system", payload: { email: normalizedEmail } });
+  return getUserById(db, id) as UserRow;
+}
+
 function createSession(db: Database, userId: string): string {
   const token = newSessionToken();
   db.query(
@@ -189,12 +227,20 @@ export function requireUser(db: Database, request: FastifyRequest): UserRow {
   return user;
 }
 
+/** Resolves a signed-in global administrator or throws 403. */
+export function requireAdmin(db: Database, request: FastifyRequest): UserRow {
+  const user = requireUser(db, request);
+  if (user.is_admin !== 1) throw forbidden("Global administrator access is required.");
+  return user;
+}
+
 export function toPublicUser(user: UserRow): PublicUser {
   return {
     id: user.id,
     email: user.email,
     name: user.name,
     email_verified: user.email_verified === 1,
+    is_admin: user.is_admin === 1,
     created_at: user.created_at,
   };
 }
@@ -334,11 +380,28 @@ function resetEmail(name: string, code: string): { subject: string; text: string
 // Service layer
 // ---------------------------------------------------------------------------
 
+function trustedDomains(value: string): string[] {
+  return value.split(",").map((domain) => domain.trim().toLowerCase().replace(/^@/, "")).filter(Boolean);
+}
+
+function isTrustedSignupEmail(email: string, configuredDomains: string): boolean {
+  const domain = email.slice(email.lastIndexOf("@") + 1).toLowerCase();
+  return trustedDomains(configuredDomains).some((trusted) => domain === trusted || domain.endsWith(`.${trusted}`));
+}
+
 async function registerUser(
   db: Database,
   mailer: Deps["mailer"],
   input: z.infer<typeof registerSchema>,
+  configuredDomains: string,
 ): Promise<PublicUser> {
+  if (!isTrustedSignupEmail(input.email, configuredDomains)) {
+    throw new AppError(
+      SIGNUP_DOMAIN_NOT_ALLOWED,
+      "Sign-up is limited to trusted organization email domains. Use an approved work email or contact your administrator.",
+      403,
+    );
+  }
   if (getUserByEmail(db, input.email)) {
     throw conflict(`An account with ${input.email} already exists.`);
   }
@@ -399,7 +462,23 @@ function logoutUser(db: Database, request: FastifyRequest): void {
 // ---------------------------------------------------------------------------
 
 export function registerAuthRoutes(app: FastifyInstance, deps: Deps): void {
-  const { db, mailer } = deps;
+  const { db, mailer, config } = deps;
+  const authRateBuckets = new Map<string, { count: number; resetAt: number }>();
+
+  function enforceAuthRateLimit(request: FastifyRequest, bucket: string, limit: number, windowMs: number): void {
+    if (!config.AUTH_RATE_LIMIT_ENABLED) return;
+    const now = Date.now();
+    const key = `${bucket}:${request.ip}`;
+    const current = authRateBuckets.get(key);
+    if (!current || current.resetAt <= now) {
+      authRateBuckets.set(key, { count: 1, resetAt: now + windowMs });
+      return;
+    }
+    if (current.count >= limit) {
+      throw new AppError("RATE_LIMITED", "Too many attempts. Please try again later.", 429);
+    }
+    current.count += 1;
+  }
 
   /** Verifies an emailed code, marks the account verified, opens a session. */
   async function completeVerification(email: string, code: string): Promise<{ user: PublicUser; token: string }> {
@@ -425,8 +504,9 @@ export function registerAuthRoutes(app: FastifyInstance, deps: Deps): void {
   }
 
   app.post("/auth/register", async (request, reply) => {
+    enforceAuthRateLimit(request, "register", 5, 10 * 60 * 1000);
     const body = registerSchema.parse(request.body);
-    const user = await registerUser(db, mailer, body);
+    const user = await registerUser(db, mailer, body, config.TRUSTED_SIGNUP_DOMAINS);
     reply.code(201);
     return { data: { user, otp_sent: true } };
   });
@@ -434,11 +514,12 @@ export function registerAuthRoutes(app: FastifyInstance, deps: Deps): void {
   app.post("/auth/verify-email", async (request, reply) => {
     const body = verifyEmailSchema.parse(request.body);
     const { user, token } = await completeVerification(body.email, body.code);
-    reply.header("Set-Cookie", sessionCookie(token));
+    reply.header("Set-Cookie", sessionCookie(token, config.COOKIE_SECURE));
     return { data: { user } };
   });
 
   app.post("/auth/resend-otp", async (request, reply) => {
+    enforceAuthRateLimit(request, "resend-otp", 5, 10 * 60 * 1000);
     const body = emailSchema.parse(request.body);
     const user = getUserByEmail(db, body.email);
     if (user && user.email_verified !== 1) {
@@ -451,15 +532,16 @@ export function registerAuthRoutes(app: FastifyInstance, deps: Deps): void {
   });
 
   app.post("/auth/login", async (request, reply) => {
+    enforceAuthRateLimit(request, "login", 10, 60 * 1000);
     const body = loginSchema.parse(request.body);
     const { user, token } = await loginUser(db, body);
-    reply.header("Set-Cookie", sessionCookie(token));
+    reply.header("Set-Cookie", sessionCookie(token, config.COOKIE_SECURE));
     return { data: { user } };
   });
 
   app.post("/auth/logout", async (request, reply) => {
     logoutUser(db, request);
-    reply.header("Set-Cookie", clearSessionCookie());
+    reply.header("Set-Cookie", clearSessionCookie(config.COOKIE_SECURE));
     return { data: { ok: true } };
   });
 
@@ -468,7 +550,26 @@ export function registerAuthRoutes(app: FastifyInstance, deps: Deps): void {
     return { data: { user: toPublicUser(user) } };
   });
 
+  app.patch("/auth/me", async (request) => {
+    const user = requireUser(db, request);
+    const body = profileSchema.parse(request.body);
+    db.query(
+      "UPDATE users SET name = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?",
+    ).run(body.name, user.id);
+    logEvent(db, {
+      entityType: "user",
+      entityId: user.id,
+      action: "profile_updated",
+      actor: user.id,
+      actorType: "human",
+      payload: { fields: ["name"] },
+    });
+    const updated = getUserById(db, user.id) as UserRow;
+    return { data: { user: toPublicUser(updated) } };
+  });
+
   app.post("/auth/forgot-password", async (request) => {
+    enforceAuthRateLimit(request, "forgot-password", 5, 10 * 60 * 1000);
     const body = emailSchema.parse(request.body);
     const user = getUserByEmail(db, body.email);
     if (user) {
@@ -479,6 +580,7 @@ export function registerAuthRoutes(app: FastifyInstance, deps: Deps): void {
   });
 
   app.post("/auth/reset-password", async (request, reply) => {
+    enforceAuthRateLimit(request, "reset-password", 10, 10 * 60 * 1000);
     const body = resetPasswordSchema.parse(request.body);
     const user = getUserByEmail(db, body.email);
     if (!user || user.email_verified !== 1) {
@@ -498,7 +600,7 @@ export function registerAuthRoutes(app: FastifyInstance, deps: Deps): void {
       actor: user.id,
       actorType: "human",
     });
-    reply.header("Set-Cookie", clearSessionCookie());
+    reply.header("Set-Cookie", clearSessionCookie(config.COOKIE_SECURE));
     return { data: { ok: true } };
   });
 }

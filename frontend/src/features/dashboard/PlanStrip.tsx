@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import type { DashboardSummary } from "../../entities/dashboard/types";
 import { formatDate } from "../../shared/lib/format";
+import { ScenarioBanner } from "../../shared/ui/ScenarioBanner";
 
 const PLAN_CHIP: Record<string, string> = {
   free: "bg-slate-700 text-slate-300",
@@ -37,27 +38,34 @@ export function PlanStrip({ summary }: { summary: DashboardSummary }) {
   }
 
   if (quota.plan_key === "free") {
-    const pct = quota.limit ? Math.min(100, Math.round((quota.used / quota.limit) * 100)) : 0;
+    const limit = quota.limit ?? 0;
+    const pct = limit ? Math.min(100, Math.round((quota.used / limit) * 100)) : 0;
+    const atLimit = limit > 0 && quota.used >= limit;
+    if (atLimit) {
+      return (
+        <ScenarioBanner
+          tone="warning"
+          title="You are at your Free plan limit"
+          description={`You are using ${quota.used} of ${limit} project slot${limit === 1 ? "" : "s"} used. Open your existing project or upgrade to create another.`}
+          actionLabel="Upgrade to Plus"
+          actionTo="/checkout/plus"
+          secondaryLabel="Open billing"
+          secondaryTo="/settings?tab=Billing"
+        >
+          <div className="mt-3 h-1.5 max-w-xs overflow-hidden rounded-full bg-amber-100"><div className="h-full w-full rounded-full bg-amber-500" /></div>
+        </ScenarioBanner>
+      );
+    }
     return (
-      <div className="sf-rise flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-slate-200 bg-white px-4 py-3">
+      <div className="sf-rise flex flex-wrap items-center gap-x-3 gap-y-2 rounded-2xl border border-slate-200 bg-white px-4 py-3">
         <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${PLAN_CHIP.free}`}>free</span>
         <div className="flex items-center gap-2">
           <div className="h-1.5 w-28 overflow-hidden rounded-full bg-slate-100">
-            <div
-              className={`h-full rounded-full ${pct >= 100 ? "bg-rose-500" : "bg-forge-500"}`}
-              style={{ width: `${pct}%` }}
-            />
+            <div className="h-full rounded-full bg-forge-500" style={{ width: `${pct}%` }} />
           </div>
-          <p className="text-xs text-slate-600">
-            {quota.used} of {quota.limit} project slot{quota.limit === 1 ? "" : "s"} used
-          </p>
+          <p className="text-xs text-slate-600">{quota.used} of {quota.limit} project slot{quota.limit === 1 ? "" : "s"} used</p>
         </div>
-        <Link
-          to="/settings?tab=Billing"
-          className="ml-auto text-xs font-medium text-forge-600 transition-colors hover:text-forge-500"
-        >
-          Upgrade to Plus →
-        </Link>
+        <Link to="/settings?tab=Billing" className="ml-auto text-xs font-medium text-forge-600 transition-colors hover:text-forge-500">Upgrade to Plus →</Link>
       </div>
     );
   }

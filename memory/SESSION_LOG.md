@@ -978,3 +978,392 @@ Verification: both typechecks clean; 267 pass / 0 fail (35 files); smoke SMOKE T
 - Tests: presentation.test.ts (4 pass: data shape, pptx ZIP header, 404, BMC in overview), presentation.test.tsx (4 pass: heading, title+bullets, slide count, download button), smoke block 27 (3 checks). Verified: 195 backend + 100 frontend = 295 pass / 0 fail; smoke OK. Committed bf4e299, pushed. FEAT-021 doc.
 
 **DEC-030 all three phases (A+B+C) COMPLETE — no remaining work from this DEC.**
+
+
+### Session 2026-08-25 — Deep technical project assessment
+
+Work completed:
+- Read the required repository instructions, project memory, state, constraints, decisions, session history, handoff, backlog, governing protocol, and prompt index before analysis.
+- Recorded the user request for a deep project analysis in `memory/USER_REQUESTS.md`.
+- Mapped the Bun monorepo architecture: 51 backend TypeScript files, 137 frontend TypeScript/TSX files, 61 SQLite tables, 117 routes, 14 migration files, 41 test files, and 127 Markdown documentation files.
+- Inspected backend composition, database initialization/schema, authentication/session/OTP, custom SMTP transport, project routes, dashboard aggregation, frontend routing/API client/AppShell, package scripts, configuration, and ignore rules.
+- Restored an incomplete local `node_modules` tree using `bun install --frozen-lockfile`; no lockfile or source changes were made.
+- Verified runtime behavior: full suite passed 295 tests / 0 failures / 1,339 assertions; backend smoke passed (`SMOKE TEST OK`).
+- Identified 11 current TypeScript errors that block `bun run typecheck` and `bun run build`; the report documents each integration category and a remediation order.
+- Delivered `docs/reviews/technical-assessment-2026-08-25.md` with architecture, verification results, prioritized risks, and recommendations.
+
+Work partially completed: none. No remediation implementation was started.
+
+Blockers:
+- Root typecheck and production frontend build fail with 11 TypeScript errors. These are the immediate release blockers.
+- If the product will be exposed publicly, tenant isolation and project authorization must be designed and implemented before release.
+
+Memory files updated:
+- `memory/USER_REQUESTS.md`
+- `memory/STATE.json`
+- `memory/NEXT_ACTION.md`
+- `memory/PROJECT_MEMORY.md`
+- `memory/SESSION_LOG.md`
+
+Next action:
+- Await explicit user direction. Recommended first remediation is the build/typecheck regression fix; do not start any optional implementation without approval.
+
+Awaiting approvals: none.
+
+
+### Session 2026-08-25 — User-approved priorities 1–7 implementation batch
+
+Work completed:
+- Repaired presentation TypeScript and production-build regressions.
+- Added secure-by-default authentication mode, project membership ownership model, centralized project-scope authorization, project-member CRUD, protected frontend routes, credentialed API requests, exact-origin CORS, Secure-cookie configuration, auth throttling, and `/readyz` readiness.
+- Added additive migration 015 and canonical `project_members` schema.
+- Added CI quality gates, Dockerfiles, Compose topology, Nginx SPA/proxy configuration, `.dockerignore`, operations documentation, and an executable SQLite backup helper.
+- Grouped AppShell navigation into Planning, Design, and Outputs.
+- Added authorization regression coverage for readiness, CORS, anonymous blocking, project isolation, and membership lifecycle.
+- Wrote `docs/reviews/implementation-report-2026-08-25.md`.
+
+Verification:
+- `bun run typecheck`: pass.
+- `bun run build`: pass.
+- Backend tests: 198 pass across 24 files.
+- Frontend tests: 100 pass across 18 files.
+- Authorization tests: 3 pass.
+- Targeted auth-billing tests: 14 pass.
+- Backend smoke: `SMOKE TEST OK`.
+
+Work partially completed:
+- Docker/Compose execution was not run because Docker is unavailable on the attached Windows machine.
+- Browser-level testing was not added; existing API/server-render/smoke coverage remains green.
+- OPT-005, OPT-006, and parked analytics remain unapproved and were not started.
+
+Blockers:
+- Docker unavailable locally for container verification.
+- Specific feature-level approval is still required for unapproved backlog items.
+
+Memory files updated:
+- `memory/HANDOFF.md`, `memory/STATE.json`, `memory/NEXT_ACTION.md`, `memory/PROJECT_MEMORY.md`, `memory/SESSION_LOG.md`.
+
+Next action:
+- Present the implementation report and request a decision on OPT-005/OPT-006 or resume container verification when Docker is available.
+
+
+### Session 2026-08-25 — Business Model and Presentation visual integration
+
+Work completed:
+- Added shared `ExperiencePreview` and `ExperienceIcon` visual components for Business Model and Presentation.
+- Added dashboard quick-action cards for both experiences, linked to the most recently visible project.
+- Added a landing-page showcase section explaining the Business Model → Presentation workflow with premium dark/glass previews.
+- Redesigned Business Model with a strategy hero, block-count metrics, color-coded canvas accents, and project return navigation while preserving note CRUD.
+- Redesigned Presentation with a narrative hero, metadata chips, improved slide cards, project return navigation, and preserved PPTX download, keyboard navigation, print mode, and live data behavior.
+- Added focused preview tests.
+
+Verification:
+- `bun run typecheck`: pass.
+- `bun run build`: pass.
+- Focused frontend tests: 16 pass across four files.
+- Complete frontend suite: 102 pass across 19 files, 0 failures, 318 assertions.
+
+Work partially completed:
+- Visual result still needs human review in the running browser preview for subjective spacing and responsive polish.
+
+Blockers:
+- None for implementation or automated verification.
+
+Memory files updated:
+- `memory/PROJECT_MEMORY.md`, `memory/NEXT_ACTION.md`, `memory/SESSION_LOG.md`.
+
+Next action:
+- Review the new dashboard, landing showcase, Business Model, and Presentation screens in the preview and request any visual refinements.
+
+
+### Session 2026-08-25 — Dashboard user-flow verification
+
+Work completed:
+- Started the development preview on the attached Windows machine.
+- Verified landing page HTTP 200 and expected SpecForge content markers.
+- Verified backend health/database status.
+- Verified anonymous dashboard API access is rejected with HTTP 401.
+- Verified registration succeeds through the actual frontend `/api` proxy with HTTP 201.
+- Discovered and fixed optional `/api/` prefix handling in centralized authorization so public auth routes work consistently through the proxy.
+
+Verification:
+- Typecheck passed.
+- Authorization regression suite passed: 3 tests, 0 failures.
+
+Work partially completed:
+- A fully rendered browser session could not be inspected because the sandbox browser could not connect to the attached Windows localhost/LAN preview.
+- A verified dashboard session requires a disposable mailbox or user-provided credentials because email verification is enforced.
+
+Blockers:
+- Browser connectivity to the attached Windows preview is unavailable from the sandbox browser.
+- No verified test mailbox or credentials were supplied.
+
+Memory files updated:
+- `memory/PROJECT_MEMORY.md`, `memory/NEXT_ACTION.md`, `memory/SESSION_LOG.md`.
+
+Next action:
+- User can open `http://localhost:5173/` on the connected Windows machine, or provide a test mailbox/credentials for an authenticated dashboard walkthrough.
+
+
+### Session 2026-08-25 — Dashboard side navigation usability redesign
+
+Work completed:
+
+The AppShell side navigation was redesigned with clearer Plan, Design, and Outputs hierarchy, collapsible group headers, route-aware active indicators, SVG navigation glyphs, tooltips, active-project context, overview shortcut, and a no-project state. The desktop sidebar is wider for readability. Mobile users now receive a slide-in navigation drawer with backdrop dismissal, close control, automatic close after route changes, and a compact top bar showing the current project.
+
+Verification:
+
+Typecheck passed. The complete frontend suite passed with 102 tests across 19 files and 0 failures. The production build passed; Vite continues to report only the existing large-chunk advisory.
+
+Work partially completed:
+
+Subjective visual review in a rendered browser remains pending because the sandbox browser cannot connect to the attached Windows localhost preview.
+
+Blockers:
+
+No implementation blocker. Human visual review is recommended.
+
+Memory files updated:
+
+`memory/PROJECT_MEMORY.md`, `memory/NEXT_ACTION.md`, and `memory/SESSION_LOG.md`.
+
+Next action:
+
+Review the desktop and mobile navigation at `http://localhost:5173/` on the connected Windows machine and request any final spacing, labeling, or grouping refinements.
+
+
+### Session 2026-08-25 — Guided dashboard redesign
+
+Work completed:
+
+The dashboard was rebuilt as a guided command center instead of a dense project list. A modern dark hero now carries the personalized greeting and prominent New project action. A selected project gets direct Create Business Model and Generate Presentation actions, with explanatory copy that makes the product sequence explicit: create a project, define the business in the canvas, then share the generated pitch deck. A three-step recommended-flow panel and a clear no-project state were added. Existing filters, sorting, project cards, health, attention, milestones, and activity remain available below.
+
+Verification:
+
+Typecheck passed. Dashboard tests passed with 6 tests and 0 failures. Production build passed. The existing Vite large-chunk advisory remains non-blocking.
+
+Work partially completed:
+
+Subjective browser visual review remains recommended because the sandbox browser cannot connect to the attached Windows localhost preview.
+
+Blockers:
+
+No implementation blocker.
+
+Memory files updated:
+
+`memory/PROJECT_MEMORY.md`, `memory/NEXT_ACTION.md`, and `memory/SESSION_LOG.md`.
+
+Next action:
+
+Open `http://localhost:5173/` on the connected Windows machine and review the guided dashboard flow visually.
+
+
+### Session 2026-08-25 — Settings and account navigation redesign
+
+Work completed:
+- Audited the existing AppShell, AccountChip, SettingsPage, routes, and user entity. Confirmed the account control was trapped in the scrollable sidebar footer and Settings mixed personal, billing, developer reference, and workspace-admin surfaces.
+- Implemented `AccountMenu` with avatar initials, display name, email, plan badge, Profile, Billing, Workspace settings, and confirmed Sign out actions. Mounted it in the persistent desktop header and mobile top bar; removed the old sidebar account footer.
+- Added protected `/account` route and `AccountPage` with editable display name, email verification status, member-since date, account ID, current plan, and billing link.
+- Added authenticated name-only `PATCH /auth/me`, React Query mutation/cache update, and `profile_updated` audit event. No email, password, or payment-secret mutation was exposed.
+- Simplified SettingsPage to `Workspace` and `Billing`. Workspace contains intentional advanced subsections for Project setup and Node palette; Environment and Reference tabs were removed from the normal user-facing settings IA.
+- Retained `AccountChip` as a compatibility re-export of `AccountMenu`.
+- Added focused frontend account/settings tests and backend profile update/unauthenticated regression tests.
+
+Work partially completed:
+- Human visual review in the running preview remains pending, including dropdown placement and mobile behavior.
+- Full frontend suite remains pending because the broad runner stalled without output; focused suites passed.
+
+Blockers:
+- Docker is not installed on the attached Windows machine; container execution is not verified.
+
+Memory files updated:
+- `memory/USER_REQUESTS.md`, `memory/DECISIONS.md`, `memory/STATE.json`, `memory/PROJECT_MEMORY.md`, `memory/NEXT_ACTION.md`, and `memory/SESSION_LOG.md`.
+
+Next action:
+- Run production build after the final code changes, then perform human visual review in the existing preview. Consider a separate full-suite run if the runner can be bounded successfully.
+
+
+### Session 2026-08-25 — Branding, landing footer, and admin-monitoring audit
+
+Work completed:
+
+The shared `Logo` component and `frontend/public/logo.svg` favicon were replaced with a blueprint-style system mark: a central forge-colored node connected to four technical rails on a dark tile. The mark is symbol-only, avoids the weak SF letter treatment, and scales across landing, dashboard, account, and favicon use.
+
+The landing footer in `PublicShell.tsx` was rebuilt with a stronger commercial CTA band, technical product positioning, DB-first and traceability proof points, product capability links, get-started/account links, and plan links. The footer now reads as an engineering product surface rather than a generic placeholder.
+
+The admin-monitoring question was audited against the scenario matrix and implementation. `docs/reviews/admin-monitoring-audit-2026-08-25.md` was added as AUDIT-002. The result is explicitly pending: the project has user workspace dashboard aggregation, project health analytics, user-scoped billing, `/healthz`, and `/readyz`, but no protected global admin role/control plane, admin plan catalog, admin subscription management, admin payment inspection, operations dashboard, or admin audit-event UI.
+
+Verification completed:
+- `bun run typecheck` passed.
+- `bun run build` passed.
+- Focused landing and UI-polish tests passed: 17 tests, 0 failures.
+- Vite emitted the existing advisory about a large JavaScript chunk; the build still passed.
+
+Partially completed:
+
+Human visual review of the new logo and footer in the running preview remains recommended. The global admin monitoring/control-plane implementation has not started because it is security-sensitive and production-related and requires explicit approval before implementation.
+
+Memory files updated:
+
+`memory/USER_REQUESTS.md`, `memory/PROJECT_MEMORY.md`, `memory/NEXT_ACTION.md`, and `memory/SESSION_LOG.md`.
+
+Next action:
+
+Review the brand mark/footer visually in the running preview. If approved, separately authorize implementation of the protected global admin monitoring control plane.
+
+
+### Session 2026-08-26 — Approved admin monitoring and Windows application path
+
+Work completed:
+
+The user approved both the pending preview review and the protected admin-control-plane work, and requested a Windows dashboard application with a landing-page download path. The attached Windows preview was restarted successfully; the landing page and backend health endpoint returned HTTP 200. The sandbox browser could not connect to the attached Windows localhost, so visual inspection remains pending in the attached preview.
+
+Implemented an additive global-admin role with `users.is_admin`, migration 016, legacy-database fallback migration logic, exact-email `ADMIN_EMAILS` bootstrap, reusable `requireAdmin`, and centralized `/admin/*` protection. Added protected admin operations overview, safe platform counts, SMTP/readiness and migration metadata, recent audit events, plan catalog listing/editing, masked subscription search with audited cancel/reactivate actions, and masked invoice inspection. Added the frontend `/admin` route, conditional admin navigation, operations cards, plan visibility, subscriptions, invoices, and audit events. Real payment charging remains out of scope.
+
+Added a Windows Electron workspace with configurable hosted-app URL, secure BrowserWindow settings, same-origin navigation restrictions, packaging scripts, release README, and Windows CI workflow for NSIS/portable artifacts and tagged release publication. Added landing CTA/footer behavior gated by `VITE_WINDOWS_DOWNLOAD_URL`; no fake installer URL is shown before a real artifact exists.
+
+Verification:
+
+- Admin regression suite: 3 passed, 0 failures.
+- Root typecheck: passed.
+- Production frontend build: passed.
+- Focused dashboard/account/UI suite: 10 passed, 0 failures.
+- Local desktop packaging reached electron-builder and downloaded Electron but produced no installer before the bounded run was stopped; Windows CI remains the reproducible packaging path.
+
+Memory files updated: `memory/PROJECT_MEMORY.md`, `memory/STATE.json`, `memory/NEXT_ACTION.md`, `memory/SESSION_LOG.md`, `memory/HANDOFF.md`, and `memory/USER_REQUESTS.md`.
+
+Remaining blockers and next action:
+
+Production requires a real `ADMIN_EMAILS` configuration, backup success telemetry, a deployed `SPECFORGE_APP_URL`, an Authenticode-signed Windows installer, a published release asset, and a frontend rebuild with `VITE_WINDOWS_DOWNLOAD_URL`. Docker remains unavailable on the attached Windows machine. The next action is to complete attached-preview visual review and then verify the release workflow on a Windows CI runner.
+
+
+### Session 2026-08-26 — Remaining release requirements
+
+Work completed:
+
+The user requested execution of all remaining release requirements. Added `BACKUP_STATUS_FILE` configuration, made `ops/backup.sh` write an integrity-verified `last-backup.json` success record, connected backup freshness/age to `/admin/overview`, installed sqlite3 and the backup helper into the backend image, persisted `/app/backups` in Compose, and added `ops/backup.cron.example` for daily host scheduling.
+
+Completed the Windows release path locally. Restored missing `desktop/src/main.mjs` and `desktop/config/app-config.example.json`, corrected the electron-builder archive glob, added package author metadata, generated a branded `desktop/assets/icon.ico`, configured the Windows build to use that icon, added tagged-release signing-secret validation to the workflow, and created `desktop/README.md` with production release instructions. `bun run desktop:dist` exited 0 and produced `desktop/release/SpecForge-Studio-0.1.0-win-x64.exe` and its blockmap.
+
+Verification:
+
+- Admin tests: 3 passed, 0 failures.
+- Root typecheck: passed.
+- Production frontend build: passed.
+- Windows desktop build: passed locally with exit code 0.
+- WSL/bash syntax check could not run because virtualization/Hyper-V is disabled on the attached Windows machine; the backup helper is intended to run in the Linux backend image.
+
+Work partially completed:
+
+The local Windows executable is an unsigned QA artifact. It has not been published to a release repository, and the landing page remains correctly gated until `VITE_WINDOWS_DOWNLOAD_URL` is set to a real published installer URL.
+
+Blockers:
+
+Production deployment credentials and host access are not available in the repository session. The operator must configure `ADMIN_EMAILS`, install the backup cron entry, set `SPECFORGE_APP_URL`, configure GitHub Authenticode secrets, run a signed tagged workflow, publish the installer, set `VITE_WINDOWS_DOWNLOAD_URL`, redeploy the frontend, and perform attached-preview visual review. Docker is not installed on the attached Windows machine.
+
+Memory files updated: `memory/PROJECT_MEMORY.md`, `memory/STATE.json`, `memory/NEXT_ACTION.md`, `memory/SESSION_LOG.md`, and `docs/reviews/admin-monitoring-audit-2026-08-25.md`.
+
+Next action: complete the production-only configuration/publication steps when the deployment host, GitHub repository settings, certificate, and deployed app URL are available.
+
+
+### Session 2026-08-26 — Trusted signup domains and seeded admin
+
+Implemented the user-requested explicit administrator seed and signup-domain restriction. Added `backend/scripts/seed-admin.ts` and the `seed-admin` workspace command; ran it successfully against the local project database, creating `admin@specforge.com` as verified global administrator with the requested password stored as a hash and ID `USR-0006`. The operation is idempotent and is not executed automatically on server boot.
+
+Added `TRUSTED_SIGNUP_DOMAINS` with a production default of `specforge.com`, exact-domain/subdomain matching, and `SIGNUP_DOMAIN_NOT_ALLOWED` rejection before user or OTP creation. Existing users are unaffected. The auth UI now explains the trusted organization-email requirement. Updated backend environment documentation and added `docs/features/auth-domain-policy.md`.
+
+Verification: `backend/tests/auth-billing.test.ts` passed 18/18 with 70 expectations; root typecheck passed; production frontend build passed. Added regression cases for untrusted-domain rejection and idempotent admin seeding. Before production release, rotate the requested demo password and configure the real trusted domains and `ADMIN_EMAILS` values.
+
+
+### Session 2026-08-26 — Activate landing Windows download
+
+The user reported that the landing page still displayed “Windows app · soon” and required an immediately usable download. Investigation found `PublicShell` only rendered the link when `VITE_WINDOWS_DOWNLOAD_URL` was defined. A verified local installer already existed at `desktop/release/SpecForge-Studio-0.1.0-win-x64.exe`.
+
+Copied the 84 MB installer into `frontend/public/downloads/SpecForge-Studio-0.1.0-win-x64.exe` and changed `PublicShell` to use that same-site path by default, while retaining `VITE_WINDOWS_DOWNLOAD_URL` as an optional override for a future externally hosted signed release. Removed both disabled placeholder states and added a landing regression test. Updated `frontend/.env.example` to document the default and release override.
+
+Verification passed: landing test suite, root typecheck, frontend production build, built asset presence at `frontend/dist/downloads/...`, and running preview HEAD request with HTTP 200, `Content-Length: 83889384`, and `application/octet-stream`.
+
+Work partially completed: publishing a signed external release remains optional; the site currently serves the bundled unsigned installer immediately.
+
+Blockers: none for the same-site download path. GitHub release publication cannot be performed in this session because GitHub integration is not enabled.
+
+Memory files updated: `memory/USER_REQUESTS.md`, `memory/PROJECT_MEMORY.md`, `memory/NEXT_ACTION.md`, `memory/SESSION_LOG.md`.
+
+Next action: refresh the running preview if needed and click `Windows app` or `Download for Windows`; for production, deploy the new frontend build so the bundled installer is included.
+
+
+### Session 2026-08-26 — BMC Miro-style canvas and Presentation Studio
+
+Work completed: Audited the existing Business Model and Presentation flows, then replaced the rigid BMC grid with a spatial board. Added additive migration 017 for sticky-note `position_x`, `position_y`, and `color`; updated backend CRUD validation and updates; added drag placement, automatic position saves, block reassignment, color palette, inspector, note editor, block filtering, zoom/fit controls, mini-map, board guide, and project-scoped canvas framing. Legacy notes receive deterministic fallback positions.
+
+Rebuilt the presentation viewer as Presentation Studio. Added thumbnail rail, slide editing, add/duplicate/delete/reorder controls, theme selection, grid and zoom controls, speaker notes, reset-to-live-data, presenter mode with full-screen navigation/progress, keyboard shortcuts, and preserved live data, print, and PPTX download behavior. Added focused regression assertions and feature documentation at `docs/features/business-model-presentation-studio.md`.
+
+Verification: backend BMC suite 6/6; frontend BMC/Presentation suites 8/8 with 60 assertions; backend Presentation suite 4/4; root typecheck passed; production build passed; preview landing/BMC/Presentation/health routes returned HTTP 200. The full frontend suite stalled without output and was stopped; targeted suites passed.
+
+Work partially completed: presentation edits are working-session local drafts by design and do not yet overwrite the live backend-generated deck or PPTX output. A future optional enhancement could persist custom deck drafts and feed them into export.
+
+Blockers: none for the implemented scope. Human visual review in the attached preview remains recommended.
+
+Memory files updated: `memory/USER_REQUESTS.md`, `memory/PROJECT_MEMORY.md`, `memory/NEXT_ACTION.md`, `memory/SESSION_LOG.md`.
+
+Next action: refresh the attached preview and visually review `/projects/:projectId/business-model` and `/projects/:projectId/presentation`, especially drag/drop, responsive layout, presenter mode, and keyboard shortcuts.
+
+
+### Session 2026-08-26 — Per-session Markdown result files
+
+Work completed: Recorded the user’s permanent workflow requirement that every completed session result must be saved in a dedicated English Markdown file inside the project. Created `docs/session-results/README.md` with the naming and content convention, and created `docs/session-results/2026-08-26-bmc-presentation-studio.md` retroactively for the latest completed implementation session.
+
+Updated memory: `memory/USER_REQUESTS.md`, `memory/CONSTRAINTS.md`, `memory/PROJECT_MEMORY.md`, `memory/NEXT_ACTION.md`, and this session log.
+
+Next action: every future completed session must create a new dated file under `docs/session-results/` before the final user response.
+
+
+### Session 2026-08-26 — Authenticated workflow and export verification
+
+The user approved using the existing project after the Free plan blocked creation of a second project. Signed in successfully as `mouazalkhatib2022@gmail.com`, resolved `PRJ-0002`, populated all nine BMC blocks with representative notes, verified a nine-slide presentation payload, generated Docs Export `DOCS-0001` with 38 Markdown files, downloaded the workspace ZIP, and inspected its BMC and pitch-deck contents.
+
+Implemented direct BMC `Export MD` and `Export JSON` actions with deterministic export utilities and regression coverage. Recommended Markdown for human-readable project handoff, JSON for structured processing/backups, and the Docs workspace ZIP for complete project export. Focused tests passed with 79 assertions, typecheck passed, and the production build passed. Saved the user-facing result at `docs/session-results/2026-08-26-authenticated-export-workflow.md`.
+
+A PowerShell API client exposed a client-specific content-length issue; the application API itself completed successfully using a Bun fetch client matching frontend semantics. The browser preview was not reachable from the sandbox browser because the preview is bound to the attached Windows environment.
+
+
+### Session 2026-08-26 — Fixed dashboard navigation and Presentation editor
+
+Work completed: made the desktop dashboard sidebar fixed with an independent main-content scroll boundary; preserved mobile drawer behavior; rebuilt Presentation Studio around a central slide canvas, thumbnails, format/design inspector, and toolbar; added text, image, and shape elements; added local image upload and URL support; added Aptos, Calibri, Arial, Times New Roman, Georgia, Verdana, Trebuchet MS, Courier New, and Impact font options; added element positioning, layer ordering, removal, slide lifecycle tools, and a redesigned Presenter View.
+
+Verification: root typecheck passed; production build passed; Presentation frontend tests passed 4/4 with 18 assertions; dashboard/account/settings tests passed 12/12 with 37 assertions; landing, auth, Business Model, Presentation, admin, and health routes returned HTTP 200 on the connected Windows preview. The full-suite runner stalled without output and was stopped; focused checks remained green.
+
+Blocker/limitation: arbitrary slide elements remain local working-draft state because the existing backend presentation contract only generates live slides and PPTX output. The detailed result is saved at `docs/session-results/2026-08-26-dashboard-presentation-editor.md`.
+
+Memory files updated: PROJECT_MEMORY.md, NEXT_ACTION.md, USER_REQUESTS.md, SESSION_LOG.md, and the session-results artifact.
+
+
+### Session 2026-08-26 — Presentation canvas resize and colors
+
+Implemented direct corner resize handles for selected text, image, and shape elements in Presentation Studio. Resizing uses pointer movement, bounded slide-relative percentages, and minimum dimensions. Added live Text color editing for text elements and Color editing for shapes. Replaced nested interactive buttons with accessible selectable containers. Verified 4 Presentation tests with 20 assertions, root typecheck, and production build. Documented the result at `docs/session-results/2026-08-26-presentation-resize-colors.md`.
+
+
+### Session 2026-08-26 — Navigation collapse and project-generation agent design
+
+Work completed: added the dashboard desktop collapse/expand navigation icon, compact icon rail, active indicators/tooltips, responsive mobile behavior, and local preference persistence. Focused dashboard/UI-polish tests passed (10 tests, 25 assertions) and root typecheck passed. Researched official OpenAI, Anthropic, and Google Gemini pricing/privacy materials and documented a hybrid provider model for the proposed project-generation agent.
+
+Agent design: assemble database-backed context from Business Model, Presentation, generated Markdown, requirements, model graphs, roadmap, skills, and governance; filter secrets; request strict structured output; validate; show a draft for user approval; then materialize through existing artifact services and exports. Managed provider access should be paid-plan functionality with quotas and admin cost/health/kill-switch controls; customer-owned keys should remain available. OpenAI is the initial managed-provider recommendation, but provider credential and secret-storage implementation is awaiting explicit approval.
+
+Session result: `docs/session-results/2026-08-26-nav-and-project-agent-design.md`. Feature proposal: `docs/features/project-generation-agent.md`.
+
+Next action: obtain approval for the first managed provider and secret storage method before implementing external API credentials or managed generation routes.
+
+
+### Session 2026-08-26 — Leona Agent overlay and plan messaging
+
+Implemented the global Leona Agent dashboard launcher and overlay with active-project context, four-stage draft-first workflow, BYOK versus managed-provider choices, provider-settings link, safety copy, and honest disabled activation state. Updated landing and built-in plan catalog copy so Free and Plus explain customer-owned provider-key usage and Premium explains managed-provider access subject to usage policy; existing plan customizations are preserved when new capability copy is merged. Focused landing/dashboard/UI tests passed (24 tests, 80 assertions) and root typecheck passed.
+
+The external provider integration remains intentionally gated. Next approval: OpenAI first managed-provider adapter and production secret-manager/reference-based storage. After approval, implement provider settings, entitlement and quota enforcement, context snapshots, structured generation drafts, user approval, and artifact materialization.
+
+Session result: `docs/session-results/2026-08-26-leona-agent-overlay-and-plans.md`.
+
+
+### Session 2026-08-26 � Project gap analysis
+
+Compared project memory and repository documentation, classified completed/partial/blocked work, and saved the prioritized roadmap in docs/session-results/2026-08-26-project-gap-analysis.md. Added it to docs/analysis-index.md.

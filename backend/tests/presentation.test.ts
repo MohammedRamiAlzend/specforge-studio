@@ -12,7 +12,7 @@ function cookieAuth(token: string) {
   return { cookie: `sf_session=${token}` };
 }
 
-let ctx: TestContext;
+let ctx: Omit<TestContext, "app">;
 let app: FastifyInstance;
 let mailer: FakeMailer;
 let token: string;

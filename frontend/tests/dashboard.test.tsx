@@ -25,6 +25,7 @@ const USER: User = {
   email: "ada@test.local",
   name: "Ada Lovelace",
   email_verified: true,
+  is_admin: false,
   created_at: "2026-08-01T00:00:00.000Z",
 };
 

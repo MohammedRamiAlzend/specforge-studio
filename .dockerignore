@@ -1,0 +1,15 @@
+node_modules
+**/node_modules
+.git
+.gitignore
+backend/.env
+backend/data
+frontend/dist
+backend/dist
+data
+backups
+*.db
+*.db-shm
+*.db-wal
+*.log
+memory/.analysis-*.txt

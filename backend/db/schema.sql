@@ -976,6 +976,7 @@ CREATE TABLE IF NOT EXISTS users (
   name          TEXT NOT NULL,
   password_hash TEXT NOT NULL,
   email_verified INTEGER NOT NULL DEFAULT 0,          -- 0 until OTP verification (migration 012 grandfathers legacy rows)
+  is_admin      INTEGER NOT NULL DEFAULT 0,            -- global admin role (migration 016)
   created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
   updated_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
@@ -1080,8 +1081,48 @@ CREATE TABLE IF NOT EXISTS bmc_notes (
     'cost_structure','revenue_streams')),
   content    TEXT NOT NULL,
   sort_order INTEGER NOT NULL DEFAULT 0,
+  position_x REAL NOT NULL DEFAULT 24,
+  position_y REAL NOT NULL DEFAULT 96,
+  color      TEXT NOT NULL DEFAULT 'yellow',
   created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
   updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
 CREATE INDEX IF NOT EXISTS idx_bmc_notes_project ON bmc_notes(project_id);
 CREATE INDEX IF NOT EXISTS idx_bmc_notes_block ON bmc_notes(project_id, block);
+
+
+-- ---------------------------------------------------------------------------
+-- Project membership and authorization (approved execution hardening)
+-- ---------------------------------------------------------------------------
+-- Authenticated users may own or collaborate on projects. The application
+-- layer enforces role capabilities; this table is the source of truth for
+-- project visibility and membership.
+CREATE TABLE IF NOT EXISTS project_members (
+  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  role       TEXT NOT NULL DEFAULT 'owner' CHECK (role IN ('owner','editor','viewer')),
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  PRIMARY KEY (project_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_project_members_user ON project_members(user_id);
+CREATE INDEX IF NOT EXISTS idx_project_members_project_role ON project_members(project_id, role);
+
+-- ---------------------------------------------------------------------------
+-- Leona provider connections (encrypted credential material, never returned)
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS leona_provider_connections (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  provider TEXT NOT NULL CHECK (provider IN ('openai','anthropic','gemini')),
+  model TEXT NOT NULL DEFAULT '',
+  base_url TEXT NOT NULL DEFAULT '',
+  encrypted_key TEXT NOT NULL,
+  iv TEXT NOT NULL,
+  auth_tag TEXT NOT NULL,
+  key_last4 TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active','revoked')),
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);
+CREATE INDEX IF NOT EXISTS idx_leona_provider_connections_user ON leona_provider_connections(user_id, status);

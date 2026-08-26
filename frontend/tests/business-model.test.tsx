@@ -13,6 +13,7 @@ import { BusinessModelPage } from "../src/pages/BusinessModelPage";
 import { bmcKeys } from "../src/entities/bmc/api";
 import type { BmcNote } from "../src/entities/bmc/types";
 import { BLOCK_LABELS, BANDS, groupByBlock } from "../src/entities/bmc/lib";
+import { businessModelJson, businessModelMarkdown } from "../src/entities/bmc/export";
 
 const NOTE: BmcNote = {
   id: "BMC-0001",
@@ -61,10 +62,25 @@ describe("BusinessModelPage", () => {
     }
   });
 
-  it("shows seeded note content inside its block", () => {
+  it("shows seeded note content inside the Miro-style workspace", () => {
     const html = renderPage([NOTE]);
     expect(html).toContain("Specs to pitch in one place.");
+    expect(html).toContain("Strategy board");
+    expect(html).toContain("Fit board");
+    expect(html).toContain("Mini-map");
     expect(html).toContain("Add note");
+  });
+
+  it("exports a machine-readable JSON snapshot and a human-readable Markdown canvas", () => {
+    const json = JSON.parse(businessModelJson([NOTE], "PRJ-0001"));
+    expect(json.schema).toBe("specforge.business-model.v1");
+    expect(json.blocks).toHaveLength(9);
+    expect(json.blocks.find((block: { key: string }) => block.key === "value_propositions").notes[0].content).toBe(NOTE.content);
+    const markdown = businessModelMarkdown([NOTE], "PRJ-0001", "Test project");
+    expect(markdown).toContain("# Business Model Canvas — Test project");
+    expect(markdown).toContain("## Value Propositions");
+    expect(markdown).toContain(NOTE.content);
+    expect(markdown).toContain("| Revenue Streams | 0 |");
   });
 
   it("keeps a loading shell before data resolves", () => {

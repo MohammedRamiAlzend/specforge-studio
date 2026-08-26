@@ -109,3 +109,18 @@ export function performSignOut(): void {
     .catch(() => undefined)
     .finally(goHome);
 }
+
+
+export function useUpdateProfile() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { name: string }) =>
+      api<{ user: User }>("/auth/me", {
+        method: "PATCH",
+        body: JSON.stringify(input),
+      }),
+    onSuccess: (data) => {
+      qc.setQueryData(userKeys.me, data);
+    },
+  });
+}

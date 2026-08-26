@@ -136,3 +136,85 @@ User: authentication/sign-in/sign-out/OTP/forgot-password are done; next task is
 User wants: (1) when creating a project the user can also create a business model and a presentation inside the project - all in one place; (2) the dashboard itself is bad - do a FULL analysis of it and the data it shows, then rebuild it.
 Clarifying answers (question round): Business Model Canvas format; presentation delivery = HTML deck + PDF print PLUS real .pptx export (pptxgenjs dependency explicitly approved); dashboard depth = full redesign + aggregate GET /dashboard/summary endpoint.
 Phase order agreed with user: C dashboard-redesign -> A business-model-canvas -> B pitch-presentation (B consumes A's data).
+
+### 2026-08-25 — Deep project analysis
+- request: "analyze the project dive in it" — perform a thorough assessment of the available `D:\specforge-studio` codebase.
+- implication: Conduct a non-destructive architecture, implementation, dependency, quality, verification, operational, and risk review; deliver prioritized findings and recommended next actions without starting optional implementation.
+- mandatory or optional: mandatory (user-requested analysis)
+- affected phase or artifact: repository-wide source, configuration, tests, documentation, and memory records; final technical assessment.
+
+
+### 2026-08-25 — Execute priorities 1 through 7
+- request: User approved starting with priority 1 and executing all seven recommended workstreams: build repair; ownership/authorization; authentication and operational hardening; CI and deployment packaging; UX and browser-level verification; and remaining approved backlog enhancements.
+- implication: Convert the assessment recommendations into an implementation program. Preserve React/FSD, Node.js/SQLite, English-only documentation, additive-first migrations, no manual Mermaid, database-as-source-of-truth, and no unapproved external SaaS.
+- mandatory or optional: mandatory (explicit user approval for this implementation scope)
+- affected phase or artifact: build/typecheck integration, backend authorization and migrations, auth/runtime configuration, CI/deployment files, frontend UX/tests, optional backlog features, project memory, and verification report.
+
+### 2026-08-25 — Simplify settings and add modern account navigation
+- request: Analyze the dashboard settings because some settings are unacceptable and unnecessary; redesign the sidebar so account controls do not require scrolling; add a modern profile/account surface with easy access to the account and sign-out.
+- implication: Audit and simplify SettingsPage; separate personal account/profile from workspace administration; move account actions into an always-visible desktop/mobile profile menu; preserve billing and necessary workspace configuration; add a dedicated profile route backed by existing authenticated user data.
+- mandatory or optional: mandatory (user-requested UX correction)
+- affected phase or artifact: frontend AppShell, AccountChip/account menu, SettingsPage, App routes, new account profile page, frontend verification and memory files.
+
+### 2026-08-25 — Replace logo, rebuild landing footer, and confirm admin monitoring scope
+
+The user requested a stronger logo on both the landing page and dashboard, a more technical and commercially credible landing-page footer, and a clear answer about whether the admin monitoring dashboard is complete. The implementation should update the shared logo and favicon consistently, keep the frontend within React/FSD and zero unapproved SaaS integrations, and audit the existing admin/operations requirements before claiming completion.
+
+### 2026-08-26 — Approve admin monitoring, resume preview, and add a Windows dashboard app
+
+The user approved both pending actions: resume the running-preview visual review and implement the protected global admin monitoring control plane. The user also requested a Windows desktop application for the dashboard and a landing-page download path for that app.
+
+Implications: add a security-sensitive global admin role and protected admin operations/billing surfaces without exposing secrets; inspect and verify the preview when available; add a Windows desktop packaging workspace or wrapper that reuses the existing React dashboard and provide a download CTA that points only to a real configured release artifact, never a misleading placeholder. Preserve React/FSD, Node.js/SQLite, English-only docs, database-as-source-of-truth, and no unapproved SaaS integrations.
+
+Mandatory or optional: mandatory user-requested scope for this task; the desktop release artifact may remain pending if a Windows signing/build environment or release URL is not available.
+
+Affected phase or artifact: backend admin authorization/schema/modules, frontend admin routes, desktop workspace/package scripts, landing-page download CTA, operational docs, tests, and memory checkpoints.
+
+
+### 2026-08-26 — Seed administrator and restrict signup domains
+- request: Create a seeded administrator `admin@specforge.com` with password `password123`, and block spam registrations so only trusted domains may sign up.
+- implication: Added explicit idempotent `backend/scripts/seed-admin.ts` / `seed-admin` command, verified email/admin flags, hashed password storage, configurable `TRUSTED_SIGNUP_DOMAINS`, and a clear signup rejection error/UI message. Existing users can still sign in; the signup allowlist applies only to new registrations.
+- mandatory or optional: mandatory (user-requested)
+- affected phase or artifact: backend auth/config/seed command, frontend AuthPage, backend auth regression tests, backend/.env.example
+
+
+### 2026-08-26 — Activate Windows download on landing page
+- request: The Windows action on the landing page must let users download the Windows app now instead of showing “soon”.
+- implication: Bundle the verified Windows installer as a same-site public asset, make the landing CTA use that asset by default, preserve `VITE_WINDOWS_DOWNLOAD_URL` as an optional hosted-release override, and verify the built asset is served.
+- mandatory or optional: mandatory (user-reported blocking issue)
+- affected phase or artifact: frontend/public/downloads, PublicShell Windows CTA, frontend environment documentation, landing tests, production build.
+
+
+### 2026-08-26 — Upgrade Business Model and Presentation workspaces
+- request: Continue editing the Business Model engine to feel like Miro and enhance the Presentation to feel like a real presentation with tools.
+- implication: Upgraded the BMC into a spatial sticky-note canvas with persisted coordinates/colors, filtering, zoom/fit, mini-map, block reassignment, inspector editing, and auto-save. Upgraded the Presentation into a Presentation Studio with slide thumbnails, draft editing, add/duplicate/delete/reorder, themes, grid/zoom, speaker notes, presenter mode, keyboard navigation, reset-to-live-data, and preserved PPTX/print flows.
+- mandatory or optional: mandatory (user-requested product enhancement)
+- affected phase or artifact: BMC migration/API/types/page/tests, Presentation page/tests, project docs, and memory checkpoints.
+
+
+### 2026-08-26 — Save every session result in a Markdown file
+- request: At the end of every session, save the result inside an MD file in the project.
+- implication: Added `docs/session-results/` with a README convention and created a dated result file for the latest BMC/Presentation session. Every future completed session must add its own dated English Markdown result file in addition to updating memory logs.
+- mandatory or optional: mandatory (permanent user workflow requirement)
+- affected phase or artifact: session-result documentation workflow, docs/session-results/, memory/CONSTRAINTS.md, and all future session completion steps.
+
+
+### 2026-08-26 — Fixed dashboard navigation and realistic Presentation Studio editor
+
+- request: Make the dashboard sidebar strict/fixed so it does not scroll away with dashboard content; improve the Presentation Studio layout; add image tools, Microsoft PowerPoint-style fonts, a polished Presenter View, and full slide-element add/remove/edit/reorder capabilities.
+- implication: Updated the AppShell overflow model and rebuilt the Presentation Studio as a local draft element editor while preserving live-data/PPTX backend boundaries.
+- mandatory or optional: mandatory (user-requested enhancement)
+- affected phase or artifact: frontend/src/widgets/layout/AppShell.tsx, frontend/src/pages/PresentationPage.tsx, frontend/tests/presentation.test.tsx, docs/features/business-model-presentation-studio.md, docs/session-results/2026-08-26-dashboard-presentation-editor.md
+
+
+### 2026-08-26 — Resize presentation elements and customize colors
+
+The user requested that Presentation Studio support resizing elements directly inside the slide canvas and allow users to customize text and shape colors freely. Implemented as local working-draft canvas behavior with bounded resize handles and live color inputs.
+
+
+### 2026-08-26 — Dashboard nav collapse and project-generation agent
+
+- request: Add an expand/collapse icon to the dashboard navigation. Design and eventually implement an agent that connects to a project, reads its Business Model, Presentation, and generated Markdown context, and generates a complete structured project. Support both customer-owned provider keys and a SpecForge-managed provider, with managed access costing more through paid plans and controlled by administrators.
+- implication: Navigation compact mode is implemented. A new project-aware generation agent requires provider selection, secure secret handling, plan entitlements, quota/cost controls, structured draft-first generation, authorization, validation, and admin operations. Provider/API implementation remains gated on an explicit first-provider and secret-storage decision.
+- mandatory or optional: mandatory for navigation; agent implementation pending architecture approval.
+- affected phase or artifact: frontend AppShell, docs/features/project-generation-agent.md, future additive agent/provider modules and admin controls.

@@ -1,10 +1,10 @@
 ﻿{
   "schema_version": "1.0",
   "project_name": "SpecForge Studio",
-  "last_updated": "2026-08-25",
+  "last_updated": "2026-08-26",
   "current_prompt_id": "21",
-  "current_phase": "completed",
-  "status": "completed",
+  "current_phase": "admin-monitoring-windows-app",
+  "status": "in_progress",
   "execution_mode": "human_approved_automation",
   "required_scope": [
     "00-bootstrap-memory-and-rules",
@@ -61,16 +61,16 @@
     "business-model-canvas",
     "pitch-presentation"
   ],
-  "in_progress_phases": [],
-  "pending_phases": [],
-  "next_action": "DEC-030 ALL PHASES COMPLETE. Phase C (dashboard redesign, c4c564f+0a0aa12), Phase A (business model canvas, 21afa7f), Phase B (pitch presentation, bf4e299). Final: 195 backend + 100 frontend = 295 tests / 0 fail; smoke OK. No required work remains. User may request optional tasks from OPTIONAL_BACKLOG.md or close the project.",
-  "blockers": [],
-  "awaiting_approval": [],
+  "in_progress_phases": ["admin-monitoring-windows-app"],
+  "pending_phases": ["backlog-enhancements-if-approved", "container-verification-if-available"],
+  "next_action": "Configure production ADMIN_EMAILS and backup scheduling, publish the locally verified Windows artifact through a signed release workflow, set VITE_WINDOWS_DOWNLOAD_URL, and complete visual review in the attached preview.",
+  "blockers": ["Production secrets and deployment access are not available in the repository session: ADMIN_EMAILS, backup host schedule, hosted app URL, GitHub signing secrets, release publication, and VITE_WINDOWS_DOWNLOAD_URL cannot be applied locally. Docker is not installed on the attached Windows machine; container execution is not verified."],
+  "awaiting_approval": ["Specific approval for OPT-005 Sprint Planning and/or OPT-006 Issue-to-Release/Changelog if desired."],
   "completion": {
-    "all_required_tasks_complete": true,
-    "completion_verified": true,
+    "all_required_tasks_complete": false,
+    "completion_verified": false,
     "completion_reported_to_user": false,
-    "remaining_required_tasks": [],
+    "remaining_required_tasks": ["Human visual review from the attached Windows preview remains; production ADMIN_EMAILS and backup scheduling remain; the local unsigned Windows artifact must be published through the signed CI workflow; VITE_WINDOWS_DOWNLOAD_URL must be configured after publication; Docker verification is unavailable locally."],
     "optional_suggestions": [
       "Deployment packaging (docker-compose, Dockerfiles, ops docs)",
       "Per-type diagram templates (e.g. API-first sequence templates, mobile flow templates)",
@@ -87,7 +87,9 @@
     "Add an animation/UI polish prompt for navigation etc., anything to make the website smoother (Prompt 17).",
     "Create another full-detail seed example of the most common e-commerce project (.NET backend + React frontend) as Prompt 18, implemented and committed.",
     "Add a prompt (Prompt 19) for a Download as ZIP button on generated docs; implemented and committed to main.",
-    "Product-owner gap analysis of the development lifecycle; create plan and implement it in a new branch then push changes and generate a pull request but do not merge it to master (Prompt 20, executed 2026-08-17â€“18; backend merged to main via PR #4, frontend layer completed on main 2026-08-18)."
+        "Product-owner gap analysis of the development lifecycle; create plan and implement it in a new branch then push changes and generate a pull request but do not merge it to master (Prompt 20, executed 2026-08-17â€“18; backend merged to main via PR #4, frontend layer completed on main 2026-08-18).",
+    "Deep project analysis requested 2026-08-25; completed non-destructively with findings in docs/reviews/technical-assessment-2026-08-25.md."
+
   ],
   "constraints_summary": [
     "Frontend must use React with Feature-Sliced Design",

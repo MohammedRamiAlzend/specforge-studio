@@ -70,9 +70,12 @@ describe("business model canvas validation", () => {
     const unknownProject = await createNote(app, "PRJ-9999", "channels", "Ghost");
     expect(unknownProject.statusCode).toBe(404);
 
-    // Update schema is strict.
+    // Block reassignment is supported; unknown fields remain rejected.
     const created = await createNote(app, projectId, "channels", "Newsletter");
-    const strict = await request(app, "PATCH", `/bmc/${created.json().data.id}`, { block: "channels" });
+    const moved = await request(app, "PATCH", `/bmc/${created.json().data.id}`, { block: "customer_segments", position_x: 24, position_y: 96 });
+    expect(moved.statusCode).toBe(200);
+    expect(moved.json().data.block).toBe("customer_segments");
+    const strict = await request(app, "PATCH", `/bmc/${created.json().data.id}`, { unexpected: true });
     expect(strict.statusCode).toBe(400);
   });
 
@@ -151,6 +154,6 @@ describe("business model canvas audit trail", () => {
       .all(id) as Array<{ entity_type: string; action: string }>;
     expect(events.length).toBeGreaterThanOrEqual(2);
     expect(events.every((event) => event.entity_type === "bmc")).toBe(true);
-    expect(events[0].action).toBe("created");
+    expect(events[0]?.action).toBe("created");
   });
 });

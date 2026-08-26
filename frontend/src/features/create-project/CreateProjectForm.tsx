@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Link } from "react-router-dom";
+
 import { usePlatformConfig } from "../../entities/platform-config/api";
 import type { PlatformType } from "../../entities/platform-config/types";
 import { useCreateProject } from "../../entities/project/api";
@@ -8,6 +8,7 @@ import { ApiError, errorMessage } from "../../shared/api/client";
 import { Button } from "../../shared/ui/Button";
 import { ErrorState } from "../../shared/ui/States";
 import { Spinner } from "../../shared/ui/Spinner";
+import { ScenarioBanner } from "../../shared/ui/ScenarioBanner";
 
 export function CreateProjectForm({
   onCreated,
@@ -116,12 +117,12 @@ export function CreateProjectForm({
             onChange={(e) => setName(e.target.value)}
             required
             placeholder="e.g. Atlas ordering platform"
-            className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-forge-500 focus:outline-none focus:ring-1 focus:ring-forge-500"
+            className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition-shadow focus:border-forge-500 focus:outline-none focus:ring-2 focus:ring-forge-500/20"
           />
         </div>
         <div>
-          <label htmlFor="primary-type" className="mb-1 block text-xs font-medium text-slate-600">
-            Primary type (legacy badge)
+<label htmlFor="primary-type" className="mb-1.5 block text-xs font-semibold text-slate-700">
+            Project type
           </label>
           <select
             id="primary-type"
@@ -139,7 +140,7 @@ export function CreateProjectForm({
       </div>
 
       <div>
-        <label className="mb-2 block text-xs font-medium text-slate-600">Platform types</label>
+        <label className="mb-2 block text-xs font-semibold text-slate-700">Build surfaces</label>
         <div className="grid gap-2 sm:grid-cols-2">
           {enabledTypes.map((type) => {
             const isSelected = Boolean(selected[type.id]);
@@ -178,7 +179,7 @@ export function CreateProjectForm({
                 <p className="text-sm font-semibold text-slate-800">{type.label}</p>
                 <div className="mt-3 grid gap-4 sm:grid-cols-2">
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-slate-600">Stack</label>
+                    <label className="mb-1.5 block text-xs font-semibold text-slate-700">Technology stack</label>
                     <select
                       value={chosenStackId ?? ""}
                       onChange={(e) => setStack(typeId, e.target.value || null)}
@@ -194,7 +195,7 @@ export function CreateProjectForm({
                     </select>
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-slate-600">Libraries</label>
+                    <label className="mb-1.5 block text-xs font-semibold text-slate-700">Tools & libraries</label>
                     {chosenStack ? (
                       chosenStack.libraries.length === 0 ? (
                         <p className="text-xs text-slate-400">No libraries defined for {chosenStack.name}.</p>
@@ -239,36 +240,40 @@ export function CreateProjectForm({
       )}
 
       <div>
-        <label htmlFor="project-description" className="mb-1 block text-xs font-medium text-slate-600">
-          Description
+<label htmlFor="project-description" className="mb-1.5 block text-xs font-semibold text-slate-700">
+          What are you building?
         </label>
         <textarea
           id="project-description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={3}
-          placeholder="What is this product?"
-          className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-forge-500 focus:outline-none focus:ring-1 focus:ring-forge-500"
+          placeholder="Describe the product, the audience, and the problem it solves."
+          className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 shadow-sm transition-shadow focus:border-forge-500 focus:outline-none focus:ring-2 focus:ring-forge-500/20"
         />
       </div>
 
       {planLimited ? (
-        <div className="sf-scale-in rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-xs text-amber-800">
-          <p className="font-semibold">Free plan limit reached</p>
-          <p className="mt-1 leading-relaxed">
-            The Free plan includes 1 project. Upgrade to Plus for unlimited projects, roadmaps and
-            governance — your existing projects are kept.
-          </p>
-          <Link
-            to="/checkout/plus"
-            className="mt-2 inline-block rounded-md bg-forge-600 px-3 py-1.5 font-semibold text-white transition-colors hover:bg-forge-500"
-          >
-            Upgrade to Plus
-          </Link>
-        </div>
+        <ScenarioBanner
+          tone="warning"
+          title="You have reached the Free plan limit"
+          description="Free includes one project. Your existing project and data are safe; upgrade to Plus to create unlimited projects."
+          actionLabel="Upgrade to Plus"
+          actionTo="/checkout/plus"
+          secondaryLabel="Open billing"
+          secondaryTo="/settings?tab=Billing"
+        />
       ) : null}
 
-      {error ? <p className="text-xs font-medium text-rose-600">{error}</p> : null}
+      {error ? (
+        <ScenarioBanner
+          tone="danger"
+          title="We could not create this project"
+          description={error}
+          actionLabel="Try again"
+          onAction={() => setError(null)}
+        />
+      ) : null}
 
       <Button type="submit" loading={create.isPending} className="w-full">
         Create project

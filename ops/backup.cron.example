@@ -1,0 +1,4 @@
+# Install on the Docker host with: crontab ops/backup.cron.example
+# The backup helper writes /app/backups/last-backup.json, which /admin/overview reads.
+# Adjust /opt/specforge to the checkout path used by the deployment.
+15 2 * * * cd /opt/specforge && /usr/bin/docker compose exec -T backend /app/ops/backup.sh /app/data/specforge.db /app/backups >> /var/log/specforge-backup.log 2>&1

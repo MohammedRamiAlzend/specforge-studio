@@ -120,8 +120,32 @@ function getProjectById(db: Database, id: string): ProjectRow | undefined {
   return db.query("SELECT * FROM projects WHERE id = ?").get(id) as ProjectRow | undefined;
 }
 
-function listProjects(db: Database): ProjectRow[] {
-  return db.query("SELECT * FROM projects ORDER BY created_at DESC").all() as ProjectRow[];
+function listProjects(db: Database, userId?: string): ProjectRow[] {
+  if (!userId) return db.query("SELECT * FROM projects ORDER BY created_at DESC").all() as ProjectRow[];
+  return db
+    .query(
+      `SELECT p.* FROM projects p
+       JOIN project_members pm ON pm.project_id = p.id
+       WHERE pm.user_id = ?
+       ORDER BY p.created_at DESC`,
+    )
+    .all(userId) as ProjectRow[];
+}
+
+const ROLE_RANK: Record<"viewer" | "editor" | "owner", number> = { viewer: 1, editor: 2, owner: 3 };
+
+export function assertProjectAccess(
+  db: Database,
+  projectId: string,
+  userId: string,
+  minimumRole: "viewer" | "editor" | "owner" = "viewer",
+): void {
+  const member = db
+    .query("SELECT role FROM project_members WHERE project_id = ? AND user_id = ?")
+    .get(projectId, userId) as { role: "viewer" | "editor" | "owner" } | undefined;
+  if (!member || ROLE_RANK[member.role] < ROLE_RANK[minimumRole]) {
+    throw notFound(`Project ${projectId} not found`);
+  }
 }
 
 const PROJECT_COLUMNS = ["name", "type", "description", "repository_url", "status"] as const;
@@ -292,6 +316,12 @@ function createProject(
   insertProject(db, { id, ...input });
   const selections = resolveProjectSelection(db, input.type, input.types);
   storeProjectSelection(db, id, selections);
+  if (db.query("SELECT 1 FROM users WHERE id = ?").get(input.created_by)) {
+    db.query(
+      `INSERT OR IGNORE INTO project_members (project_id, user_id, role)
+       VALUES (?, ?, 'owner')`,
+    ).run(id, input.created_by);
+  }
   logEvent(db, {
     projectId: id,
     entityType: "project",
@@ -307,14 +337,19 @@ function createProject(
   return { ...row, types: loadProjectTypes(db, id) };
 }
 
-function getProject(db: Database, id: string): ProjectRow & { types: ProjectTypeSelection[] } {
+function getProject(
+  db: Database,
+  id: string,
+  userId?: string,
+): ProjectRow & { types: ProjectTypeSelection[] } {
+  if (userId) assertProjectAccess(db, id, userId);
   const row = getProjectById(db, id);
   if (!row) throw notFound(`Project ${id} not found`);
   return { ...row, types: loadProjectTypes(db, id) };
 }
 
-function listProjectRows(db: Database): (ProjectRow & { types: ProjectTypeSelection[] })[] {
-  return listProjects(db).map((row) => ({ ...row, types: loadProjectTypes(db, row.id) }));
+function listProjectRows(db: Database, userId?: string): (ProjectRow & { types: ProjectTypeSelection[] })[] {
+  return listProjects(db, userId).map((row) => ({ ...row, types: loadProjectTypes(db, row.id) }));
 }
 
 function updateProjectRow(
@@ -366,10 +401,12 @@ function typeKeyForSelection(db: Database, selection: SelectionItem): string | n
 // ---------------------------------------------------------------------------
 
 export function registerProjectRoutes(app: FastifyInstance, deps: Deps): void {
-  const { db } = deps;
+  const { db, config } = deps;
+  const requestUserId = (request: Parameters<typeof requireUser>[1]): string | undefined =>
+    config.AUTH_REQUIRED ? requireUser(db, request).id : undefined;
 
   app.get("/projects", async (request) => {
-    return { data: listProjectRows(db) };
+    return { data: listProjectRows(db, requestUserId(request)) };
   });
 
   app.post("/projects", async (request, reply) => {
@@ -402,12 +439,14 @@ export function registerProjectRoutes(app: FastifyInstance, deps: Deps): void {
 
   app.get("/projects/:id", async (request) => {
     const { id } = idParamSchema.parse(request.params);
-    return { data: getProject(db, id) };
+    return { data: getProject(db, id, requestUserId(request)) };
   });
 
   app.patch("/projects/:id", async (request) => {
     const { id } = idParamSchema.parse(request.params);
     const body = updateProjectSchema.parse(request.body);
+    const userId = requestUserId(request);
+    if (userId) assertProjectAccess(db, id, userId, "editor");
     return { data: updateProjectRow(db, id, body) };
   });
 }

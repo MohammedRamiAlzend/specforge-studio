@@ -1,5 +1,5 @@
 import { type ReactNode } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { Spinner } from "../shared/ui/Spinner";
 import { useMe } from "../entities/user/api";
 import { AppShell } from "../widgets/layout/AppShell";
@@ -32,6 +32,18 @@ export function HomeGate() {
       <LandingPage />
     </PublicShell>
   );
+}
+
+/** Protects internal workspace routes and preserves the requested path for sign-in. */
+export function Protected({ children }: { children: ReactNode }) {
+  const { data: me, isLoading } = useMe();
+  const location = useLocation();
+  if (isLoading) return <FullScreenSpinner />;
+  if (!me) {
+    const returnTo = `${location.pathname}${location.search}${location.hash}`;
+    return <Navigate to={`/signin?return=${encodeURIComponent(returnTo)}`} replace />;
+  }
+  return <>{children}</>;
 }
 
 /** Renders children only for guests; signed-in users bounce to `/`. */

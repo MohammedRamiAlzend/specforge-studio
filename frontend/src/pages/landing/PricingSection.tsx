@@ -115,6 +115,21 @@ export function PricingSection() {
             Start free, upgrade when your specs grow. Cancel anytime.
           </p>
 
+          <div className="mx-auto mt-8 max-w-3xl rounded-2xl border border-forge-500/20 bg-forge-500/[0.06] p-5 text-left">
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-forge-500/15 text-forge-300" aria-hidden="true">✦</span>
+              <div>
+                <p className="text-sm font-semibold text-white">Meet Leona Agent</p>
+                <p className="mt-1 text-sm leading-relaxed text-slate-400">Leona reads your Business Model, Presentation, and Markdown workspace to create a structured project draft. Bring your own provider key on supported plans, or use the managed SpecForge provider on Premium subject to the published usage policy.</p>
+                <div className="mt-3 flex flex-wrap gap-2 text-[11px] font-medium">
+                  <span className="rounded-full border border-white/10 bg-slate-950/40 px-2.5 py-1 text-slate-300">BYOK: your provider, your bill</span>
+                  <span className="rounded-full border border-forge-400/20 bg-forge-400/10 px-2.5 py-1 text-forge-200">Managed: Premium plan</span>
+                  <span className="rounded-full border border-white/10 bg-slate-950/40 px-2.5 py-1 text-slate-300">Draft first · approve before writing</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <div className="mt-8 inline-flex items-center rounded-full border border-white/10 bg-slate-900 p-1">
             {(["monthly", "yearly"] as const).map((option) => (
               <button

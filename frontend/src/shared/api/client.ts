@@ -19,6 +19,7 @@ interface Envelope<T> {
 /** Calls the backend and unwraps the { data } / { error } envelope. */
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${API_BASE_URL}${path}`, {
+    credentials: "include",
     ...init,
     headers: {
       "Content-Type": "application/json",

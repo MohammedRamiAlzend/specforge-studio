@@ -32,3 +32,8 @@ The agent must read this file before every session and must not violate it.
 - Do not invent mandatory work.
 - Do not start optional work without approval.
 - Do not violate approved decisions.
+
+
+## Session Result Artifact Rule — 2026-08-26
+
+Every completed work session must save its final result in a dedicated English Markdown file under `docs/session-results/`, using a dated descriptive filename. The ongoing memory files remain required as continuity logs; the session-result Markdown file is the user-facing deliverable for that session.

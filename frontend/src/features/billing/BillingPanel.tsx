@@ -14,6 +14,7 @@ import { Button } from "../../shared/ui/Button";
 import { Card, CardHeader } from "../../shared/ui/Card";
 import { ConfirmDialog } from "../../shared/ui/ConfirmDialog";
 import { Spinner } from "../../shared/ui/Spinner";
+import { ScenarioBanner } from "../../shared/ui/ScenarioBanner";
 
 const STATUS_STYLES: Record<string, string> = {
   active: "bg-emerald-50 text-emerald-700 border-emerald-200",
@@ -114,10 +115,13 @@ export function BillingPanel() {
             </dl>
 
             {subscription.status === "expired" ? (
-              <p className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
-                Your billing period has ended — you are now limited to the Free plan. Renew below
-                to restore your workspace limits.
-              </p>
+              <ScenarioBanner
+                tone="warning"
+                title="Your billing period has ended"
+                description="Your projects and data are safe, but Free plan limits now apply. Reactivate a paid plan to restore unlimited workspace capacity."
+                actionLabel="Reactivate plan"
+                actionTo="/checkout/plus"
+              />
             ) : null}
 
             <div className="flex flex-wrap items-center gap-2 pt-1">
@@ -221,7 +225,13 @@ export function BillingPanel() {
         }}
       />
       {cancelSubscription.isError ? (
-        <p role="alert" className="text-xs text-rose-600">{errorMessage(cancelSubscription.error)}</p>
+        <ScenarioBanner
+          tone="danger"
+          title="We could not update your subscription"
+          description={errorMessage(cancelSubscription.error)}
+          actionLabel="Try again"
+          onAction={() => cancelSubscription.reset()}
+        />
       ) : null}
     </div>
   );

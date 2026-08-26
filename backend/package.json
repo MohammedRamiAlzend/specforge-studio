@@ -10,6 +10,7 @@
     "test": "bun test tests/",
     "seed-example": "bun scripts/generate-example.ts",
     "seed-live": "bun scripts/seed-live.ts",
+    "seed-admin": "bun scripts/seed-admin.ts",
     "seed-ecommerce-example": "bun scripts/generate-ecommerce-example.ts",
     "seed-ecommerce-live": "bun scripts/seed-ecommerce-live.ts",
     "build": "tsc --noEmit",

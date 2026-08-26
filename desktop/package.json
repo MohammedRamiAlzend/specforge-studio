@@ -1,0 +1,42 @@
+{
+  "name": "@specforge/windows",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SpecForge Studio Windows dashboard application",
+  "author": "SpecForge Studio",
+  "main": "src/main.mjs",
+  "scripts": {
+    "dev": "electron .",
+    "dist": "electron-builder --win nsis portable",
+    "dist:dir": "electron-builder --win dir",
+    "pack": "electron-builder --dir"
+  },
+  "build": {
+    "appId": "studio.specforge.desktop",
+    "productName": "SpecForge Studio",
+    "artifactName": "SpecForge-Studio-${version}-${os}-${arch}.${ext}",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "**/*",
+      "!release/**",
+      "!node_modules/.cache/**"
+    ],
+    "win": {
+      "target": ["nsis", "portable"],
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  },
+  "devDependencies": {
+    "electron": "^36.4.0",
+    "electron-builder": "^26.0.12"
+  }
+}

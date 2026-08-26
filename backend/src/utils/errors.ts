@@ -2,10 +2,13 @@ export type ErrorCode =
   | "VALIDATION_ERROR"
   | "BAD_REQUEST"
   | "UNAUTHORIZED"
+  | "FORBIDDEN"
   | "NOT_FOUND"
   | "CONFLICT"
   | "RATE_LIMITED"
-  | "EMAIL_NOT_VERIFIED"
+    | "EMAIL_NOT_VERIFIED"
+  | "SIGNUP_DOMAIN_NOT_ALLOWED"
+
   | "CODE_LOCKED"
   | "PLAN_LIMIT_REACHED"
   | "INTERNAL_ERROR";
@@ -36,6 +39,10 @@ export function conflict(message: string, details?: unknown): AppError {
 
 export function unauthorized(message = "Authentication required."): AppError {
   return new AppError("UNAUTHORIZED", message, 401);
+}
+
+export function forbidden(message = "You do not have permission to perform this action."): AppError {
+  return new AppError("FORBIDDEN", message, 403);
 }
 
 /** 402 Payment Required — a plan allowance was exceeded (billing lifecycle). */

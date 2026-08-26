@@ -174,6 +174,17 @@ describe("PublicShell", () => {
     expect(html).toContain("All rights reserved");
   });
 
+  it("exposes the bundled Windows installer download", () => {
+    const html = render("/", (
+      <PublicShell>
+        <p>content</p>
+      </PublicShell>
+    ));
+    expect(html).toContain('href="/downloads/SpecForge-Studio-0.1.0-win-x64.exe"');
+    expect(html).toContain("Download for Windows");
+    expect(html).not.toContain("Windows app · soon");
+  });
+
   it("points section nav at /#anchors so they work from any route", () => {
     const html = render("/signin", (
       <PublicShell>

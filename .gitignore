@@ -7,3 +7,20 @@ dist/
 data/
 .env
 .env.local
+
+# Generated verification output and local workflow artifacts
+*.log
+*.txt
+ops/PRJ-*-workspace-check/
+ops/*.zip
+ops/*.json
+ops/*-trace.txt
+ops/*-result.json
+
+# Electron build output; publish signed installers separately
+desktop/release/
+desktop/*.exe
+frontend/public/downloads/*.exe
+
+# TypeScript incremental metadata
+tsconfig.tsbuildinfo

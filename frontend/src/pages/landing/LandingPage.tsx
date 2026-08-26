@@ -4,6 +4,7 @@ import { useMe } from "../../entities/user/api";
 import { usePlans } from "../../entities/plan/api";
 import { PricingSection } from "./PricingSection";
 import { FaqSection, FeaturesSection, FinalCtaSection, HowItWorksSection, RevealWords } from "./sections";
+import { ExperiencePreview } from "../../widgets/experience/ExperiencePreview";
 
 /** Floating mock of the modeler canvas used as the hero visual. */
 function HeroMockup() {
@@ -49,6 +50,43 @@ const PROOF_POINTS = [
   "Agent-neutral task packs",
   "Full audit trail",
 ];
+
+function ProductShowcase() {
+  return (
+    <section className="relative overflow-hidden border-y border-white/5 bg-slate-950 py-24">
+      <div className="absolute left-1/2 top-0 h-72 w-[42rem] -translate-x-1/2 rounded-full bg-indigo-500/10 blur-3xl" />
+      <div className="relative mx-auto max-w-6xl px-6">
+        <div className="mx-auto max-w-2xl text-center">
+          <p className="text-xs font-semibold uppercase tracking-[0.22em] text-forge-300">The clarity layer</p>
+          <h2 className="mt-4 text-3xl font-bold tracking-tight text-white sm:text-4xl">Build the case, then tell the story.</h2>
+          <p className="mt-4 text-base leading-relaxed text-slate-400">
+            Start with the commercial truth inside a living canvas. Turn those decisions into a narrative your team, stakeholders, and agents can act on.
+          </p>
+        </div>
+        <div className="mt-12 grid gap-6 lg:grid-cols-2">
+          <div className="group rounded-3xl border border-white/10 bg-white/[0.035] p-3 shadow-2xl shadow-black/20 transition-transform duration-300 hover:-translate-y-1 sm:p-4">
+            <ExperiencePreview kind="business-model" />
+            <div className="px-2 pb-2 pt-5 sm:px-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-forge-300">01 / Business Model</p>
+              <h3 className="mt-2 text-xl font-semibold text-white">Make the value legible.</h3>
+              <p className="mt-2 text-sm leading-relaxed text-slate-400">Capture customers, channels, partners, and economics in one editable nine-block canvas that stays connected to the project.</p>
+              <Link to="/register" className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-white transition-colors hover:text-forge-300">Explore the canvas <span aria-hidden="true">→</span></Link>
+            </div>
+          </div>
+          <div className="group rounded-3xl border border-white/10 bg-white/[0.035] p-3 shadow-2xl shadow-black/20 transition-transform duration-300 hover:-translate-y-1 sm:p-4">
+            <ExperiencePreview kind="presentation" />
+            <div className="px-2 pb-2 pt-5 sm:px-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-300">02 / Presentation</p>
+              <h3 className="mt-2 text-xl font-semibold text-white">Make the story travel.</h3>
+              <p className="mt-2 text-sm leading-relaxed text-slate-400">Turn project evidence into a live pitch deck with generated slides, keyboard navigation, print-ready layout, and one-click PPTX export.</p>
+              <Link to="/register" className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-white transition-colors hover:text-violet-300">See the narrative <span aria-hidden="true">→</span></Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
 
 /**
  * Public landing page (Prompt 21). Guests see this at `/`; signed-in users
@@ -114,6 +152,7 @@ export function LandingPage() {
 
       <FeaturesSection />
       <HowItWorksSection />
+      <ProductShowcase />
       <PricingSection />
       <FaqSection />
       <FinalCtaSection plans={plans ?? []} />

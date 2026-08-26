@@ -256,7 +256,16 @@ No rejected options recorded yet.
 - status: implemented and verified 2026-08-25 (typecheck clean, build OK, 254 tests / 0 fail, smoke OK).
 
 ## DEC-029: Billing full simulated lifecycle (2026-08-25)
-User explicitly chose (question round): (a) FULL SIMULATED lifecycle — no external payment provider, no-SaaS constraint upheld; (b) ALL scope items: plan-limit enforcement, invoices + billing-history UI, period-expiry handling, email receipts via the existing SMTP mailer. Real Stripe integration remains forbidden unless separately approved later. Provider seam may be kept internal but no gateway work is in scope.
+User explicitly chose (question round): (a) FULL SIMULATED lifecycle ï¿½ no external payment provider, no-SaaS constraint upheld; (b) ALL scope items: plan-limit enforcement, invoices + billing-history UI, period-expiry handling, email receipts via the existing SMTP mailer. Real Stripe integration remains forbidden unless separately approved later. Provider seam may be kept internal but no gateway work is in scope.
 
 ## DEC-030: Biz-model/presentation/dashboard round (2026-08-25)
 User-approved choices: (a) Business Model Canvas (9 blocks) per project as structured bmc_notes rows (BMC ids); (b) presentation = live-computed deck from DB data (no persistence table; always fresh), delivered as HTML slide viewer w/ print-to-PDF CSS + Markdown workspace file + real .pptx download via pptxgenjs (NEW runtime dependency explicitly approved by user, breaking zero-dep rule for this module only); (c) dashboard = full redesign backed by GET /dashboard/summary aggregate endpoint (auth-required), incl. plan-awareness strip, KPI row, attention panel, upcoming milestones, project grid filters/sort, removal of hard-coded tips card, and fixing silent drop of pending approvals in the GLOBAL activity feed (activity.ts merge required projectId). Execution order C -> A -> B, separate commits per phase.
+
+### DEC-031 â€” Simplified settings and account navigation (2026-08-25)
+
+- decision ID: DEC-031
+- type: user-requested UX correction
+- decision: Move account access out of the scrollable sidebar into an always-visible desktop/mobile profile menu. Add a dedicated authenticated `/account` profile page with editable display name, verification status, member date, account ID, and plan link. Reduce `/settings` to two intentional areas: Workspace (advanced project setup and node palette) and Billing (subscription and invoices). Remove the low-value Environment and Reference tabs from the normal user settings IA.
+- reason: The previous layout buried sign-out at the bottom of a scrollable navigation region and mixed personal account actions with technical configuration/reference material.
+- status: implemented and verified 2026-08-25
+- impact: AppShell gains persistent AccountMenu chrome; AccountChip remains only as a compatibility re-export; auth adds an authenticated name-only PATCH `/auth/me` endpoint with audit logging; frontend adds AccountPage and focused settings/account regression coverage. No password, email, or payment-secret mutation is exposed.

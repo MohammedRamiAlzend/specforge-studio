@@ -125,6 +125,7 @@ const PLAN_SEEDS: Array<{
       "1 project",
       "Visual modeler & diagrams",
       "Markdown workspace export",
+      "Leona Agent context briefing with your own provider key",
       "Community templates",
     ],
     popular: false,
@@ -141,6 +142,7 @@ const PLAN_SEEDS: Array<{
       "Unlimited projects",
       "Roadmap engine & agent task packs",
       "Governance & approvals",
+      "Leona Agent with your own provider key",
       "Cross-project workspaces",
       "Priority email support",
     ],
@@ -159,6 +161,7 @@ const PLAN_SEEDS: Array<{
       "Execution suite (team, issues, releases)",
       "Custom node palette & platform config",
       "Audit log & traceability reports",
+      "Leona Agent managed-provider access (subject to usage policy)",
       "Dedicated support channel",
     ],
     popular: false,
@@ -190,6 +193,21 @@ export function seedBillingPlans(db: Database): void {
       p.popular ? 1 : 0,
       p.sortOrder,
     );
+
+    // Add new built-in capability copy to existing plans without replacing
+    // administrator-customized features already stored in the catalog.
+    const existing = db.query("SELECT features FROM plans WHERE id = ?").get(p.id) as { features: string } | undefined;
+    if (existing) {
+      let features: string[] = [];
+      try {
+        const parsed = JSON.parse(existing.features) as unknown;
+        if (Array.isArray(parsed)) features = parsed.filter((feature): feature is string => typeof feature === "string");
+      } catch {
+        features = [];
+      }
+      const merged = [...features, ...p.features.filter((feature) => !features.includes(feature))];
+      if (merged.length !== features.length) db.query("UPDATE plans SET features = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ', 'now') WHERE id = ?").run(JSON.stringify(merged), p.id);
+    }
   }
   db.query(
     `INSERT INTO id_sequences (prefix, next_value, project_id)
