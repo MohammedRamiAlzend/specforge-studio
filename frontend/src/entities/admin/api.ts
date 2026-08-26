@@ -54,6 +54,24 @@ export interface AdminInvoice {
   created_at: string;
 }
 
+export interface AdminAiProviderSettings {
+  id: string;
+  provider: "openai" | "anthropic" | "gemini";
+  model: string;
+  secret_ref: string;
+  managed_enabled: number;
+  monthly_generations: number;
+  monthly_tokens: number;
+  max_context_tokens: number;
+  max_output_tokens: number;
+  estimated_input_cost_micros: number;
+  estimated_output_cost_micros: number;
+  hard_stop_micros: number;
+  privacy_notice: string;
+  updated_by: string | null;
+  updated_at: string;
+}
+
 export interface AdminSubscription {
   id: string;
   user_id: string;
@@ -74,6 +92,18 @@ export function useAdminOverview(enabled = true) {
     queryKey: ["admin", "overview"],
     queryFn: () => api<AdminOverview>("/admin/overview"),
     enabled,
+  });
+}
+
+export function useAdminAiProvider(enabled = true) {
+  return useQuery({ queryKey: ["admin", "ai-provider"], queryFn: () => api<AdminAiProviderSettings>("/admin/ai-provider"), enabled });
+}
+
+export function useAdminAiProviderUpdate() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: Partial<Omit<AdminAiProviderSettings, "id" | "updated_by" | "updated_at" | "secret_ref">> & { secret_ref?: string }) => api<AdminAiProviderSettings>("/admin/ai-provider", { method: "PATCH", body: JSON.stringify(input) }),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["admin", "ai-provider"] }),
   });
 }
 

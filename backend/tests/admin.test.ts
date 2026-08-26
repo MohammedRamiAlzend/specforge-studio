@@ -42,6 +42,25 @@ describe("admin monitoring", () => {
     expect(normalUser.statusCode).toBe(403);
   });
 
+  it("allows an administrator to configure managed AI without exposing credentials", async () => {
+    const { app, db } = await createFixture();
+    const adminCookie = await login(app, "admin@test.local");
+    const initial = await app.inject({ method: "GET", url: "/admin/ai-provider", headers: { cookie: adminCookie } });
+    expect(initial.statusCode).toBe(200);
+    expect(initial.json().data.managed_enabled).toBe(0);
+
+    const updated = await app.inject({ method: "PATCH", url: "/admin/ai-provider", headers: { cookie: adminCookie }, payload: { provider: "openai", model: "gpt-5-mini", secret_ref: "prod/specforge/openai/leona", managed_enabled: true, monthly_generations: 100, monthly_tokens: 500000, max_context_tokens: 120000, max_output_tokens: 16000, hard_stop_micros: 5000000, privacy_notice: "Project context is sent to the approved managed provider for draft generation." } });
+    expect(updated.statusCode).toBe(200);
+    expect(updated.body).not.toContain("sk-");
+    expect(updated.json().data.managed_enabled).toBe(1);
+    expect(updated.json().data.secret_ref).toBe("prod/specforge/openai/leona");
+    expect(db.query("SELECT action FROM event_log WHERE entity_type = 'ai_provider_settings'").all()).toHaveLength(1);
+
+    const userCookie = await login(app, "user@test.local");
+    const denied = await app.inject({ method: "GET", url: "/admin/ai-provider", headers: { cookie: userCookie } });
+    expect(denied.statusCode).toBe(403);
+  });
+
   it("allows an administrator to cancel and reactivate a subscription with audit logging", async () => {
     const { app, db } = await createFixture();
     db.query("INSERT INTO subscriptions (id, user_id, plan_id, cycle, status, current_period_end) VALUES (?, ?, ?, ?, ?, ?)").run("SUB-0001", "USR-0002", "PLAN-0001", "monthly", "active", "2099-01-01T00:00:00.000Z");

@@ -9,6 +9,21 @@ import { logEvent } from "../utils/events";
 import { notFound } from "../utils/errors";
 
 const statusSchema = z.enum(["active", "canceled"]);
+const aiProviderUpdateSchema = z.object({
+  provider: z.enum(["openai", "anthropic", "gemini"]).optional(),
+  model: z.string().min(1).max(120).trim().optional(),
+  secret_ref: z.string().max(240).trim().optional(),
+  managed_enabled: z.boolean().optional(),
+  monthly_generations: z.number().int().min(0).max(1_000_000).optional(),
+  monthly_tokens: z.number().int().min(0).max(1_000_000_000).optional(),
+  max_context_tokens: z.number().int().min(1000).max(2_000_000).optional(),
+  max_output_tokens: z.number().int().min(100).max(500_000).optional(),
+  estimated_input_cost_micros: z.number().int().min(0).max(1_000_000_000).optional(),
+  estimated_output_cost_micros: z.number().int().min(0).max(1_000_000_000).optional(),
+  hard_stop_micros: z.number().int().min(0).max(1_000_000_000_000).optional(),
+  privacy_notice: z.string().min(20).max(2000).trim().optional(),
+}).strict();
+
 const planUpdateSchema = z.object({
   name: z.string().min(1).max(120).trim().optional(),
   tagline: z.string().max(240).trim().optional(),
@@ -78,6 +93,35 @@ export function registerAdminRoutes(app: FastifyInstance, deps: Deps): void {
         recent_audit_events: audits,
       },
     };
+  });
+
+  app.get("/admin/ai-provider", async (request) => {
+    requireAdmin(db, request);
+    db.query("INSERT OR IGNORE INTO ai_provider_settings (id) VALUES ('AI-0001')").run();
+    const settings = db.query("SELECT id, provider, model, secret_ref, managed_enabled, monthly_generations, monthly_tokens, max_context_tokens, max_output_tokens, estimated_input_cost_micros, estimated_output_cost_micros, hard_stop_micros, privacy_notice, updated_by, updated_at FROM ai_provider_settings WHERE id = 'AI-0001'").get();
+    return { data: settings };
+  });
+
+  app.patch("/admin/ai-provider", async (request) => {
+    const actor = requireAdmin(db, request);
+    db.query("INSERT OR IGNORE INTO ai_provider_settings (id) VALUES ('AI-0001')").run();
+    const body = aiProviderUpdateSchema.parse(request.body);
+    const fields: string[] = [];
+    const values: Array<string | number> = [];
+    for (const key of ["provider", "model", "secret_ref", "managed_enabled", "monthly_generations", "monthly_tokens", "max_context_tokens", "max_output_tokens", "estimated_input_cost_micros", "estimated_output_cost_micros", "hard_stop_micros", "privacy_notice"] as const) {
+      const value = body[key];
+      if (value === undefined) continue;
+      fields.push(`${key} = ?`);
+      values.push(typeof value === "boolean" ? (value ? 1 : 0) : value);
+    }
+    if (fields.length) {
+      fields.push("updated_by = ?", "updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now')");
+      values.push(actor.id);
+      db.query(`UPDATE ai_provider_settings SET ${fields.join(", ")} WHERE id = 'AI-0001'`).run(...values);
+      logEvent(db, { entityType: "ai_provider_settings", entityId: "AI-0001", action: "admin_updated", actor: actor.id, actorType: "human", payload: { fields: Object.keys(body), managed_enabled: body.managed_enabled } });
+    }
+    const settings = db.query("SELECT id, provider, model, secret_ref, managed_enabled, monthly_generations, monthly_tokens, max_context_tokens, max_output_tokens, estimated_input_cost_micros, estimated_output_cost_micros, hard_stop_micros, privacy_notice, updated_by, updated_at FROM ai_provider_settings WHERE id = 'AI-0001'").get();
+    return { data: settings };
   });
 
   app.get("/admin/plans", async (request) => {

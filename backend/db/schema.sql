@@ -1126,3 +1126,25 @@ CREATE TABLE IF NOT EXISTS leona_provider_connections (
   updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );
 CREATE INDEX IF NOT EXISTS idx_leona_provider_connections_user ON leona_provider_connections(user_id, status);
+
+-- ---------------------------------------------------------------------------
+-- SpecForge-managed AI control plane (admin-owned configuration)
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS ai_provider_settings (
+  id TEXT PRIMARY KEY,
+  provider TEXT NOT NULL DEFAULT 'openai' CHECK (provider IN ('openai','anthropic','gemini')),
+  model TEXT NOT NULL DEFAULT 'gpt-5-mini',
+  secret_ref TEXT NOT NULL DEFAULT '',
+  managed_enabled INTEGER NOT NULL DEFAULT 0,
+  monthly_generations INTEGER NOT NULL DEFAULT 0,
+  monthly_tokens INTEGER NOT NULL DEFAULT 0,
+  max_context_tokens INTEGER NOT NULL DEFAULT 120000,
+  max_output_tokens INTEGER NOT NULL DEFAULT 16000,
+  estimated_input_cost_micros INTEGER NOT NULL DEFAULT 0,
+  estimated_output_cost_micros INTEGER NOT NULL DEFAULT 0,
+  hard_stop_micros INTEGER NOT NULL DEFAULT 0,
+  privacy_notice TEXT NOT NULL DEFAULT 'Project context will be sent to the configured SpecForge-managed AI provider for draft generation.',
+  updated_by TEXT,
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  updated_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
+);

@@ -10,6 +10,7 @@ import {
 } from "../../entities/admin/api";
 import { errorMessage } from "../../shared/api/client";
 import { PageHeader } from "../../shared/ui/PageHeader";
+import { AdminAiProviderPanel } from "../../features/admin-ai/AdminAiProviderPanel";
 
 function statusClass(status: string | undefined): string {
   if (status === "ok" || status === "configured" || status === "ready") return "bg-emerald-50 text-emerald-700 ring-emerald-200";
@@ -67,6 +68,8 @@ export function AdminPage() {
 
       {overview.isError ? <div className="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">Unable to load operations overview: {errorMessage(overview.error)}</div> : null}
       {feedback ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">{feedback}</div> : null}
+
+      <AdminAiProviderPanel />
 
       <section aria-labelledby="operations-heading">
         <div className="flex items-center justify-between gap-4">
