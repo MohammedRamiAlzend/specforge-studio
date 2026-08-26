@@ -117,3 +117,8 @@ Verification passed: typecheck plus Dashboard and Account Settings tests ran 8 t
 Added user account-status management to the protected admin dashboard. Administrators can search users by name, email, or ID, filter active versus banned accounts, view safe account metadata, enter a ban reason, ban a non-administrator account, and unban it. Banning immediately deletes all active sessions and blocks future login; unbanning clears the ban metadata and permits login again. Self-ban and administrator-to-administrator ban operations are explicitly rejected. Password hashes and provider secrets are never returned. Ban and unban actions are audit logged.
 
 Focused verification passed: typecheck plus admin, authentication OTP, and authorization tests ran 17 tests with 0 failures and 90 assertions.
+
+
+## Dashboard activity privacy fix
+
+Removed the global Recent activity widget from the normal user dashboard. Regular users now see their dashboard overview, attention panels, milestones, and own workspaces without a cross-user event feed. Project-scoped ActivityFeed remains available inside an individual project workspace where the project context is explicit. Typecheck and dashboard, execution, and authorization tests passed: 20 tests, 0 failures, 76 assertions.

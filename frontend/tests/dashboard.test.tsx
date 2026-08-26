@@ -18,7 +18,6 @@ import type { Project } from "../src/entities/project/types";
 import { dashboardKeys } from "../src/entities/dashboard/api";
 import type { DashboardSummary } from "../src/entities/dashboard/types";
 import { healthKeys } from "../src/entities/health/api";
-import { activityKeys } from "../src/entities/activity/api";
 
 const USER: User = {
   id: "USR-0001",
@@ -84,7 +83,6 @@ function renderWithCache(seed?: { me?: User; summary?: DashboardSummary; project
       queryClient.setQueryData(healthKeys.one(project.id), HEALTH);
     }
   }
-  queryClient.setQueryData(activityKeys.list(undefined, 18), []);
   return renderToStaticMarkup(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter>

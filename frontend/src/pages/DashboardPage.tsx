@@ -15,7 +15,6 @@ import { ErrorState } from "../shared/ui/States";
 import { formatRelative } from "../shared/lib/format";
 import { PlatformBadges } from "../widgets/platform-badges/PlatformBadges";
 import { HealthMiniCard } from "../widgets/health/HealthCards";
-import { ActivityFeed } from "../widgets/activity/ActivityFeed";
 
 const STATUS_FILTERS = ["all", "active", "draft", "completed", "archived"] as const;
 type StatusFilter = (typeof STATUS_FILTERS)[number];
@@ -141,7 +140,6 @@ export function DashboardPage() {
       ) : null}
 
       <section className="grid gap-6 lg:grid-cols-3"><div className="lg:col-span-2"><AttentionPanel summary={summary} /></div><UpcomingMilestones summary={summary} /></section>
-      <ActivityFeed title="Recent activity" limit={18} />
     </div>
   );
 }
