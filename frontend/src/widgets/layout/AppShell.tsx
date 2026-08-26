@@ -66,8 +66,8 @@ function NavGroup({ label, items, onNavigate, collapsed }: { label: string; item
       {(collapsed || open) ? (
         <div className="space-y-0.5">
           {items.map((item) => (
-            <NavLink key={item.to} to={item.to} end={item.end} onClick={onNavigate} title={item.label} className={({ isActive }) => `${navLinkClass(isActive)} ${collapsed ? "justify-center px-2.5" : ""}`}>
-              {({ isActive }) => <><span className={isActive ? "text-forge-300" : "text-slate-600 group-hover:text-slate-400"}><NavGlyph name={item.glyph} /></span>{!collapsed ? <span className="truncate">{item.label}</span> : null}{isActive ? <span className={collapsed ? "absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-forge-300" : "ml-auto h-1.5 w-1.5 rounded-full bg-forge-300"} /> : null}</>}
+            <NavLink key={item.to} to={item.to} end={item.end} onClick={onNavigate} title={item.label} className={({ isActive }) => `${navLinkClass(isActive)} ${collapsed ? "justify-center gap-0 px-2" : ""}`}>
+              {({ isActive }) => <><span className={isActive ? "text-forge-300" : "text-slate-400 group-hover:text-slate-200"}><NavGlyph name={item.glyph} /></span>{!collapsed ? <span className="truncate">{item.label}</span> : null}{isActive ? <span className={collapsed ? "absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-forge-300" : "ml-auto h-1.5 w-1.5 rounded-full bg-forge-300"} /> : null}</>}
             </NavLink>
           ))}
         </div>
@@ -112,15 +112,15 @@ export function AppShell({ children }: { children?: ReactNode }) {
     <div className="flex h-screen overflow-hidden bg-slate-50">
       {mobileOpen ? <button type="button" aria-label="Close navigation" onClick={closeMobile} className="fixed inset-0 z-30 bg-slate-950/60 backdrop-blur-sm lg:hidden" /> : null}
       <aside className={`fixed inset-y-0 left-0 z-40 flex w-[18rem] shrink-0 flex-col border-r border-slate-800 bg-slate-950 shadow-2xl shadow-slate-950/20 transition-[width,transform] duration-200 lg:translate-x-0 lg:shadow-none ${mobileOpen ? "translate-x-0" : "-translate-x-full"} ${navCompact ? "lg:w-[4.5rem]" : "lg:w-[18rem]"}`}>
-        <div className="flex items-center justify-between border-b border-white/[0.06] px-4 py-4">
-          <NavLink to="/" end onClick={closeMobile} className="flex min-w-0 items-center gap-2.5">
+        <div className={`relative flex h-[76px] items-center border-b border-white/[0.06] ${navCompact ? "justify-center px-2" : "justify-between px-4"}`}>
+          <NavLink to="/" end onClick={closeMobile} className={`flex min-w-0 items-center gap-2.5 ${navCompact ? "justify-center" : ""}`} aria-label="SpecForge Studio home">
             <Logo size={32} />
             {!navCompact ? <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-white">SpecForge Studio</p>
               <p className="text-[10px] text-slate-500">Plan clearly. Ship confidently.</p>
             </div> : null}
           </NavLink>
-          <button type="button" aria-label={navCompact ? "Expand navigation" : "Collapse navigation"} title={navCompact ? "Expand navigation" : "Collapse navigation"} onClick={() => setNavCollapsed((value) => !value)} className="hidden rounded-md p-1.5 text-slate-500 transition-colors hover:bg-white/10 hover:text-white lg:block">
+          <button type="button" aria-label={navCompact ? "Expand navigation" : "Collapse navigation"} title={navCompact ? "Expand navigation" : "Collapse navigation"} onClick={() => setNavCollapsed((value) => !value)} className={`hidden rounded-md p-1.5 text-slate-500 transition-colors hover:bg-white/10 hover:text-white lg:block ${navCompact ? "absolute right-1 top-1" : ""}`}>
             <svg className={`h-5 w-5 transition-transform ${navCompact ? "rotate-180" : ""}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M15 6 9 12l6 6" /><path d="M19 6 13 12l6 6" /></svg>
           </button>
           <button type="button" aria-label="Close navigation" onClick={closeMobile} className="rounded-md p-1.5 text-slate-500 hover:bg-white/10 hover:text-white lg:hidden">
@@ -133,8 +133,8 @@ export function AppShell({ children }: { children?: ReactNode }) {
             <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-600">Workspace</span>
             <span className="rounded-full border border-white/10 px-1.5 py-0.5 text-[9px] text-slate-600">⌘ K</span>
           </div> : null}
-          <NavLink to="/" end onClick={closeMobile} title="Dashboard" className={({ isActive }) => `${navLinkClass(isActive)} ${navCompact ? "justify-center px-2.5" : ""}`}>
-            {({ isActive }) => <><span className={isActive ? "text-forge-300" : "text-slate-600 group-hover:text-slate-400"}><NavGlyph name="home" /></span>{!navCompact ? <span>Dashboard</span> : null}{isActive ? <span className={navCompact ? "absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-forge-300" : "ml-auto h-1.5 w-1.5 rounded-full bg-forge-300"} /> : null}</>}
+          <NavLink to="/" end onClick={closeMobile} title="Dashboard" className={({ isActive }) => `${navLinkClass(isActive)} ${navCompact ? "justify-center gap-0 px-2" : ""}`}>
+            {({ isActive }) => <><span className={isActive ? "text-forge-300" : "text-slate-400 group-hover:text-slate-200"}><NavGlyph name="home" /></span>{!navCompact ? <span>Dashboard</span> : null}{isActive ? <span className={navCompact ? "absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-forge-300" : "ml-auto h-1.5 w-1.5 rounded-full bg-forge-300"} /> : null}</>}
           </NavLink>
 
           {project ? (
@@ -179,17 +179,17 @@ export function AppShell({ children }: { children?: ReactNode }) {
           )}
 
           <div className="mt-4 border-t border-white/[0.06] pt-2">
-            <NavLink to="/settings" onClick={closeMobile} className={({ isActive }) => `${navLinkClass(isActive)} ${navCompact ? "justify-center px-2.5" : ""}`} title="Settings">
-              {({ isActive }) => <><span className={isActive ? "text-forge-300" : "text-slate-600 group-hover:text-slate-400"}><NavGlyph name="settings" /></span>{!navCompact ? <span>Settings</span> : null}{isActive ? <span className={navCompact ? "absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-forge-300" : "ml-auto h-1.5 w-1.5 rounded-full bg-forge-300"} /> : null}</>}
+            <NavLink to="/settings" onClick={closeMobile} className={({ isActive }) => `${navLinkClass(isActive)} ${navCompact ? "justify-center gap-0 px-2" : ""}`} title="Settings">
+              {({ isActive }) => <><span className={isActive ? "text-forge-300" : "text-slate-400 group-hover:text-slate-200"}><NavGlyph name="settings" /></span>{!navCompact ? <span>Settings</span> : null}{isActive ? <span className={navCompact ? "absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-forge-300" : "ml-auto h-1.5 w-1.5 rounded-full bg-forge-300"} /> : null}</>}
             </NavLink>
-            {user?.is_admin ? <NavLink to="/admin" onClick={closeMobile} className={({ isActive }) => `${navLinkClass(isActive)} ${navCompact ? "justify-center px-2.5" : ""}`} title="Admin operations">
-              {({ isActive }) => <><span className={isActive ? "text-forge-300" : "text-slate-600 group-hover:text-slate-400"}><NavGlyph name="layers" /></span>{!navCompact ? <span>Admin operations</span> : null}{isActive ? <span className={navCompact ? "absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-forge-300" : "ml-auto h-1.5 w-1.5 rounded-full bg-forge-300"} /> : null}</>}
+            {user?.is_admin ? <NavLink to="/admin" onClick={closeMobile} className={({ isActive }) => `${navLinkClass(isActive)} ${navCompact ? "justify-center gap-0 px-2" : ""}`} title="Admin operations">
+              {({ isActive }) => <><span className={isActive ? "text-forge-300" : "text-slate-400 group-hover:text-slate-200"}><NavGlyph name="layers" /></span>{!navCompact ? <span>Admin operations</span> : null}{isActive ? <span className={navCompact ? "absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-forge-300" : "ml-auto h-1.5 w-1.5 rounded-full bg-forge-300"} /> : null}</>}
             </NavLink> : null}
           </div>
         </nav>
 
-        <div className="border-t border-white/[0.06] px-4 py-3">
-          <p className="text-[10px] font-medium text-slate-600">Local-first workspace · SQLite core</p>
+        <div className={`border-t border-white/[0.06] py-3 ${navCompact ? "flex justify-center px-2" : "px-4"}`}>
+          {navCompact ? <span className="h-1.5 w-1.5 rounded-full bg-forge-400/70" title="Local-first workspace" /> : <p className="text-[10px] font-medium text-slate-600">Local-first workspace · SQLite core</p>}
         </div>
       </aside>
 

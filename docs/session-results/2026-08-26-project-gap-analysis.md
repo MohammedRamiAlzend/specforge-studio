@@ -94,3 +94,10 @@ Implemented secure BYOK provider connection storage and frontend wiring. The bac
 Production configuration now fails closed if authentication is disabled, secure cookies are disabled, CORS is missing, administrators are not configured, or `LEONA_CREDENTIAL_KEY` is missing. The environment template documents the 64-hex-character secret requirement.
 
 Focused verification: typecheck passed; Leona provider, security regression, authorization, and billing tests passed with 10 tests and 48 assertions in the latest run.
+
+
+## Sidebar repair
+
+Reworked the dashboard sidebar collapsed state into a stable icon rail. The header now centers the brand mark and positions the expand control without squeezing the logo; collapsed links use consistent icon-only spacing; non-active icons have sufficient contrast; active indicators no longer distort the icon row; tooltips remain available through link titles; the active project card remains compact; and the footer reduces to a small status marker instead of overflowing text. Expanded navigation labels and group controls remain intact.
+
+Focused verification passed: typecheck plus dashboard, account-settings, and experience-preview tests ran 10 tests with 0 failures and 32 assertions.
