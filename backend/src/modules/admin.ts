@@ -6,7 +6,7 @@ import type { Deps } from "../types";
 import { requireAdmin } from "./auth";
 import { resolveSmtpConfig } from "../config/index";
 import { logEvent } from "../utils/events";
-import { notFound } from "../utils/errors";
+import { badRequest, notFound } from "../utils/errors";
 
 const statusSchema = z.enum(["active", "canceled"]);
 const aiProviderUpdateSchema = z.object({
@@ -93,6 +93,44 @@ export function registerAdminRoutes(app: FastifyInstance, deps: Deps): void {
         recent_audit_events: audits,
       },
     };
+  });
+
+  app.get("/admin/users", async (request) => {
+    requireAdmin(db, request);
+    const query = request.query as { search?: string; status?: string };
+    const search = query.search?.trim();
+    const status = query.status === "active" || query.status === "banned" ? query.status : undefined;
+    const clauses: string[] = [];
+    const args: string[] = [];
+    if (search) { clauses.push("(email LIKE ? OR name LIKE ? OR id LIKE ?)"); const pattern = `%${search}%`; args.push(pattern, pattern, pattern); }
+    if (status) { clauses.push("account_status = ?"); args.push(status); }
+    const where = clauses.length ? `WHERE ${clauses.join(" AND ")}` : "";
+    const users = db.query(`SELECT id, email, name, is_admin, account_status, ban_reason, banned_at, created_at FROM users ${where} ORDER BY created_at DESC LIMIT 200`).all(...args);
+    return { data: users };
+  });
+
+  app.post("/admin/users/:id/ban", async (request) => {
+    const actor = requireAdmin(db, request);
+    const params = request.params as { id: string };
+    const body = z.object({ reason: z.string().max(500).trim().default("Policy violation") }).parse(request.body ?? {});
+    if (params.id === actor.id) throw badRequest("You cannot ban your own administrator account.");
+    const target = db.query("SELECT id, is_admin, account_status FROM users WHERE id = ?").get(params.id) as { id: string; is_admin: number; account_status: string } | undefined;
+    if (!target) throw notFound("User not found.");
+    if (target.is_admin === 1) throw badRequest("Administrator accounts require a separate operator procedure.");
+    db.query("UPDATE users SET account_status = 'banned', ban_reason = ?, banned_at = strftime('%Y-%m-%dT%H:%M:%fZ','now'), banned_by = ?, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?").run(body.reason, actor.id, params.id);
+    db.query("DELETE FROM sessions WHERE user_id = ?").run(params.id);
+    logEvent(db, { entityType: "user", entityId: params.id, action: "admin_banned", actor: actor.id, actorType: "human", payload: { reason: body.reason } });
+    return { data: { id: params.id, account_status: "banned" } };
+  });
+
+  app.post("/admin/users/:id/unban", async (request) => {
+    const actor = requireAdmin(db, request);
+    const params = request.params as { id: string };
+    const target = db.query("SELECT id FROM users WHERE id = ?").get(params.id) as { id: string } | undefined;
+    if (!target) throw notFound("User not found.");
+    db.query("UPDATE users SET account_status = 'active', ban_reason = '', banned_at = NULL, banned_by = NULL, updated_at = strftime('%Y-%m-%dT%H:%M:%fZ','now') WHERE id = ?").run(params.id);
+    logEvent(db, { entityType: "user", entityId: params.id, action: "admin_unbanned", actor: actor.id, actorType: "human" });
+    return { data: { id: params.id, account_status: "active" } };
   });
 
   app.get("/admin/ai-provider", async (request) => {

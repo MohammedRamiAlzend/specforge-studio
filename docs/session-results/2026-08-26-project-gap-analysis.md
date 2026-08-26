@@ -110,3 +110,10 @@ Replaced the legacy AppShell sidebar markup with a new `DashboardSidebar` compon
 The shared `ConfirmDialog` now renders through a document-body portal. This prevents sticky headers, backdrop filters, and local stacking contexts from positioning the sign-out dialog against the top edge. The dialog uses a viewport-centered flex overlay with responsive padding and a high z-index.
 
 Verification passed: typecheck plus Dashboard and Account Settings tests ran 8 tests with 0 failures and 26 assertions.
+
+
+## Administrator user controls
+
+Added user account-status management to the protected admin dashboard. Administrators can search users by name, email, or ID, filter active versus banned accounts, view safe account metadata, enter a ban reason, ban a non-administrator account, and unban it. Banning immediately deletes all active sessions and blocks future login; unbanning clears the ban metadata and permits login again. Self-ban and administrator-to-administrator ban operations are explicitly rejected. Password hashes and provider secrets are never returned. Ban and unban actions are audit logged.
+
+Focused verification passed: typecheck plus admin, authentication OTP, and authorization tests ran 17 tests with 0 failures and 90 assertions.

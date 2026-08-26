@@ -54,6 +54,17 @@ export interface AdminInvoice {
   created_at: string;
 }
 
+export interface AdminUser {
+  id: string;
+  email: string;
+  name: string;
+  is_admin: number;
+  account_status: "active" | "banned";
+  ban_reason: string;
+  banned_at: string | null;
+  created_at: string;
+}
+
 export interface AdminAiProviderSettings {
   id: string;
   provider: "openai" | "anthropic" | "gemini";
@@ -92,6 +103,22 @@ export function useAdminOverview(enabled = true) {
     queryKey: ["admin", "overview"],
     queryFn: () => api<AdminOverview>("/admin/overview"),
     enabled,
+  });
+}
+
+export function useAdminUsers(filters: { search?: string; status?: string } = {}, enabled = true) {
+  const query = new URLSearchParams();
+  if (filters.search) query.set("search", filters.search);
+  if (filters.status) query.set("status", filters.status);
+  const suffix = query.toString() ? `?${query.toString()}` : "";
+  return useQuery({ queryKey: ["admin", "users", filters], queryFn: () => api<AdminUser[]>(`/admin/users${suffix}`), enabled });
+}
+
+export function useAdminUserAction() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, action, reason }: { id: string; action: "ban" | "unban"; reason?: string }) => api<{ id: string; account_status: string }>(`/admin/users/${id}/${action}`, { method: "POST", body: JSON.stringify(action === "ban" ? { reason } : {}) }),
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ["admin", "users"] }),
   });
 }
 

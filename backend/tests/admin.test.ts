@@ -61,6 +61,24 @@ describe("admin monitoring", () => {
     expect(denied.statusCode).toBe(403);
   });
 
+  it("bans users, revokes sessions, blocks login, and supports unban", async () => {
+    const { app } = await createFixture();
+    const adminCookie = await login(app, "admin@test.local");
+    const userCookie = await login(app, "user@test.local");
+    const banned = await app.inject({ method: "POST", url: "/admin/users/USR-0002/ban", headers: { cookie: adminCookie }, payload: { reason: "Abuse report" } });
+    expect(banned.statusCode).toBe(200);
+    expect(banned.json().data.account_status).toBe("banned");
+    const sessionCheck = await app.inject({ method: "GET", url: "/auth/me", headers: { cookie: userCookie } });
+    expect(sessionCheck.statusCode).toBe(401);
+    const loginBlocked = await app.inject({ method: "POST", url: "/auth/login", payload: { email: "user@test.local", password: "password123" } });
+    expect(loginBlocked.statusCode).toBe(403);
+    const unbanned = await app.inject({ method: "POST", url: "/admin/users/USR-0002/unban", headers: { cookie: adminCookie } });
+    expect(unbanned.statusCode).toBe(200);
+    expect(unbanned.json().data.account_status).toBe("active");
+    const loginRestored = await app.inject({ method: "POST", url: "/auth/login", payload: { email: "user@test.local", password: "password123" } });
+    expect(loginRestored.statusCode).toBe(200);
+  });
+
   it("allows an administrator to cancel and reactivate a subscription with audit logging", async () => {
     const { app, db } = await createFixture();
     db.query("INSERT INTO subscriptions (id, user_id, plan_id, cycle, status, current_period_end) VALUES (?, ?, ?, ?, ?, ?)").run("SUB-0001", "USR-0002", "PLAN-0001", "monthly", "active", "2099-01-01T00:00:00.000Z");

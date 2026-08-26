@@ -977,6 +977,10 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash TEXT NOT NULL,
   email_verified INTEGER NOT NULL DEFAULT 0,          -- 0 until OTP verification (migration 012 grandfathers legacy rows)
   is_admin      INTEGER NOT NULL DEFAULT 0,            -- global admin role (migration 016)
+  account_status TEXT NOT NULL DEFAULT 'active' CHECK (account_status IN ('active','banned')),
+  ban_reason    TEXT NOT NULL DEFAULT '',
+  banned_at     TEXT,
+  banned_by     TEXT,
   created_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
   updated_at    TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))
 );

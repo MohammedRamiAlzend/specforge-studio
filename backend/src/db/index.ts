@@ -25,6 +25,7 @@ export function openDatabase(path: string): Database {
   migrate0012EmailVerified(db);
   migrate0016GlobalAdmin(db);
   migrate0017BmcCanvasMetadata(db);
+  migrate0018UserAccountStatus(db);
   return db;
 }
 
@@ -56,6 +57,15 @@ function migrate0016GlobalAdmin(db: Database): void {
 }
 
 /** Migration 017: adds persisted placement and color for Miro-style BMC notes. */
+function migrate0018UserAccountStatus(db: Database): void {
+  const columns = tableColumns(db, "users");
+  if (columns.length === 0) return;
+  if (!columns.includes("account_status")) db.exec("ALTER TABLE users ADD COLUMN account_status TEXT NOT NULL DEFAULT 'active';");
+  if (!columns.includes("ban_reason")) db.exec("ALTER TABLE users ADD COLUMN ban_reason TEXT NOT NULL DEFAULT '';" );
+  if (!columns.includes("banned_at")) db.exec("ALTER TABLE users ADD COLUMN banned_at TEXT;" );
+  if (!columns.includes("banned_by")) db.exec("ALTER TABLE users ADD COLUMN banned_by TEXT;" );
+}
+
 function migrate0017BmcCanvasMetadata(db: Database): void {
   const columns = tableColumns(db, "bmc_notes");
   if (columns.length === 0) return;

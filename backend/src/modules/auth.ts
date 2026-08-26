@@ -35,6 +35,10 @@ export interface UserRow {
   password_hash: string;
   email_verified: number;
   is_admin: number;
+  account_status: "active" | "banned";
+  ban_reason: string;
+  banned_at: string | null;
+  banned_by: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -224,6 +228,10 @@ export function requireUser(db: Database, request: FastifyRequest): UserRow {
   }
   const user = getUserById(db, session.user_id);
   if (!user) throw unauthorized("Session user no longer exists.");
+  if (user.account_status === "banned") {
+    db.query("DELETE FROM sessions WHERE user_id = ?").run(user.id);
+    throw forbidden("This account has been banned.");
+  }
   return user;
 }
 
@@ -432,6 +440,9 @@ async function loginUser(
   const ok = user ? await Bun.password.verify(input.password, user.password_hash) : false;
   if (!user || !ok) {
     throw new AppError("UNAUTHORIZED", "Invalid email or password.", 401);
+  }
+  if (user.account_status === "banned") {
+    throw forbidden("This account has been banned.");
   }
   if (user.email_verified !== 1) {
     throw new AppError(

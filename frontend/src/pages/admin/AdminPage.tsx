@@ -11,6 +11,7 @@ import {
 import { errorMessage } from "../../shared/api/client";
 import { PageHeader } from "../../shared/ui/PageHeader";
 import { AdminAiProviderPanel } from "../../features/admin-ai/AdminAiProviderPanel";
+import { AdminUserPanel } from "../../features/admin-users/AdminUserPanel";
 
 function statusClass(status: string | undefined): string {
   if (status === "ok" || status === "configured" || status === "ready") return "bg-emerald-50 text-emerald-700 ring-emerald-200";
@@ -70,6 +71,7 @@ export function AdminPage() {
       {feedback ? <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">{feedback}</div> : null}
 
       <AdminAiProviderPanel />
+      <AdminUserPanel />
 
       <section aria-labelledby="operations-heading">
         <div className="flex items-center justify-between gap-4">
