@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useGenerateLeonaDraft, useLeonaProviders, type LeonaGenerationResult } from "../../entities/leona/api";
+import { errorMessage } from "../../shared/api/client";
 
 type ProviderMode = "byok" | "managed";
 
@@ -21,9 +23,20 @@ const steps = [
   { number: "04", title: "Approve and export", body: "After approval, SpecForge materializes the project and regenerates Markdown, JSON, ZIP, and Presentation outputs." },
 ];
 
-export function LeonaAgentOverlay({ projectName }: { projectName?: string }) {
+export function LeonaAgentOverlay({ projectName, projectId }: { projectName?: string; projectId?: string }) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<ProviderMode>("byok");
+  const [instruction, setInstruction] = useState("");
+  const [draft, setDraft] = useState<LeonaGenerationResult | null>(null);
+  const [feedback, setFeedback] = useState<string | null>(null);
+  const providers = useLeonaProviders();
+  const generate = useGenerateLeonaDraft();
+  const activeProvider = providers.data?.find((provider) => provider.status === "active");
+  const generateDraft = () => {
+    if (!projectId || !activeProvider) return;
+    setFeedback(null);
+    generate.mutate({ project_id: projectId, connection_id: activeProvider.id, instruction }, { onSuccess: setDraft, onError: (error) => setFeedback(errorMessage(error)) });
+  };
 
   return (
     <>
@@ -99,14 +112,19 @@ export function LeonaAgentOverlay({ projectName }: { projectName?: string }) {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4">
-                <p className="text-sm font-semibold text-amber-950">Activation is not connected yet</p>
-                <p className="mt-1 text-xs leading-relaxed text-amber-800">{mode === "byok" ? "The BYOK connection screen and provider validation route will be enabled after the provider adapter is approved." : "Managed SpecForge AI requires an approved provider, plan entitlement, quota policy, and production secret configuration."}</p>
+              <div className={`rounded-2xl border p-4 ${mode === "byok" && activeProvider ? "border-emerald-200 bg-emerald-50" : "border-amber-200 bg-amber-50"}`}>
+                <p className="text-sm font-semibold text-slate-900">{mode === "byok" ? (activeProvider ? `Connected: ${activeProvider.provider} · ${activeProvider.model || "default model"}` : "Connect a BYOK provider first") : "Managed generation is admin-controlled"}</p>
+                <p className="mt-1 text-xs leading-relaxed text-slate-600">{mode === "byok" ? "Leona will create a draft from this project context. Existing project data is not changed automatically." : "Managed SpecForge AI requires an approved provider, plan entitlement, quota policy, and production secret configuration."}</p>
+                {mode === "byok" && !activeProvider ? <Link to="/settings?tab=Providers" onClick={() => setOpen(false)} className="mt-2 inline-flex text-xs font-semibold text-forge-700">Connect provider →</Link> : null}
               </div>
+
+              <label className="block text-sm font-semibold text-slate-900">Optional instruction<textarea value={instruction} onChange={(event) => setInstruction(event.target.value)} rows={3} placeholder="Example: turn this idea into an MVP for a small team…" className="mt-2 w-full rounded-xl border border-slate-200 px-3 py-2.5 text-sm font-normal text-slate-800 outline-none focus:ring-2 focus:ring-forge-200" /></label>
+              {feedback ? <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-700">{feedback}</p> : null}
+              {draft ? <div className="rounded-2xl border border-forge-200 bg-forge-50/60 p-4"><p className="text-sm font-semibold text-slate-900">Draft ready for review</p><p className="mt-2 text-xs leading-relaxed text-slate-700">{draft.draft.summary}</p><div className="mt-3 flex flex-wrap gap-2 text-[10px] font-semibold text-slate-600"><span className="rounded-full bg-white px-2 py-1">{draft.draft.requirements.length} requirements</span><span className="rounded-full bg-white px-2 py-1">{draft.draft.workflows.length} workflows</span><span className="rounded-full bg-white px-2 py-1">{draft.draft.entities.length} entities</span><span className="rounded-full bg-white px-2 py-1">{draft.draft.roadmap_tasks.length} roadmap tasks</span></div>{draft.draft.warnings.length ? <p className="mt-3 text-xs text-amber-800">Warnings: {draft.draft.warnings.join(" · ")}</p> : null}</div> : null}
 
               <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
                 <button type="button" onClick={() => setOpen(false)} className="rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50">Close</button>
-                <button type="button" disabled className="cursor-not-allowed rounded-xl bg-slate-300 px-4 py-2.5 text-sm font-semibold text-white">Generate project draft</button>
+                <button type="button" onClick={generateDraft} disabled={mode !== "byok" || !projectId || !activeProvider || generate.isPending} className="rounded-xl bg-forge-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-forge-700 disabled:cursor-not-allowed disabled:bg-slate-300">{generate.isPending ? "Generating…" : "Generate project draft"}</button>
               </div>
             </div>
           </section>

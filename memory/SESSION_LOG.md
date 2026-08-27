@@ -1364,6 +1364,36 @@ The external provider integration remains intentionally gated. Next approval: Op
 Session result: `docs/session-results/2026-08-26-leona-agent-overlay-and-plans.md`.
 
 
-### Session 2026-08-26 — Project gap analysis
+### Session 2026-08-26 ï¿½ Project gap analysis
 
 Compared project memory and repository documentation, classified completed/partial/blocked work, and saved the prioritized roadmap in docs/session-results/2026-08-26-project-gap-analysis.md. Added it to docs/analysis-index.md.
+
+
+### Session 2026-08-27 â€” OpenAI BYOK Leona generation
+
+Work completed:
+- Implemented project-scoped `POST /leona/generate`.
+- Added AES-256-GCM decryption only for the server-side generation call.
+- Added official OpenAI host validation, sanitized project context, strict structured draft schema, safe provider errors, and `leona_generation_runs` metadata storage.
+- Wired the Leona dashboard overlay to the active project, active BYOK provider, optional instruction, loading/error states, and review-ready draft summary.
+- Added a dated result at `docs/session-results/2026-08-27-leona-openai-byok-generation.md`.
+
+Work partially completed:
+- Draft approval/materialization, managed-provider routing, quota accounting, provider health checks, and live-key end-to-end verification remain.
+
+Blockers:
+- No user API key was supplied, so no real provider request was executed.
+
+Verification:
+- Root typecheck passed.
+- Production frontend build passed.
+- Focused Leona/dashboard/execution/activity tests passed: 19 tests, 73 assertions.
+
+Memory files updated:
+- `memory/PROJECT_MEMORY.md`
+- `memory/NEXT_ACTION.md`
+- `memory/SESSION_LOG.md`
+- `memory/USER_REQUESTS.md`
+
+Next action:
+- Add draft approval/materialization and usage/quota enforcement, then verify with a controlled BYOK key.

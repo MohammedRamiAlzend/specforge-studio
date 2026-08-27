@@ -65,7 +65,7 @@ export function AppShell({ children }: { children?: ReactNode }) {
           <AccountMenu />
         </div>
         {isCanvasRoute ? <div className="h-full overflow-hidden"><div key={location.pathname} className="sf-page-enter h-full"><Outlet /></div></div> : <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 sm:py-8"><div key={location.pathname} className="sf-page-enter">{children ?? <Outlet />}</div></div>}
-        <LeonaAgentOverlay projectName={project?.name} />
+        <LeonaAgentOverlay projectName={project?.name} projectId={params.projectId} />
       </main>
     </div>
   );

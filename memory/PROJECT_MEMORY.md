@@ -526,6 +526,11 @@ Updated built-in landing plan copy so Free and Plus describe customer-owned prov
 Pending: explicit approval for OpenAI as first managed provider and encrypted/reference-based production secret storage before implementing external calls, Premium entitlement enforcement, quotas, admin provider controls, context snapshot, draft validation, and materialization.
 
 
-## Project gap analysis — 2026-08-26
+## Project gap analysis ï¿½ 2026-08-26
 
 Created docs/session-results/2026-08-26-project-gap-analysis.md and added it to docs/analysis-index.md. The core platform is implemented, while Leona backend/provider integration, secure provider persistence, AI quotas, production security hardening, green full verification, real payments, production deployment, visual QA, Docker verification, Presentation draft persistence, bundle optimization, and repository cleanup/commit remain incomplete or conditional. Recommended order: green tests, secure Leona backend, AI controls, production hardening, then distribution and QA.
+
+
+## Leona OpenAI BYOK Generation â€” 2026-08-27
+
+Implemented the first real Leona generation path. The backend now supports project-scoped `POST /leona/generate` using an active encrypted OpenAI BYOK connection, AES-256-GCM decryption only during the server-side request, sanitized project context, official OpenAI host validation, structured JSON draft validation, safe provider errors, and persisted generation-run metadata. The frontend overlay now receives the active project ID, detects an active BYOK connection, accepts an optional instruction, triggers draft generation, and displays review-ready summary/counts/warnings without automatic project writes. Typecheck, production build, and focused tests passed. Remaining Leona work: draft approval/materialization, usage/quota accounting, managed-provider adapter/routing, provider health checks, and end-to-end live-key verification.

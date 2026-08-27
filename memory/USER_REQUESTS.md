@@ -218,3 +218,10 @@ The user requested that Presentation Studio support resizing elements directly i
 - implication: Navigation compact mode is implemented. A new project-aware generation agent requires provider selection, secure secret handling, plan entitlements, quota/cost controls, structured draft-first generation, authorization, validation, and admin operations. Provider/API implementation remains gated on an explicit first-provider and secret-storage decision.
 - mandatory or optional: mandatory for navigation; agent implementation pending architecture approval.
 - affected phase or artifact: frontend AppShell, docs/features/project-generation-agent.md, future additive agent/provider modules and admin controls.
+
+
+### 2026-08-27 — Implement real Leona BYOK generation
+- request: "ok do it" after the recommendation to implement the OpenAI-first BYOK adapter and draft-generation flow.
+- implication: Add a secure, project-scoped generation route using saved BYOK connections, sanitized project context, strict structured drafts, review-ready frontend state, and no automatic project writes.
+- mandatory or optional: mandatory user-approved continuation.
+- affected phase or artifact: backend/src/modules/leona.ts, Leona generation schema/storage, frontend/src/entities/leona/api.ts, frontend/src/widgets/leona/LeonaAgentOverlay.tsx, tests, session result, and Git branch.

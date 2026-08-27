@@ -161,3 +161,12 @@ The overlay is currently a safe activation placeholder: no raw API key is collec
 ## Project gap analysis — 2026-08-26
 
 Completed the clear inventory of what is done and what remains. Full gap analysis: docs/session-results/2026-08-26-project-gap-analysis.md; indexed in docs/analysis-index.md. Next best action is repair the red tests and implement the approved secure Leona provider backend, then production hardening and deployment.
+
+
+## Leona OpenAI BYOK Generation Checkpoint — 2026-08-27
+
+The first real Leona generation path is implemented. `POST /leona/generate` authenticates the user, verifies project membership, decrypts the active encrypted OpenAI BYOK connection server-side, builds a sanitized project snapshot, calls the official OpenAI API host, validates a structured draft, persists safe run metadata, and returns a review-ready draft without writing project changes. The dashboard overlay is wired to trigger it and show summary, counts, warnings, loading, and error states.
+
+Verification passed: root typecheck, production frontend build, and focused Leona/dashboard/execution/activity tests (19 tests, 73 assertions). No real provider request was executed because no user API key was supplied.
+
+Next actions: add draft review/approval and materialization APIs, usage/quota accounting, managed-provider routing, provider health validation, and an end-to-end test using a controlled BYOK key. The dated session result is `docs/session-results/2026-08-27-leona-openai-byok-generation.md`.

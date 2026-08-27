@@ -1,9 +1,9 @@
 ﻿{
   "schema_version": "1.0",
   "project_name": "SpecForge Studio",
-  "last_updated": "2026-08-26",
+  "last_updated": "2026-08-27",
   "current_prompt_id": "21",
-  "current_phase": "admin-monitoring-windows-app",
+  "current_phase": "leona-openai-byok-generation",
   "status": "in_progress",
   "execution_mode": "human_approved_automation",
   "required_scope": [
@@ -61,9 +61,9 @@
     "business-model-canvas",
     "pitch-presentation"
   ],
-  "in_progress_phases": ["admin-monitoring-windows-app"],
+  "in_progress_phases": ["leona-openai-byok-generation"],
   "pending_phases": ["backlog-enhancements-if-approved", "container-verification-if-available"],
-  "next_action": "Configure production ADMIN_EMAILS and backup scheduling, publish the locally verified Windows artifact through a signed release workflow, set VITE_WINDOWS_DOWNLOAD_URL, and complete visual review in the attached preview.",
+  "next_action": "Add Leona draft approval/materialization, usage and quota accounting, managed-provider routing, provider health validation, and controlled live-key end-to-end verification.",
   "blockers": ["Production secrets and deployment access are not available in the repository session: ADMIN_EMAILS, backup host schedule, hosted app URL, GitHub signing secrets, release publication, and VITE_WINDOWS_DOWNLOAD_URL cannot be applied locally. Docker is not installed on the attached Windows machine; container execution is not verified."],
   "awaiting_approval": ["Specific approval for OPT-005 Sprint Planning and/or OPT-006 Issue-to-Release/Changelog if desired."],
   "completion": {

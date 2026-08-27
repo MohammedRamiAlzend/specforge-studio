@@ -1134,6 +1134,22 @@ CREATE INDEX IF NOT EXISTS idx_leona_provider_connections_user ON leona_provider
 -- ---------------------------------------------------------------------------
 -- SpecForge-managed AI control plane (admin-owned configuration)
 -- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS leona_generation_runs (
+  id TEXT PRIMARY KEY,
+  project_id TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  provider TEXT NOT NULL,
+  model TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('running','draft','failed')),
+  input_tokens INTEGER NOT NULL DEFAULT 0,
+  output_tokens INTEGER NOT NULL DEFAULT 0,
+  draft_json TEXT NOT NULL DEFAULT '{}',
+  error_code TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ', 'now')),
+  completed_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_leona_generation_runs_project ON leona_generation_runs(project_id, created_at);
+
 CREATE TABLE IF NOT EXISTS ai_provider_settings (
   id TEXT PRIMARY KEY,
   provider TEXT NOT NULL DEFAULT 'openai' CHECK (provider IN ('openai','anthropic','gemini')),
